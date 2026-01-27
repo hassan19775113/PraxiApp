@@ -985,3 +985,250 @@ def plan_operation(
     log_patient_action(user, 'operation_create', patient_id)
     
     return operation
+
+
+# ---------------------------------------------------------------------------
+# Availability Checking (Non-Exception Version)
+# ---------------------------------------------------------------------------
+
+def check_doctor_availability(
+    *,
+    start_time: datetime,
+    end_time: datetime,
+    doctor_id: int,
+    exclude_appointment_id: int | None = None,
+) -> bool:
+    """
+    Check if a doctor is available for the given time range.
+    
+    Returns True if available, False otherwise.
+    Does NOT raise exceptions - use for availability queries.
+    
+    Checks:
+    - Working hours (practice + doctor)
+    - Doctor absences
+    - Doctor breaks
+    - Overlapping appointments
+    - Overlapping operations
+    """
+    try:
+        appt_date = _get_date_from_datetime(start_time)
+        
+        # Check working hours
+        try:
+            validate_working_hours(
+                date=appt_date,
+                start_time=start_time,
+                end_time=end_time,
+                doctor_id=doctor_id,
+            )
+        except WorkingHoursViolation:
+            return False
+        
+        # Check absences
+        try:
+            validate_doctor_absences(
+                date=appt_date,
+                doctor_id=doctor_id,
+                start_time=start_time,
+                end_time=end_time,
+            )
+        except DoctorAbsentError:
+            return False
+        
+        # Check breaks
+        try:
+            validate_doctor_breaks(
+                date=appt_date,
+                start_time=start_time,
+                end_time=end_time,
+                doctor_id=doctor_id,
+            )
+        except DoctorBreakConflict:
+            return False
+        
+        # Check conflicts
+        conflicts = check_appointment_conflicts(
+            date=appt_date,
+            start_time=start_time,
+            end_time=end_time,
+            doctor_id=doctor_id,
+            exclude_appointment_id=exclude_appointment_id,
+        )
+        
+        if conflicts:
+            return False
+        
+        return True
+    except Exception:
+        # Any other error means not available
+        return False
+
+
+def check_room_availability(
+    *,
+    start_time: datetime,
+    end_time: datetime,
+    room_id: int,
+    exclude_appointment_id: int | None = None,
+    exclude_operation_id: int | None = None,
+) -> bool:
+    """
+    Check if a room is available for the given time range.
+    
+    Returns True if available, False otherwise.
+    
+    Checks:
+    - Overlapping appointments that booked this room
+    - Overlapping operations that use this room
+    """
+    # Check appointment conflicts
+    appt_conflicts = AppointmentResource.objects.using('default').filter(
+        resource_id=room_id,
+        appointment__start_time__lt=end_time,
+        appointment__end_time__gt=start_time,
+    )
+    if exclude_appointment_id is not None:
+        appt_conflicts = appt_conflicts.exclude(appointment_id=exclude_appointment_id)
+    
+    if appt_conflicts.exists():
+        return False
+    
+    # Check operation conflicts
+    op_conflicts = Operation.objects.using('default').filter(
+        op_room_id=room_id,
+        start_time__lt=end_time,
+        end_time__gt=start_time,
+    )
+    if exclude_operation_id is not None:
+        op_conflicts = op_conflicts.exclude(id=exclude_operation_id)
+    
+    if op_conflicts.exists():
+        return False
+    
+    return True
+
+
+def check_patient_availability(
+    *,
+    start_time: datetime,
+    end_time: datetime,
+    patient_id: int,
+    exclude_appointment_id: int | None = None,
+    exclude_operation_id: int | None = None,
+) -> bool:
+    """
+    Check if a patient is available for the given time range.
+    
+    Returns True if available, False otherwise.
+    
+    Checks:
+    - Overlapping appointments
+    - Overlapping operations
+    """
+    conflicts = check_patient_conflicts(
+        patient_id=patient_id,
+        start_time=start_time,
+        end_time=end_time,
+        exclude_appointment_id=exclude_appointment_id,
+        exclude_operation_id=exclude_operation_id,
+    )
+    
+    return len(conflicts) == 0
+
+
+def get_available_doctors(
+    *,
+    start_time: datetime,
+    end_time: datetime,
+    exclude_appointment_id: int | None = None,
+) -> list[User]:
+    """
+    Get all doctors that are available for the given time range.
+    
+    Returns list of User objects (doctors) that are available.
+    """
+    all_doctors = _get_active_doctors()
+    available = []
+    
+    for doctor in all_doctors:
+        if check_doctor_availability(
+            start_time=start_time,
+            end_time=end_time,
+            doctor_id=doctor.id,
+            exclude_appointment_id=exclude_appointment_id,
+        ):
+            available.append(doctor)
+    
+    return available
+
+
+def get_available_rooms(
+    *,
+    start_time: datetime,
+    end_time: datetime,
+    exclude_appointment_id: int | None = None,
+    exclude_operation_id: int | None = None,
+) -> list[Resource]:
+    """
+    Get all rooms that are available for the given time range.
+    
+    Returns list of Resource objects (type='room') that are available.
+    """
+    all_rooms = list(Resource.objects.using('default').filter(
+        type='room',
+        active=True,
+    ).order_by('name', 'id'))
+    
+    available = []
+    
+    for room in all_rooms:
+        if check_room_availability(
+            start_time=start_time,
+            end_time=end_time,
+            room_id=room.id,
+            exclude_appointment_id=exclude_appointment_id,
+            exclude_operation_id=exclude_operation_id,
+        ):
+            available.append(room)
+    
+    return available
+
+
+def filter_available_patients(
+    *,
+    patient_ids: list[int],
+    start_time: datetime,
+    end_time: datetime,
+    exclude_appointment_id: int | None = None,
+    exclude_operation_id: int | None = None,
+) -> list[int]:
+    """
+    Filter a list of patient IDs to return only those that are available.
+    
+    NOTE: This function cannot query the medical DB per architecture rules.
+    It must be called with a pre-filtered list of patient IDs from the medical API.
+    
+    Args:
+        patient_ids: List of patient IDs to check
+        start_time: Start datetime
+        end_time: End datetime
+        exclude_appointment_id: Optional appointment ID to exclude
+        exclude_operation_id: Optional operation ID to exclude
+    
+    Returns:
+        List of patient IDs that are available (no conflicts)
+    """
+    available = []
+    
+    for patient_id in patient_ids:
+        if check_patient_availability(
+            start_time=start_time,
+            end_time=end_time,
+            patient_id=patient_id,
+            exclude_appointment_id=exclude_appointment_id,
+            exclude_operation_id=exclude_operation_id,
+        ):
+            available.append(patient_id)
+    
+    return available

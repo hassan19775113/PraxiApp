@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from django.test import TestCase
+from django.urls import reverse
 
 from praxi_backend.core.models import Role, User
 
@@ -30,20 +31,20 @@ class AppointmentsCalendarViewsTest(TestCase):
         self.client.force_login(self.staff)
 
     def test_day_calendar_renders(self):
-        r = self.client.get("/praxiadmin/dashboard/appointments/")
+        r = self.client.get(reverse("dashboard:appointments_calendar_day_legacy"))
         self.assertEqual(r.status_code, 200)
         html = r.content.decode("utf-8")
         self.assertIn("Termine am", html)
         self.assertIn("Kalenderansicht", html)
 
     def test_week_calendar_renders(self):
-        r = self.client.get("/praxiadmin/dashboard/appointments/week/")
+        r = self.client.get(reverse("dashboard:appointments_calendar_week_legacy"))
         self.assertEqual(r.status_code, 200)
         html = r.content.decode("utf-8")
-        self.assertIn("Termine · Woche", html)
+        self.assertIn("Termine·Woche", html)
 
     def test_month_calendar_renders(self):
-        r = self.client.get("/praxiadmin/dashboard/appointments/month/")
+        r = self.client.get(reverse("dashboard:appointments_calendar_month_legacy"))
         self.assertEqual(r.status_code, 200)
         html = r.content.decode("utf-8")
-        self.assertIn("Termine · Monat", html)
+        self.assertIn("Termine·Monat", html)

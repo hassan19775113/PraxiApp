@@ -39,7 +39,7 @@ class DashboardView(View):
             'heatmap_matrix': json.dumps(charts['hourly_heatmap']['matrix']),
         }
         
-        return render(request, 'dashboard/index.html', context)
+        return render(request, 'dashboard/index_modern.html', context)
 
 
 class DashboardAPIView(View):

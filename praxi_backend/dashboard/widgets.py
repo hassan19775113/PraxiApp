@@ -159,7 +159,7 @@ def build_kpi_cards(kpis: dict) -> list[dict]:
         icon=people_svg,
         color='#1A73E8',
         subtitle=f"{kpis['users']['total_doctors']} Ärzte",
-        link='/praxiadmin/core/user/',
+        link='/praxi_backend/core/user/',
     ).to_dict())
     
     cards.append(KPICard(
@@ -167,7 +167,7 @@ def build_kpi_cards(kpis: dict) -> list[dict]:
         value=kpis['users']['total_doctors'],
         icon=doctor_svg,
         color='#34A853',
-        link='/praxiadmin/core/user/?role__name=doctor',
+        link='/praxi_backend/core/user/?role__name=doctor',
     ).to_dict())
     
     cards.append(KPICard(
@@ -175,7 +175,7 @@ def build_kpi_cards(kpis: dict) -> list[dict]:
         value=kpis['patients'],
         icon=hospital_svg,
         color='#FBBC05',
-        link='/praxiadmin/dashboard/patients/',
+        link='/praxi_backend/dashboard/patients/',
     ).to_dict())
     
     cards.append(KPICard(
@@ -185,7 +185,7 @@ def build_kpi_cards(kpis: dict) -> list[dict]:
         color='#EA4335',
         trend=kpis['appointments']['trend'],
         subtitle=f"{kpis['appointments']['week']} diese Woche",
-        link='/praxiadmin/dashboard/appointments/',
+        link='/praxi_backend/dashboard/appointments/',
     ).to_dict())
     
     cards.append(KPICard(
@@ -194,6 +194,8 @@ def build_kpi_cards(kpis: dict) -> list[dict]:
         icon=barchart_svg,
         color='#9C27B0',
         trend=kpis['appointments']['trend'],
+        subtitle='Letzte 7 Tage',
+        link='/praxi_backend/dashboard/appointments/',
     ).to_dict())
     
     cards.append(KPICard(
@@ -201,6 +203,8 @@ def build_kpi_cards(kpis: dict) -> list[dict]:
         value=kpis['appointments']['month'],
         icon=linechart_svg,
         color='#00BCD4',
+        subtitle='Letzte 30 Tage',
+        link='/praxi_backend/dashboard/appointments/',
     ).to_dict())
     
     cards.append(KPICard(
@@ -210,7 +214,7 @@ def build_kpi_cards(kpis: dict) -> list[dict]:
         color='#FF5722',
         trend=kpis['operations']['trend'],
         subtitle=f"{kpis['operations']['week']} diese Woche",
-        link='/praxiadmin/appointments/operation/',
+        link='/praxi_backend/appointments/operation/',
     ).to_dict())
     
     cards.append(KPICard(
@@ -219,6 +223,8 @@ def build_kpi_cards(kpis: dict) -> list[dict]:
         icon=hospital_svg,
         color='#795548',
         trend=kpis['operations']['trend'],
+        subtitle='Letzte 7 Tage',
+        link='/praxi_backend/appointments/operation/',
     ).to_dict())
     
     cards.append(KPICard(
@@ -235,6 +241,7 @@ def build_kpi_cards(kpis: dict) -> list[dict]:
         icon=clock_svg,
         color='#3F51B5',
         subtitle=f"{peak_hours['peak_count']} Termine",
+        link='/praxi_backend/dashboard/scheduling/#peak-load',
     ).to_dict())
     
     peak_days = kpis['peak_days']
@@ -244,6 +251,7 @@ def build_kpi_cards(kpis: dict) -> list[dict]:
         icon=day_svg,
         color='#009688',
         subtitle=f"{peak_days['peak_count']} Termine",
+        link='/praxi_backend/dashboard/scheduling/#peak-load',
     ).to_dict())
     
     cards.append(KPICard(
@@ -252,7 +260,7 @@ def build_kpi_cards(kpis: dict) -> list[dict]:
         icon=door_svg,
         color='#8BC34A',
         subtitle=f"{kpis['resources']['total_devices']} Geräte",
-        link='/praxiadmin/appointments/resource/',
+        link='/praxi_backend/appointments/resource/',
     ).to_dict())
     
     return cards

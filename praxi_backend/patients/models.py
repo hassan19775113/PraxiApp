@@ -1,6 +1,48 @@
 from django.db import models
 
 
+class PatientDocument(models.Model):
+    """Lokale Patienten-Dokumente (Upload/Notiz) im Default-DB."""
+
+    DOC_TYPE_DOCUMENT = "document"
+    DOC_TYPE_REPORT = "report"
+    DOC_TYPE_CHOICES = [
+        (DOC_TYPE_DOCUMENT, "Dokument"),
+        (DOC_TYPE_REPORT, "Bericht"),
+    ]
+
+    patient_id = models.IntegerField(db_index=True)
+    title = models.CharField(max_length=255)
+    doc_type = models.CharField(max_length=20, choices=DOC_TYPE_CHOICES)
+    file = models.FileField(upload_to="patient_documents/%Y/%m/%d", null=True, blank=True)
+    note = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "patient_documents"
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self) -> str:
+        return f"{self.title} (patient_id={self.patient_id})"
+
+
+class PatientNote(models.Model):
+    """Notizen der Aerzte zu einem Patienten (lokal, Default-DB)."""
+
+    patient_id = models.IntegerField(db_index=True)
+    author_name = models.CharField(max_length=255, blank=True)
+    author_role = models.CharField(max_length=255, blank=True)
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "patient_notes"
+        ordering = ["-created_at", "-id"]
+
+    def __str__(self) -> str:
+        return f"Note(patient_id={self.patient_id}, author={self.author_name or 'Unbekannt'})"
+
+
 class Patient(models.Model):
     """Local patient cache for the system database.
 

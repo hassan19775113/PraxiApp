@@ -82,6 +82,15 @@ class DoctorDashboardView(TemplateView):
             name = u.get_full_name().strip() if hasattr(u, 'get_full_name') else ''
             return name or getattr(u, 'username', str(u.id))
 
+        def _normalize_title_and_name(name: str) -> tuple[str, str]:
+            cleaned = (name or '').strip()
+            lowered = cleaned.lower()
+            if lowered.startswith('dr. '):
+                cleaned = cleaned[4:].lstrip()
+            elif lowered.startswith('dr '):
+                cleaned = cleaned[3:].lstrip()
+            return 'Dr.', cleaned or name
+
         def _initials(u: User) -> str:
             first = (getattr(u, 'first_name', '') or '').strip()
             last = (getattr(u, 'last_name', '') or '').strip()
@@ -156,10 +165,12 @@ class DoctorDashboardView(TemplateView):
                 profile = kpis.get('profile', {})
                 color = profile.get('calendar_color') or (getattr(doctor_obj, 'calendar_color', None) if doctor_obj else None) or '#1E90FF'
 
+                raw_name = _full_name(doctor_obj) if doctor_obj else profile.get('name', 'Unbekannt')
+                title, clean_name = _normalize_title_and_name(raw_name)
                 context['doctor'] = {
                     'id': selected_doctor_id,
-                    'title': 'Dr.',
-                    'full_name': _full_name(doctor_obj) if doctor_obj else profile.get('name', 'Unbekannt'),
+                    'title': title,
+                    'full_name': clean_name,
                     'initials': _initials(doctor_obj) if doctor_obj else 'DR',
                     'specialty': getattr(doctor_obj, 'specialty', None) or 'Allgemeinmedizin',
                     'email': getattr(doctor_obj, 'email', '') if doctor_obj else '',

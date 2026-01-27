@@ -13,9 +13,9 @@ WICHTIG:
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from core.seeders import seed_core
-from appointments.seeders import seed_appointments
-from medical.seeders import seed_medical
+from praxi_backend.core.seeders import seed_core
+from praxi_backend.appointments.seeders import seed_appointments
+from praxi_backend.medical.seeders import seed_medical
 
 
 class Command(BaseCommand):
@@ -58,17 +58,17 @@ class Command(BaseCommand):
                 self._print_stats("Appointments", appointments_stats)
 
                 self.stdout.write("\n" + "=" * 80)
-                self.stdout.write("  ✓ Seeding erfolgreich abgeschlossen!")
+                self.stdout.write("  [OK] Seeding erfolgreich abgeschlossen!")
                 self.stdout.write("=" * 80)
                 self._print_summary(stats)
 
         except Exception as e:
-            self.stdout.write(f"\n✗ Fehler beim Seeding: {e}")
+            self.stdout.write(f"\n[ERROR] Fehler beim Seeding: {e}")
             raise
 
     def _print_stats(self, section, stats):
         for key, value in stats.items():
-            self.stdout.write(f"  ✓ {key}: {value}")
+            self.stdout.write(f"  [OK] {key}: {value}")
 
     def _print_summary(self, stats):
         self.stdout.write("\nErstellte Datensätze (gesamt):")

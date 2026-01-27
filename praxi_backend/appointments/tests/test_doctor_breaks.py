@@ -48,9 +48,12 @@ class DoctorBreaksMiniTest(TestCase):
 		self.client.defaults["HTTP_HOST"] = "localhost"
 		self.client.force_authenticate(user=self.admin)
 
-		# Pick a deterministic Monday.
-		base = timezone.localdate() + timedelta(days=1)
-		self.monday = base - timedelta(days=base.weekday())
+		# Pick the next Monday strictly in the future.
+		today = timezone.localdate()
+		days_ahead = (7 - today.weekday()) % 7
+		if days_ahead == 0:
+			days_ahead = 7
+		self.monday = today + timedelta(days=days_ahead)
 
 		# Working hours Mon 09:00-17:00 (practice + doctor)
 		PracticeHours.objects.using("default").create(

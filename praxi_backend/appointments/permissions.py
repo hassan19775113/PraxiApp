@@ -15,6 +15,8 @@ class AppointmentPermission(BasePermission):
 
     def _role_name(self, request):
         user = getattr(request, "user", None)
+        if user and (getattr(user, "is_superuser", False) or getattr(user, "is_staff", False)):
+            return "admin"
         role = getattr(user, "role", None)
         return getattr(role, "name", None)
 

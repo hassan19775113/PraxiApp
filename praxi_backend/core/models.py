@@ -9,14 +9,14 @@ class Role(models.Model):
     Standard roles: admin, assistant, doctor, billing, nurse
     """
 
-    name = models.CharField(max_length=64, unique=True, db_index=True)
-    label = models.CharField(max_length=128)
+    name = models.CharField(max_length=64, unique=True, db_index=True, verbose_name="Name")
+    label = models.CharField(max_length=128, verbose_name="Bezeichnung")
 
     class Meta:
         db_table = 'core_role'
         ordering = ['name']
-        verbose_name = 'Role'
-        verbose_name_plural = 'Roles'
+        verbose_name = 'Rolle'
+        verbose_name_plural = 'Rollen'
 
     def __str__(self) -> str:
         return self.label
@@ -31,21 +31,23 @@ class User(AbstractUser):
     - email: Made unique (required for JWT auth)
     """
 
-    email = models.EmailField('email address', blank=True, unique=True)
-    calendar_color = models.CharField(max_length=7, blank=True, default='#1E90FF')
+    email = models.EmailField('E-Mail-Adresse', blank=True, unique=True)
+    calendar_color = models.CharField(max_length=7, blank=True, default='#1E90FF', verbose_name="Kalenderfarbe")
+    vacation_days_per_year = models.PositiveIntegerField(default=30, verbose_name="Urlaubstage pro Jahr")
     role = models.ForeignKey(
         Role,
         null=True,
         blank=True,
         on_delete=models.PROTECT,
         related_name='users',
+        verbose_name="Rolle",
     )
 
     class Meta:
         db_table = 'core_user'
         ordering = ['username']
-        verbose_name = 'User'
-        verbose_name_plural = 'Users'
+        verbose_name = 'Benutzer'
+        verbose_name_plural = 'Benutzer'
 
 
 class AuditLog(models.Model):
@@ -61,18 +63,19 @@ class AuditLog(models.Model):
         null=True,
         blank=True,
         related_name='audit_logs',
+        verbose_name="Benutzer",
     )
-    role_name = models.CharField(max_length=50, db_index=True)
-    action = models.CharField(max_length=50, db_index=True)
-    patient_id = models.IntegerField(null=True, blank=True, db_index=True)
-    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
-    meta = models.JSONField(null=True, blank=True)
+    role_name = models.CharField(max_length=50, db_index=True, verbose_name="Rollenname")
+    action = models.CharField(max_length=50, db_index=True, verbose_name="Aktion")
+    patient_id = models.IntegerField(null=True, blank=True, db_index=True, verbose_name="Patient-ID")
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name="Zeitstempel")
+    meta = models.JSONField(null=True, blank=True, verbose_name="Metadaten")
 
     class Meta:
         db_table = 'core_auditlog'
         ordering = ['-timestamp', '-id']
-        verbose_name = 'Audit Log'
-        verbose_name_plural = 'Audit Logs'
+        verbose_name = 'Audit-Protokoll'
+        verbose_name_plural = 'Audit-Protokolle'
         indexes = [
             models.Index(fields=['action', 'timestamp']),
             models.Index(fields=['patient_id', 'timestamp']),

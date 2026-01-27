@@ -25,6 +25,7 @@ from praxi_backend.appointments.views import (
     AppointmentSuggestView,
     AppointmentTypeDetailView,
     AppointmentTypeListCreateView,
+    AvailabilityView,
     # Calendar
     CalendarDayView,
     CalendarMonthView,
@@ -32,10 +33,12 @@ from praxi_backend.appointments.views import (
     # Doctor scheduling
     DoctorAbsenceDetailView,
     DoctorAbsenceListCreateView,
+    DoctorAbsencePreviewView,
     DoctorBreakDetailView,
     DoctorBreakListCreateView,
     DoctorHoursDetailView,
     DoctorHoursListCreateView,
+    DoctorListView,
     # Operations
     OperationDetailView,
     OperationListCreateView,
@@ -76,6 +79,8 @@ urlpatterns = [
     # Appointments - WICHTIG: suggest VOR <int:pk>!
     path('appointments/', AppointmentListCreateView.as_view(), name='list'),
     path('appointments/suggest/', AppointmentSuggestView.as_view(), name='suggest'),
+    # Doctors (MUSS VOR appointments/<int:pk>/ stehen!)
+    path('appointments/doctors/', DoctorListView.as_view(), name='doctors_list'),
     path('appointments/<int:pk>/', AppointmentDetailView.as_view(), name='detail'),
 
     # Appointment Types
@@ -117,7 +122,12 @@ urlpatterns = [
     path('doctor-hours/', DoctorHoursListCreateView.as_view(), name='doctor_hours_list'),
     path('doctor-hours/<int:pk>/', DoctorHoursDetailView.as_view(), name='doctor_hours_detail'),
     path('doctor-absences/', DoctorAbsenceListCreateView.as_view(), name='doctor_absences_list'),
+    path('doctor-absences/preview/', DoctorAbsencePreviewView.as_view(), name='doctor_absences_preview'),
     path('doctor-absences/<int:pk>/', DoctorAbsenceDetailView.as_view(), name='doctor_absences_detail'),
     path('doctor-breaks/', DoctorBreakListCreateView.as_view(), name='doctor_breaks_list'),
     path('doctor-breaks/<int:pk>/', DoctorBreakDetailView.as_view(), name='doctor_breaks_detail'),
+    # Doctors (Alias für direkten Zugriff ohne /appointments/ prefix)
+    path('doctors/', DoctorListView.as_view(), name='doctors_list_alias'),
+    # Availability
+    path('availability/', AvailabilityView.as_view(), name='availability'),
 ]

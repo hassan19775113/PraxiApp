@@ -14,6 +14,8 @@ Architectural note:
 	In production, routing is enforced by ``praxi_backend.db_router.PraxiAppRouter``.
 """
 
+from datetime import date, timedelta
+
 from django.conf import settings
 from django.db import models
 
@@ -26,12 +28,12 @@ class AppointmentType(models.Model):
 	- Optional default duration (`duration_minutes`)
 	- Enabling/disabling types without deleting historical data (`active`)
 	"""
-	name = models.CharField(max_length=100)
-	color = models.CharField(max_length=7, blank=True, null=True, default="#2E8B57")
-	duration_minutes = models.IntegerField(blank=True, null=True)
-	active = models.BooleanField(default=True)
-	created_at = models.DateTimeField(auto_now_add=True)
-	updated_at = models.DateTimeField(auto_now=True)
+	name = models.CharField(max_length=100, verbose_name="Name")
+	color = models.CharField(max_length=7, blank=True, null=True, default="#2E8B57", verbose_name="Farbe")
+	duration_minutes = models.IntegerField(blank=True, null=True, verbose_name="Dauer (Minuten)")
+	active = models.BooleanField(default=True, verbose_name="Aktiv")
+	created_at = models.DateTimeField(auto_now_add=True, verbose_name="Erstellt am")
+	updated_at = models.DateTimeField(auto_now=True, verbose_name="Aktualisiert am")
 
 	class Meta:
 		ordering = ["name", "id"]
@@ -47,15 +49,17 @@ class PracticeHours(models.Model):
 	Scheduling (suggestions and validations) requires that a time slot lies
 	within practice hours *and* within the doctor's hours.
 	"""
-	weekday = models.IntegerField()  # 0=Monday ... 6=Sunday
-	start_time = models.TimeField()
-	end_time = models.TimeField()
-	active = models.BooleanField(default=True)
-	created_at = models.DateTimeField(auto_now_add=True)
-	updated_at = models.DateTimeField(auto_now=True)
+	weekday = models.IntegerField(verbose_name="Wochentag")  # 0=Monday ... 6=Sunday
+	start_time = models.TimeField(verbose_name="Startzeit")
+	end_time = models.TimeField(verbose_name="Endzeit")
+	active = models.BooleanField(default=True, verbose_name="Aktiv")
+	created_at = models.DateTimeField(auto_now_add=True, verbose_name="Erstellt am")
+	updated_at = models.DateTimeField(auto_now=True, verbose_name="Aktualisiert am")
 
 	class Meta:
 		ordering = ["weekday", "start_time", "id"]
+		verbose_name = "Praxisöffnungszeit"
+		verbose_name_plural = "Praxisöffnungszeiten"
 
 	def __str__(self) -> str:
 		return f"PracticeHours weekday={self.weekday} {self.start_time}-{self.end_time}"
@@ -72,16 +76,25 @@ class DoctorHours(models.Model):
 		settings.AUTH_USER_MODEL,
 		on_delete=models.CASCADE,
 		related_name='doctor_hours',
+		verbose_name="Arzt",
 	)
-	weekday = models.IntegerField()
-	start_time = models.TimeField()
-	end_time = models.TimeField()
-	active = models.BooleanField(default=True)
-	created_at = models.DateTimeField(auto_now_add=True)
-	updated_at = models.DateTimeField(auto_now=True)
+	weekday = models.IntegerField(verbose_name="Wochentag")
+	start_time = models.TimeField(verbose_name="Startzeit")
+	end_time = models.TimeField(verbose_name="Endzeit")
+	active = models.BooleanField(default=True, verbose_name="Aktiv")
+	created_at = models.DateTimeField(auto_now_add=True, verbose_name="Erstellt am")
+	updated_at = models.DateTimeField(auto_now=True, verbose_name="Aktualisiert am")
 
 	class Meta:
 		ordering = ["doctor_id", "weekday", "start_time", "id"]
+		constraints = [
+			models.UniqueConstraint(
+				fields=["doctor", "weekday", "start_time", "end_time", "active"],
+				name="uniq_doctorhours_slot_active",
+			)
+		]
+		verbose_name = "Arbeitszeit"
+		verbose_name_plural = "Arbeitszeiten"
 
 	def __str__(self) -> str:
 		return f"DoctorHours doctor_id={self.doctor_id} weekday={self.weekday} {self.start_time}-{self.end_time}"
@@ -98,19 +111,81 @@ class DoctorAbsence(models.Model):
 		settings.AUTH_USER_MODEL,
 		on_delete=models.CASCADE,
 		related_name='doctor_absences',
+		verbose_name="Arzt",
 	)
-	start_date = models.DateField()
-	end_date = models.DateField()
-	reason = models.CharField(max_length=255, blank=True, null=True)
-	active = models.BooleanField(default=True)
-	created_at = models.DateTimeField(auto_now_add=True)
-	updated_at = models.DateTimeField(auto_now=True)
+	start_date = models.DateField(verbose_name="Startdatum")
+	end_date = models.DateField(verbose_name="Enddatum")
+	reason = models.CharField(max_length=255, blank=True, null=True, verbose_name="Grund")
+	duration_workdays = models.PositiveIntegerField(blank=True, null=True, verbose_name="Dauer (Werktage)")
+	remaining_days = models.PositiveIntegerField(blank=True, null=True, verbose_name="Verbleibend (Urlaubstage)")
+	return_date = models.DateField(blank=True, null=True, verbose_name="Arbeitet wieder ab")
+	active = models.BooleanField(default=True, verbose_name="Aktiv")
+	created_at = models.DateTimeField(auto_now_add=True, verbose_name="Erstellt am")
+	updated_at = models.DateTimeField(auto_now=True, verbose_name="Aktualisiert am")
 
 	class Meta:
 		ordering = ["doctor_id", "start_date", "end_date", "id"]
+		verbose_name = "Abwesenheit"
+		verbose_name_plural = "Abwesenheiten"
 
 	def __str__(self) -> str:
 		return f"DoctorAbsence doctor_id={self.doctor_id} {self.start_date}-{self.end_date}"
+
+	def _count_workdays(self, start_date, end_date):
+		if start_date is None or end_date is None:
+			return 0
+		if end_date < start_date:
+			return 0
+		days = 0
+		cur = start_date
+		while cur <= end_date:
+			if cur.weekday() < 5:
+				days += 1
+			cur += timedelta(days=1)
+		return days
+
+	def _next_workday(self, date_value):
+		if date_value is None:
+			return None
+		cur = date_value + timedelta(days=1)
+		while cur.weekday() >= 5:
+			cur += timedelta(days=1)
+		return cur
+
+	def _calculate_remaining_days(self):
+		if not self.doctor_id:
+			return None
+		if (self.reason or "").strip().lower() != "urlaub":
+			return None
+		year = self.start_date.year if self.start_date else None
+		if year is None:
+			return None
+		allocation = getattr(self.doctor, "vacation_days_per_year", 30) or 0
+		qs = DoctorAbsence.objects.using(self._state.db).filter(
+			doctor_id=self.doctor_id,
+			reason__iexact="Urlaub",
+			active=True,
+		)
+		if self.pk:
+			qs = qs.exclude(pk=self.pk)
+		used = 0
+		for absence in qs:
+			if absence.start_date is None or absence.end_date is None:
+				continue
+			if absence.start_date.year > year or absence.end_date.year < year:
+				continue
+			start = max(absence.start_date, date(year, 1, 1))
+			end = min(absence.end_date, date(year, 12, 31))
+			used += self._count_workdays(start, end)
+		used += self.duration_workdays or 0
+		remaining = max(0, allocation - used)
+		return remaining
+
+	def save(self, *args, **kwargs):
+		self.duration_workdays = self._count_workdays(self.start_date, self.end_date)
+		self.return_date = self._next_workday(self.end_date)
+		self.remaining_days = self._calculate_remaining_days()
+		super().save(*args, **kwargs)
 
 
 class DoctorBreak(models.Model):
@@ -128,17 +203,20 @@ class DoctorBreak(models.Model):
 		blank=True,
 		on_delete=models.CASCADE,
 		related_name='doctor_breaks',
+		verbose_name="Arzt",
 	)
-	date = models.DateField()
-	start_time = models.TimeField()
-	end_time = models.TimeField()
-	reason = models.CharField(max_length=255, blank=True, null=True)
-	active = models.BooleanField(default=True)
-	created_at = models.DateTimeField(auto_now_add=True)
-	updated_at = models.DateTimeField(auto_now=True)
+	date = models.DateField(verbose_name="Datum")
+	start_time = models.TimeField(verbose_name="Startzeit")
+	end_time = models.TimeField(verbose_name="Endzeit")
+	reason = models.CharField(max_length=255, blank=True, null=True, verbose_name="Grund")
+	active = models.BooleanField(default=True, verbose_name="Aktiv")
+	created_at = models.DateTimeField(auto_now_add=True, verbose_name="Erstellt am")
+	updated_at = models.DateTimeField(auto_now=True, verbose_name="Aktualisiert am")
 
 	class Meta:
 		ordering = ["date", "start_time", "doctor_id", "id"]
+		verbose_name = "Pause"
+		verbose_name_plural = "Pausen"
 
 	def __str__(self) -> str:
 		return f"DoctorBreak date={self.date} {self.start_time}-{self.end_time} doctor_id={self.doctor_id}"
@@ -169,37 +247,43 @@ class Appointment(models.Model):
 	)
 
 	id = models.AutoField(primary_key=True)
-	patient_id = models.IntegerField()
+	patient_id = models.IntegerField(verbose_name="Patient-ID")
 	type = models.ForeignKey(
 		AppointmentType,
 		null=True,
 		blank=True,
 		on_delete=models.SET_NULL,
+		verbose_name="Terminart",
 	)
 	resources = models.ManyToManyField(
 		"Resource",
 		through="AppointmentResource",
 		related_name="appointments",
 		blank=True,
+		verbose_name="Ressourcen",
 	)
 	doctor = models.ForeignKey(
 		settings.AUTH_USER_MODEL,
 		on_delete=models.PROTECT,
 		related_name='appointments',
+		verbose_name="Arzt",
 	)
-	start_time = models.DateTimeField()
-	end_time = models.DateTimeField()
+	start_time = models.DateTimeField(verbose_name="Startzeit")
+	end_time = models.DateTimeField(verbose_name="Endzeit")
 	status = models.CharField(
 		max_length=20,
 		choices=STATUS_CHOICES,
 		default=STATUS_SCHEDULED,
+		verbose_name="Status",
 	)
-	notes = models.TextField(blank=True, null=True)
-	created_at = models.DateTimeField(auto_now_add=True)
-	updated_at = models.DateTimeField(auto_now=True)
+	notes = models.TextField(blank=True, null=True, verbose_name="Notizen")
+	created_at = models.DateTimeField(auto_now_add=True, verbose_name="Erstellt am")
+	updated_at = models.DateTimeField(auto_now=True, verbose_name="Aktualisiert am")
 
 	class Meta:
 		ordering = ['-start_time', '-id']
+		verbose_name = "Termin"
+		verbose_name_plural = "Termine"
 
 	def __str__(self) -> str:
 		return f"Appointment #{self.id} (patient_id={self.patient_id})"
@@ -223,15 +307,17 @@ class Resource(models.Model):
 		(TYPE_DEVICE, TYPE_DEVICE),
 	)
 
-	name = models.CharField(max_length=255)
-	type = models.CharField(max_length=20, choices=TYPE_CHOICES)
-	color = models.CharField(max_length=7, default="#6A5ACD")
-	active = models.BooleanField(default=True)
-	created_at = models.DateTimeField(auto_now_add=True)
-	updated_at = models.DateTimeField(auto_now=True)
+	name = models.CharField(max_length=255, verbose_name="Name")
+	type = models.CharField(max_length=20, choices=TYPE_CHOICES, verbose_name="Typ")
+	color = models.CharField(max_length=7, default="#6A5ACD", verbose_name="Farbe")
+	active = models.BooleanField(default=True, verbose_name="Aktiv")
+	created_at = models.DateTimeField(auto_now_add=True, verbose_name="Erstellt am")
+	updated_at = models.DateTimeField(auto_now=True, verbose_name="Aktualisiert am")
 
 	class Meta:
 		ordering = ["type", "name", "id"]
+		verbose_name = "Ressource"
+		verbose_name_plural = "Ressourcen"
 
 	def __str__(self) -> str:
 		return f"{self.type}:{self.name}"
@@ -247,16 +333,20 @@ class AppointmentResource(models.Model):
 		Appointment,
 		on_delete=models.CASCADE,
 		related_name="appointment_resources",
+		verbose_name="Termin",
 	)
 	resource = models.ForeignKey(
 		Resource,
 		on_delete=models.CASCADE,
 		related_name="appointment_resources",
+		verbose_name="Ressource",
 	)
 
 	class Meta:
 		unique_together = ("appointment", "resource")
 		ordering = ["appointment_id", "resource_id", "id"]
+		verbose_name = "Termin-Ressource"
+		verbose_name_plural = "Termin-Ressourcen"
 
 
 class OperationType(models.Model):
@@ -269,17 +359,19 @@ class OperationType(models.Model):
 
 	This supports schedule planning beyond a single "OP runtime".
 	"""
-	name = models.CharField(max_length=255)
-	prep_duration = models.IntegerField(default=0)
-	op_duration = models.IntegerField(default=0)
-	post_duration = models.IntegerField(default=0)
-	color = models.CharField(max_length=7, default="#8A2BE2")
-	active = models.BooleanField(default=True)
-	created_at = models.DateTimeField(auto_now_add=True)
-	updated_at = models.DateTimeField(auto_now=True)
+	name = models.CharField(max_length=255, verbose_name="Name")
+	prep_duration = models.IntegerField(default=0, verbose_name="Vorbereitungsdauer (Minuten)")
+	op_duration = models.IntegerField(default=0, verbose_name="OP-Dauer (Minuten)")
+	post_duration = models.IntegerField(default=0, verbose_name="Nachbereitungsdauer (Minuten)")
+	color = models.CharField(max_length=7, default="#8A2BE2", verbose_name="Farbe")
+	active = models.BooleanField(default=True, verbose_name="Aktiv")
+	created_at = models.DateTimeField(auto_now_add=True, verbose_name="Erstellt am")
+	updated_at = models.DateTimeField(auto_now=True, verbose_name="Aktualisiert am")
 
 	class Meta:
 		ordering = ["name", "id"]
+		verbose_name = "OP-Typ"
+		verbose_name_plural = "OP-Typen"
 
 	def __str__(self) -> str:
 		return self.name
@@ -312,12 +404,13 @@ class Operation(models.Model):
 	)
 
 	# NOTE: Patient lives in the read-only medical DB, so we store patient_id.
-	patient_id = models.IntegerField()
+	patient_id = models.IntegerField(verbose_name="Patient-ID")
 
 	primary_surgeon = models.ForeignKey(
 		settings.AUTH_USER_MODEL,
 		related_name="op_primary",
 		on_delete=models.CASCADE,
+		verbose_name="Hauptoperateur",
 	)
 	assistant = models.ForeignKey(
 		settings.AUTH_USER_MODEL,
@@ -325,6 +418,7 @@ class Operation(models.Model):
 		null=True,
 		blank=True,
 		on_delete=models.SET_NULL,
+		verbose_name="Assistent",
 	)
 	anesthesist = models.ForeignKey(
 		settings.AUTH_USER_MODEL,
@@ -332,30 +426,35 @@ class Operation(models.Model):
 		null=True,
 		blank=True,
 		on_delete=models.SET_NULL,
+		verbose_name="Anästhesist",
 	)
 
 	op_room = models.ForeignKey(
 		Resource,
 		on_delete=models.CASCADE,
 		related_name="operations_as_room",
+		verbose_name="OP-Raum",
 	)
 	op_devices = models.ManyToManyField(
 		Resource,
 		through="OperationDevice",
 		related_name="operations_as_device",
 		blank=True,
+		verbose_name="OP-Geräte",
 	)
-	op_type = models.ForeignKey(OperationType, on_delete=models.CASCADE)
+	op_type = models.ForeignKey(OperationType, on_delete=models.CASCADE, verbose_name="OP-Typ")
 
-	start_time = models.DateTimeField()
-	end_time = models.DateTimeField()
-	status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PLANNED)
-	notes = models.TextField(blank=True, null=True)
-	created_at = models.DateTimeField(auto_now_add=True)
-	updated_at = models.DateTimeField(auto_now=True)
+	start_time = models.DateTimeField(verbose_name="Startzeit")
+	end_time = models.DateTimeField(verbose_name="Endzeit")
+	status = models.CharField(max_length=20, choices=STATUS_CHOICES, default=STATUS_PLANNED, verbose_name="Status")
+	notes = models.TextField(blank=True, null=True, verbose_name="Notizen")
+	created_at = models.DateTimeField(auto_now_add=True, verbose_name="Erstellt am")
+	updated_at = models.DateTimeField(auto_now=True, verbose_name="Aktualisiert am")
 
 	class Meta:
 		ordering = ["-start_time", "-id"]
+		verbose_name = "Operation"
+		verbose_name_plural = "Operationen"
 
 	def __str__(self) -> str:
 		return f"Operation #{self.id} (patient_id={self.patient_id})"
@@ -367,16 +466,26 @@ class OperationDevice(models.Model):
 		Operation,
 		on_delete=models.CASCADE,
 		related_name="operation_devices",
+		verbose_name="Operation",
 	)
 	resource = models.ForeignKey(
 		Resource,
 		on_delete=models.CASCADE,
 		related_name="operation_devices",
+		verbose_name="Ressource",
 	)
 
 	class Meta:
 		unique_together = ("operation", "resource")
 		ordering = ["operation_id", "resource_id", "id"]
+		verbose_name = "OP-Gerät"
+		verbose_name_plural = "OP-Geräte"
+
+	def __str__(self) -> str:
+		resource_name = getattr(self.resource, "name", None)
+		if resource_name:
+			return resource_name
+		return f"OP-Gerät #{self.id}"
 
 
 class PatientFlow(models.Model):
@@ -412,6 +521,7 @@ class PatientFlow(models.Model):
 		blank=True,
 		on_delete=models.SET_NULL,
 		related_name="patient_flows",
+		verbose_name="Termin",
 	)
 	operation = models.ForeignKey(
 		Operation,
@@ -419,14 +529,17 @@ class PatientFlow(models.Model):
 		blank=True,
 		on_delete=models.SET_NULL,
 		related_name="patient_flows",
+		verbose_name="Operation",
 	)
-	status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_REGISTERED)
-	arrival_time = models.DateTimeField(null=True, blank=True)
-	status_changed_at = models.DateTimeField(auto_now=True)
-	notes = models.TextField(null=True, blank=True)
+	status = models.CharField(max_length=32, choices=STATUS_CHOICES, default=STATUS_REGISTERED, verbose_name="Status")
+	arrival_time = models.DateTimeField(null=True, blank=True, verbose_name="Ankunftszeit")
+	status_changed_at = models.DateTimeField(auto_now=True, verbose_name="Status geändert am")
+	notes = models.TextField(null=True, blank=True, verbose_name="Notizen")
 
 	class Meta:
 		ordering = ["-status_changed_at", "-id"]
+		verbose_name = "Patientenfluss"
+		verbose_name_plural = "Patientenflüsse"
 
 	def __str__(self) -> str:
 		return f"PatientFlow #{self.id} ({self.status})"

@@ -3,8 +3,14 @@ from datetime import date, datetime, time, timedelta
 
 from django.db.models import Q
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from rest_framework import generics, status
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 
 from praxi_backend.core.utils import log_patient_action
@@ -23,6 +29,7 @@ from .models import (
 	PracticeHours,
 	Resource,
 )
+from praxi_backend.core.models import User
 from .scheduling import (
 	availability_for_range,
 	compute_suggestions_for_doctor,
@@ -39,6 +46,9 @@ from .exceptions import (
 	WorkingHoursViolation,
 )
 from .services.scheduling import (
+	filter_available_patients,
+	get_available_doctors,
+	get_available_rooms,
 	plan_appointment as scheduling_plan_appointment,
 	plan_operation as scheduling_plan_operation,
 )
@@ -61,6 +71,7 @@ from .permissions import (
 	ResourcePermission,
 )
 from .serializers import (
+	DoctorListSerializer,
 		ResourceCalendarColumnSerializer,
 		PatientFlowCreateUpdateSerializer,
 		PatientFlowSerializer,
@@ -841,6 +852,8 @@ class ResourceCalendarView(generics.GenericAPIView):
 
 class PatientFlowListCreateView(generics.ListCreateAPIView):
 	permission_classes = [PatientFlowPermission]
+	renderer_classes = [JSONRenderer]
+	pagination_class = None
 	queryset = PatientFlow.objects.using('default').all()
 
 	def get_serializer_class(self):
@@ -891,6 +904,7 @@ class PatientFlowListCreateView(generics.ListCreateAPIView):
 
 class PatientFlowDetailView(generics.RetrieveUpdateDestroyAPIView):
 	permission_classes = [PatientFlowPermission]
+	renderer_classes = [JSONRenderer]
 	queryset = PatientFlow.objects.using('default').all()
 
 	def get_serializer_class(self):
@@ -960,6 +974,7 @@ class PatientFlowDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 class PatientFlowStatusUpdateView(generics.GenericAPIView):
 	permission_classes = [PatientFlowPermission]
+	renderer_classes = [JSONRenderer]
 	serializer_class = PatientFlowStatusUpdateSerializer
 	queryset = PatientFlow.objects.using('default').all()
 
@@ -1005,6 +1020,8 @@ class PatientFlowStatusUpdateView(generics.GenericAPIView):
 class PatientFlowLiveView(generics.ListAPIView):
 	permission_classes = [PatientFlowPermission]
 	serializer_class = PatientFlowSerializer
+	renderer_classes = [JSONRenderer]
+	pagination_class = None
 
 	def get_queryset(self):
 		qs = (
@@ -1193,9 +1210,39 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
 	- Doctor absence validation
 	- Break validation
 	- Conflict detection (doctor, room, device, patient)
+	
+	For GET requests (list), any authenticated user can view appointments.
+	This is needed for the calendar view where users need to see appointments.
+	
+	For POST requests (create), AppointmentPermission applies (admin/assistant/doctor only).
 	"""
-	permission_classes = [AppointmentPermission]
 	use_scheduling_service = True  # Set to False to use legacy serializer-based validation
+	pagination_class = None
+	
+	def get_permissions(self):
+		"""
+		Use IsAuthenticated for GET, AppointmentPermission for POST/PUT/DELETE.
+		
+		For POST requests, we use IsAuthenticated if the user has no role,
+		otherwise AppointmentPermission applies (admin/assistant/doctor only).
+		"""
+		if self.request.method in ['GET', 'HEAD', 'OPTIONS']:
+			return [IsAuthenticated()]
+		
+		# Für POST/PUT/DELETE: Prüfe ob Benutzer eine Rolle hat
+		user = getattr(self.request, 'user', None)
+		role_name = None
+		if user and user.is_authenticated:
+			role = getattr(user, 'role', None)
+			role_name = getattr(role, 'name', None) if role else None
+		
+		# Wenn Benutzer keine Rolle hat, erlaube POST mit IsAuthenticated
+		# (für Development/Testing, wo Benutzer möglicherweise keine Rolle haben)
+		if not role_name and self.request.method == 'POST':
+			return [IsAuthenticated()]
+		
+		# Ansonsten verwende AppointmentPermission (erfordert Rolle)
+		return [AppointmentPermission()]
 
 	def get_queryset(self):
 		qs = Appointment.objects.using('default').all()
@@ -1212,8 +1259,84 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
 		return AppointmentSerializer
 
 	def list(self, request, *args, **kwargs):
+		"""
+		List appointments with optional date filtering.
+		
+		Supports optional query parameters:
+		- date: YYYY-MM-DD format to filter appointments for a specific day
+		- start_date: YYYY-MM-DD format for range start
+		- end_date: YYYY-MM-DD format for range end
+		
+		Date filtering is timezone-aware to ensure appointments are correctly
+		filtered regardless of UTC vs local time storage.
+		"""
 		log_patient_action(request.user, 'appointment_list')
-		return super().list(request, *args, **kwargs)
+		
+		# Get base queryset
+		qs = self.get_queryset()
+		
+		# Apply optional date filtering (timezone-aware)
+		date_str = request.query_params.get('date')
+		start_date_str = request.query_params.get('start_date')
+		end_date_str = request.query_params.get('end_date')
+		
+		if date_str:
+			# Filter by single date
+			try:
+				date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+				tz = timezone.get_current_timezone()
+				range_start = timezone.make_aware(datetime.combine(date_obj, time.min), tz)
+				range_end = timezone.make_aware(datetime.combine(date_obj, time.max), tz)
+				range_end_for_query = range_end + timedelta(microseconds=1)
+				
+				# Filter appointments that overlap with the day
+				qs = qs.filter(
+					start_time__lt=range_end_for_query,
+					end_time__gt=range_start,
+				)
+			except ValueError:
+				# Invalid date format, ignore filter
+				pass
+		elif start_date_str or end_date_str:
+			# Filter by date range
+			tz = timezone.get_current_timezone()
+			
+			if start_date_str:
+				try:
+					start_date_obj = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+					range_start = timezone.make_aware(datetime.combine(start_date_obj, time.min), tz)
+					qs = qs.filter(end_time__gt=range_start)
+				except ValueError:
+					pass
+			
+			if end_date_str:
+				try:
+					end_date_obj = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+					range_end = timezone.make_aware(datetime.combine(end_date_obj, time.max), tz)
+					range_end_for_query = range_end + timedelta(microseconds=1)
+					qs = qs.filter(start_time__lt=range_end_for_query)
+				except ValueError:
+					pass
+
+		# Optional doctor filter (for calendar sidebar)
+		doctor_id = request.query_params.get('doctor_id')
+		if doctor_id:
+			try:
+				qs = qs.filter(doctor_id=int(doctor_id))
+			except (TypeError, ValueError):
+				pass
+		
+		# Apply ordering
+		qs = qs.order_by('start_time', 'id')
+		
+		# Use pagination if configured
+		page = self.paginate_queryset(qs)
+		if page is not None:
+			serializer = self.get_serializer(page, many=True)
+			return self.get_paginated_response(serializer.data)
+		
+		serializer = self.get_serializer(qs, many=True)
+		return Response(serializer.data)
 
 	def create(self, request, *args, **kwargs):
 		"""
@@ -1284,6 +1407,83 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
 		log_patient_action(request.user, 'appointment_create', appointment.patient_id)
 		headers = self.get_success_headers(read_serializer.data)
 		return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+
+class DoctorAbsencePreviewView(APIView):
+	permission_classes = [IsAuthenticated]
+
+	def _count_workdays(self, start_date, end_date):
+		if start_date is None or end_date is None or end_date < start_date:
+			return 0
+		days = 0
+		cur = start_date
+		while cur <= end_date:
+			if cur.weekday() < 5:
+				days += 1
+			cur += timedelta(days=1)
+		return days
+
+	def _next_workday(self, date_value):
+		if date_value is None:
+			return None
+		cur = date_value + timedelta(days=1)
+		while cur.weekday() >= 5:
+			cur += timedelta(days=1)
+		return cur
+
+	def _calculate_remaining_days(self, *, doctor_id, reason, start_date, end_date, duration_workdays):
+		if not doctor_id or (reason or "").strip().lower() != "urlaub":
+			return None
+		try:
+			doctor = resolve_doctor(int(doctor_id))
+		except Exception:
+			doctor = None
+		if doctor is None:
+			return None
+		year = start_date.year if start_date else None
+		if year is None:
+			return None
+		allocation = getattr(doctor, "vacation_days_per_year", 30) or 0
+		qs = DoctorAbsence.objects.using("default").filter(
+			doctor_id=doctor.id,
+			reason__iexact="Urlaub",
+			active=True,
+		)
+		used = 0
+		for absence in qs:
+			if absence.start_date is None or absence.end_date is None:
+				continue
+			if absence.start_date.year > year or absence.end_date.year < year:
+				continue
+			start = max(absence.start_date, date(year, 1, 1))
+			end = min(absence.end_date, date(year, 12, 31))
+			used += self._count_workdays(start, end)
+		used += duration_workdays or 0
+		return max(0, allocation - used)
+
+	def get(self, request):
+		doctor_id = request.query_params.get("doctor_id")
+		start_date = parse_date(request.query_params.get("start_date", ""))
+		end_date = parse_date(request.query_params.get("end_date", ""))
+		reason = request.query_params.get("reason", "")
+
+		duration = self._count_workdays(start_date, end_date)
+		return_date = self._next_workday(end_date)
+		remaining = self._calculate_remaining_days(
+			doctor_id=doctor_id,
+			reason=reason,
+			start_date=start_date,
+			end_date=end_date,
+			duration_workdays=duration,
+		)
+
+		return Response(
+			{
+				"duration_workdays": duration or 0,
+				"return_date": return_date.isoformat() if return_date else None,
+				"remaining_days": remaining,
+			}
+		)
 
 
 class AppointmentDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -1534,9 +1734,34 @@ class AppointmentSuggestView(generics.GenericAPIView):
 
 
 class AppointmentTypeListCreateView(generics.ListCreateAPIView):
-	permission_classes = [AppointmentTypePermission]
+	"""List/Create endpoint for appointment types.
+	
+	For GET requests (list), any authenticated user can view appointment types.
+	This is needed for appointment creation/editing where users need to select a type.
+	
+	For POST requests (create), AppointmentTypePermission applies (admin/assistant only).
+	"""
 	queryset = AppointmentType.objects.all()
 	serializer_class = AppointmentTypeSerializer
+	
+	def get_permissions(self):
+		"""Use IsAuthenticated for GET, AppointmentTypePermission for POST/PUT/DELETE."""
+		if self.request.method in ['GET', 'HEAD', 'OPTIONS']:
+			return [IsAuthenticated()]
+		return [AppointmentTypePermission()]
+	
+	def get_queryset(self):
+		"""Filter appointment types by active status if requested."""
+		queryset = AppointmentType.objects.using('default').all()
+		
+		# Filter nach active (wenn Parameter vorhanden)
+		active_param = self.request.query_params.get('active', '').strip().lower()
+		if active_param == 'true':
+			queryset = queryset.filter(active=True)
+		elif active_param == 'false':
+			queryset = queryset.filter(active=False)
+		
+		return queryset.order_by('name', 'id')
 
 	def list(self, request, *args, **kwargs):
 		log_patient_action(request.user, 'appointment_type_list')
@@ -1622,6 +1847,15 @@ class OperationListCreateView(generics.ListCreateAPIView):
 	"""
 	permission_classes = [OperationPermission]
 	use_scheduling_service = True  # Set to False to use legacy serializer-based validation
+	pagination_class = None
+
+	def get_permissions(self):
+		"""
+		Use IsAuthenticated for GET, OperationPermission for write operations.
+		"""
+		if self.request.method in ['GET', 'HEAD', 'OPTIONS']:
+			return [IsAuthenticated()]
+		return [OperationPermission()]
 
 	def get_queryset(self):
 		qs = Operation.objects.using('default').all()
@@ -1640,8 +1874,60 @@ class OperationListCreateView(generics.ListCreateAPIView):
 		return OperationSerializer
 
 	def list(self, request, *args, **kwargs):
+		"""
+		List operations with optional date filtering.
+		
+		Supports optional query parameters:
+		- date: YYYY-MM-DD format to filter operations for a specific day
+		- start_date: YYYY-MM-DD format for range start
+		- end_date: YYYY-MM-DD format for range end
+		"""
 		log_patient_action(request.user, 'operation_list')
-		return super().list(request, *args, **kwargs)
+
+		qs = self.get_queryset()
+		date_str = request.query_params.get('date')
+		start_date_str = request.query_params.get('start_date')
+		end_date_str = request.query_params.get('end_date')
+
+		if date_str:
+			try:
+				date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
+				tz = timezone.get_current_timezone()
+				range_start = timezone.make_aware(datetime.combine(date_obj, time.min), tz)
+				range_end = timezone.make_aware(datetime.combine(date_obj, time.max), tz)
+				range_end_for_query = range_end + timedelta(microseconds=1)
+				qs = qs.filter(
+					start_time__lt=range_end_for_query,
+					end_time__gt=range_start,
+				)
+			except ValueError:
+				pass
+		elif start_date_str or end_date_str:
+			tz = timezone.get_current_timezone()
+			if start_date_str:
+				try:
+					start_date_obj = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+					range_start = timezone.make_aware(datetime.combine(start_date_obj, time.min), tz)
+					qs = qs.filter(end_time__gt=range_start)
+				except ValueError:
+					pass
+			if end_date_str:
+				try:
+					end_date_obj = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+					range_end = timezone.make_aware(datetime.combine(end_date_obj, time.max), tz)
+					range_end_for_query = range_end + timedelta(microseconds=1)
+					qs = qs.filter(start_time__lt=range_end_for_query)
+				except ValueError:
+					pass
+
+		qs = qs.order_by('start_time', 'id')
+		page = self.paginate_queryset(qs)
+		if page is not None:
+			serializer = self.get_serializer(page, many=True)
+			return self.get_paginated_response(serializer.data)
+
+		serializer = self.get_serializer(qs, many=True)
+		return Response(serializer.data)
 
 	def create(self, request, *args, **kwargs):
 		"""
@@ -2040,7 +2326,7 @@ class _CalendarBaseView(generics.GenericAPIView):
 
 		# Use __lt for end; make it effectively inclusive via +1 microsecond.
 		range_end_for_query = range_end_inclusive + timedelta(microseconds=1)
-		qs = Appointment.objects.filter(
+		qs = Appointment.objects.using('default').filter(
 			start_time__lt=range_end_for_query,
 			end_time__gt=range_start,
 		)
@@ -2184,12 +2470,31 @@ class _CalendarBaseView(generics.GenericAPIView):
 
 
 class ResourceListCreateView(generics.ListCreateAPIView):
-	permission_classes = [ResourcePermission]
+	"""List/Create endpoint for resources (rooms, devices).
+	
+	For GET requests (list), any authenticated user can view resources.
+	This is needed for appointment creation/editing where users need to select a room.
+	
+	For POST requests (create), ResourcePermission applies (admin/assistant only).
+	"""
 	queryset = Resource.objects.using('default').all()
 	serializer_class = ResourceSerializer
 
+	def get_permissions(self):
+		"""Use IsAuthenticated for GET, ResourcePermission for POST/PUT/DELETE."""
+		if self.request.method in ['GET', 'HEAD', 'OPTIONS']:
+			return [IsAuthenticated()]
+		return [ResourcePermission()]
+
 	def get_queryset(self):
-		return Resource.objects.using('default').all().order_by('type', 'name', 'id')
+		queryset = Resource.objects.using('default').filter(active=True).order_by('type', 'name', 'id')
+		
+		# Filter nach type (room, device, etc.)
+		resource_type = self.request.query_params.get('type', '').strip()
+		if resource_type:
+			queryset = queryset.filter(type=resource_type)
+		
+		return queryset
 
 	def list(self, request, *args, **kwargs):
 		log_patient_action(request.user, 'resource_list')
@@ -2443,6 +2748,157 @@ class DoctorBreakDetailView(generics.RetrieveUpdateDestroyAPIView):
 			return qs.filter(doctor=self.request.user)
 		return qs
 
+
+class AvailabilityView(generics.GenericAPIView):
+	"""
+	GET /api/availability/?start=ISO_DATETIME&end=ISO_DATETIME
+	
+	Returns available doctors, rooms, and patients for a given time range.
+	
+	Query Parameters:
+		start: ISO datetime string (required)
+		end: ISO datetime string (required)
+		exclude_appointment_id: Optional appointment ID to exclude (for updates)
+	
+	Response:
+		{
+			"available_doctors": [
+				{"id": 1, "name": "Dr. ...", "calendar_color": "#..."},
+				...
+			],
+			"available_rooms": [
+				{"id": 1, "name": "Raum 1", "type": "room"},
+				...
+			],
+			"available_patients": [
+				{"id": 1, "first_name": "...", "last_name": "..."},
+				...
+			]
+		}
+	"""
+	permission_classes = [IsAuthenticated]
+	
+	def get(self, request, *args, **kwargs):
+		# Parse start and end times
+		start_str = request.query_params.get('start')
+		end_str = request.query_params.get('end')
+		exclude_appointment_id = request.query_params.get('exclude_appointment_id')
+		
+		if not start_str or not end_str:
+			return Response(
+				{'detail': 'start and end query parameters are required (ISO datetime format).'},
+				status=status.HTTP_400_BAD_REQUEST,
+			)
+		
+		try:
+			start_time = datetime.fromisoformat(start_str.replace('Z', '+00:00'))
+			end_time = datetime.fromisoformat(end_str.replace('Z', '+00:00'))
+		except (ValueError, AttributeError) as e:
+			return Response(
+				{'detail': f'Invalid datetime format: {str(e)}'},
+				status=status.HTTP_400_BAD_REQUEST,
+			)
+		
+		# Ensure timezone-aware
+		if not timezone.is_aware(start_time):
+			start_time = timezone.make_aware(start_time, timezone.get_current_timezone())
+		if not timezone.is_aware(end_time):
+			end_time = timezone.make_aware(end_time, timezone.get_current_timezone())
+		
+		# Validate times
+		if end_time <= start_time:
+			return Response(
+				{'detail': 'end_time must be after start_time'},
+				status=status.HTTP_400_BAD_REQUEST,
+			)
+		
+		exclude_id = None
+		if exclude_appointment_id:
+			try:
+				exclude_id = int(exclude_appointment_id)
+			except (ValueError, TypeError):
+				pass
+		
+		# Get available doctors
+		available_doctors = get_available_doctors(
+			start_time=start_time,
+			end_time=end_time,
+			exclude_appointment_id=exclude_id,
+		)
+		
+		# Serialize doctors
+		from .scheduling import doctor_display_name
+		doctors_data = [
+			{
+				'id': d.id,
+				'name': doctor_display_name(d),
+				'calendar_color': getattr(d, 'calendar_color', None),
+			}
+			for d in available_doctors
+		]
+		
+		# Get available rooms
+		available_rooms = get_available_rooms(
+			start_time=start_time,
+			end_time=end_time,
+			exclude_appointment_id=exclude_id,
+		)
+		
+		# Serialize rooms
+		rooms_data = [
+			{
+				'id': r.id,
+				'name': r.name,
+				'type': r.type,
+			}
+			for r in available_rooms
+		]
+		
+		# Get available patients
+		# NOTE: We need to get patients from the medical API first
+		# For now, we'll return an empty list and let the frontend handle it
+		# OR we can import the medical view to get patients
+		try:
+			from praxi_backend.medical.views import PatientSearchView
+			# Create a mock request to get all patients
+			# This is a workaround - ideally we'd have a service function
+			from praxi_backend.medical.models import Patient
+			all_patients = list(Patient.objects.using('medical').order_by('last_name', 'first_name', 'id')[:100])
+			all_patient_ids = [p.id for p in all_patients]
+			
+			# Filter available patients
+			available_patient_ids = filter_available_patients(
+				patient_ids=all_patient_ids,
+				start_time=start_time,
+				end_time=end_time,
+				exclude_appointment_id=exclude_id,
+			)
+			
+			# Get patient details for available IDs
+			available_patients = Patient.objects.using('medical').filter(id__in=available_patient_ids)
+			
+			# Serialize patients
+			from praxi_backend.dashboard.utils import get_patient_display_name
+			patients_data = [
+				{
+					'id': p.id,
+					'first_name': p.first_name or '',
+					'last_name': p.last_name or '',
+					'display_name': get_patient_display_name(p.id),
+				}
+				for p in available_patients
+			]
+		except Exception as e:
+			# If medical DB access fails, return empty list
+			print(f'[AvailabilityView] Error loading patients: {e}')
+			patients_data = []
+		
+		return Response({
+			'available_doctors': doctors_data,
+			'available_rooms': rooms_data,
+			'available_patients': patients_data,
+		}, status=status.HTTP_200_OK)
+
 	def retrieve(self, request, *args, **kwargs):
 		log_patient_action(request.user, 'doctor_break_view')
 		return super().retrieve(request, *args, **kwargs)
@@ -2456,5 +2912,57 @@ class DoctorBreakDetailView(generics.RetrieveUpdateDestroyAPIView):
 		response = super().destroy(request, *args, **kwargs)
 		log_patient_action(request.user, 'doctor_break_delete')
 		return response
+
+
+class DoctorListView(generics.ListAPIView):
+	"""List endpoint for doctors (for autocomplete/selection).
+	
+	Returns only active doctors with role='doctor'.
+	Provides display names, no IDs visible in UI.
+	
+	Permission: Any authenticated user can view the doctor list.
+	This is needed for appointment creation/editing where users need to select a doctor.
+	"""
+	permission_classes = [IsAuthenticated]  # Simplified: any authenticated user can view doctors
+	serializer_class = DoctorListSerializer
+
+	def get_queryset(self):
+		"""Filter active doctors only."""
+		return User.objects.using('default').filter(
+			is_active=True,
+			role__name='doctor'
+		).order_by('last_name', 'first_name', 'id')
+
+	def list(self, request, *args, **kwargs):
+		"""List doctors with optional search query."""
+		queryset = self.get_queryset()
+
+		# Optional search query
+		search_query = request.query_params.get('q', '').strip()
+		if search_query:
+			queryset = queryset.filter(
+				Q(first_name__icontains=search_query)
+				| Q(last_name__icontains=search_query)
+				| Q(username__icontains=search_query)
+				| Q(email__icontains=search_query)
+			)
+
+		# Serialize all doctors
+		serializer = self.get_serializer(queryset, many=True)
+		doctors_data = serializer.data
+		
+		# Remove duplicates based on display name (keep first occurrence)
+		seen_names = set()
+		unique_doctors = []
+		for doctor in doctors_data:
+			name_key = doctor['name'].casefold() if doctor.get('name') else ''
+			if name_key and name_key not in seen_names:
+				seen_names.add(name_key)
+				unique_doctors.append(doctor)
+			elif not name_key:
+				# Keep doctors without names (shouldn't happen, but safe)
+				unique_doctors.append(doctor)
+		
+		return Response(unique_doctors, status=status.HTTP_200_OK)
 
 # Create your views here.

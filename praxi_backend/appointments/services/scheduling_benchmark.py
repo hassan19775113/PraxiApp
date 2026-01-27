@@ -58,6 +58,7 @@ ARCHITECTURE RULES
 from __future__ import annotations
 
 import random
+import uuid
 import statistics
 import time
 from dataclasses import dataclass, field
@@ -254,6 +255,7 @@ class BenchmarkContext:
     def setup(self, num_doctors: int = 5, num_rooms: int = 4, num_devices: int = 3):
         """Create all necessary test data."""
         random.seed(self.seed)
+        unique_tag = f"{self.seed}_{uuid.uuid4().hex[:6]}"
         
         # Create roles
         self.role_admin, _ = Role.objects.using("default").get_or_create(
@@ -265,18 +267,18 @@ class BenchmarkContext:
 
         # Create admin user
         self.admin = User.objects.db_manager("default").create_user(
-            username=f"bench_admin_{self.seed}",
+            username=f"bench_admin_{unique_tag}",
             password="benchpass123",
-            email=f"bench_admin_{self.seed}@test.local",
+            email=f"bench_admin_{unique_tag}@test.local",
             role=self.role_admin,
         )
 
         # Create doctors
         for i in range(num_doctors):
             doctor = User.objects.db_manager("default").create_user(
-                username=f"bench_doctor_{self.seed}_{i}",
+                username=f"bench_doctor_{unique_tag}_{i}",
                 password="benchpass123",
-                email=f"bench_doctor_{self.seed}_{i}@test.local",
+                email=f"bench_doctor_{unique_tag}_{i}@test.local",
                 role=self.role_doctor,
                 first_name=f"Dr",
                 last_name=f"Bench{i}",

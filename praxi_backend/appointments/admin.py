@@ -3,9 +3,16 @@ Appointments App - Vollständige Admin-Registrierung
 Alle 12 Models mit Premium-Badges und Inlines
 """
 
+from django import forms
 from django.contrib import admin
+from django.contrib.admin import SimpleListFilter
+from django.contrib.auth import get_user_model
+from django.urls import path, reverse
+from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
+from datetime import date, timedelta
+import calendar as pycalendar
 from .models import (
     Appointment,
     AppointmentResource,
@@ -21,6 +28,7 @@ from .models import (
     Resource,
 )
 from praxi_backend.core.admin import praxi_admin_site
+from praxi_backend.dashboard.utils import get_patient_display_name
 
 
 # ============================================================================
@@ -181,14 +189,70 @@ class DoctorHoursAdmin(admin.ModelAdmin):
     WEEKDAY_NAMES = {
         0: "Mo", 1: "Di", 2: "Mi", 3: "Do", 4: "Fr", 5: "Sa", 6: "So"
     }
+    WEEKDAY_CHOICES = [
+        (0, "Montag"),
+        (1, "Dienstag"),
+        (2, "Mittwoch"),
+        (3, "Donnerstag"),
+        (4, "Freitag"),
+        (5, "Samstag"),
+        (6, "Sonntag"),
+    ]
     
-    list_display = ("doctor", "weekday_display", "time_range", "active_badge")
+    list_display = ("doctor_display", "weekday_display", "time_range", "active_badge")
     list_filter = ("doctor", "weekday", "active")
     search_fields = ("doctor__username", "doctor__first_name", "doctor__last_name")
     ordering = ("doctor", "weekday", "start_time")
     list_per_page = 100
     
     readonly_fields = ("id", "created_at", "updated_at")
+    actions = ["remove_duplicate_hours"]
+
+    class DoctorHoursForm(forms.ModelForm):
+        class Meta:
+            model = DoctorHours
+            fields = "__all__"
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            doctor_field = self.fields.get("doctor")
+            if doctor_field is not None:
+                doctor_field.label_from_instance = (
+                    lambda u: u.get_full_name() or u.username
+                )
+            weekday_field = self.fields.get("weekday")
+            if weekday_field is not None:
+                weekday_field.widget = forms.Select(choices=DoctorHoursAdmin.WEEKDAY_CHOICES)
+
+    form = DoctorHoursForm
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).distinct()
+
+    def remove_duplicate_hours(self, request, queryset):
+        all_rows = self.get_queryset(request).order_by(
+            "doctor_id", "weekday", "start_time", "end_time", "active", "id"
+        )
+        seen = set()
+        duplicates = []
+        for row in all_rows:
+            key = (row.doctor_id, row.weekday, row.start_time, row.end_time, row.active)
+            if key in seen:
+                duplicates.append(row.id)
+            else:
+                seen.add(key)
+        deleted = 0
+        if duplicates:
+            deleted, _ = DoctorHours.objects.filter(id__in=duplicates).delete()
+        self.message_user(request, f"Duplikate entfernt: {deleted}.")
+    remove_duplicate_hours.short_description = "Duplikate entfernen (global)"
+
+    def doctor_display(self, obj):
+        doctor = getattr(obj, "doctor", None)
+        if not doctor:
+            return "—"
+        return doctor.get_full_name() or doctor.username
+    doctor_display.short_description = "Arzt"
 
     def weekday_display(self, obj):
         return self.WEEKDAY_NAMES.get(obj.weekday, str(obj.weekday))
@@ -215,9 +279,68 @@ class DoctorHoursAdmin(admin.ModelAdmin):
 @admin.register(DoctorAbsence, site=praxi_admin_site)
 class DoctorAbsenceAdmin(admin.ModelAdmin):
     """Admin für Arzt-Abwesenheiten"""
+
+    class DoctorNameFilter(SimpleListFilter):
+        title = "Arzt"
+        parameter_name = "doctor"
+
+        def lookups(self, request, model_admin):
+            qs = model_admin.get_queryset(request).select_related("doctor")
+            doctors = (
+                qs.values_list("doctor_id", "doctor__first_name", "doctor__last_name", "doctor__username")
+                .distinct()
+                .order_by("doctor__last_name", "doctor__first_name", "doctor__username")
+            )
+            options = []
+            for doctor_id, first_name, last_name, username in doctors:
+                if not doctor_id:
+                    continue
+                full_name = f"{first_name or ''} {last_name or ''}".strip()
+                label = full_name or username or f"Arzt #{doctor_id}"
+                options.append((str(doctor_id), label))
+            return options
+
+        def queryset(self, request, queryset):
+            value = self.value()
+            if value:
+                return queryset.filter(doctor_id=value)
+            return queryset
+
+    class DoctorAbsenceForm(forms.ModelForm):
+        REASON_CHOICES = [
+            ("Urlaub", "Urlaub"),
+            ("Krank", "Krank"),
+            ("Kind krank", "Kind krank"),
+            ("Unbezahlter Urlaub", "Unbezahlter Urlaub"),
+            ("Fortbildung", "Fortbildung"),
+            ("Dienstreise", "Dienstreise"),
+            ("Sonstiges", "Sonstiges"),
+        ]
+
+        class Meta:
+            model = DoctorAbsence
+            fields = "__all__"
+            widgets = {
+                "start_date": forms.DateInput(attrs={"type": "date"}),
+                "end_date": forms.DateInput(attrs={"type": "date"}),
+                "return_date": forms.DateInput(attrs={"type": "date"}),
+            }
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            doctor_field = self.fields.get("doctor")
+            if doctor_field is not None:
+                doctor_field.label_from_instance = (
+                    lambda u: u.get_full_name() or u.username
+                )
+            reason_field = self.fields.get("reason")
+            if reason_field is not None:
+                reason_field.widget = forms.Select(choices=self.REASON_CHOICES)
+                if reason_field.initial and reason_field.initial not in dict(self.REASON_CHOICES):
+                    reason_field.widget.choices = [(reason_field.initial, reason_field.initial)] + list(self.REASON_CHOICES)
     
-    list_display = ("doctor", "date_range", "reason_display", "active_badge")
-    list_filter = ("doctor", "active", "start_date")
+    list_display = ("doctor_display", "date_range", "reason_display", "active_badge")
+    list_filter = (DoctorNameFilter, "active", "start_date")
     search_fields = ("doctor__username", "doctor__first_name", "doctor__last_name", "reason")
     ordering = ("-start_date",)
     date_hierarchy = "start_date"
@@ -230,13 +353,112 @@ class DoctorAbsenceAdmin(admin.ModelAdmin):
             "fields": ("doctor",)
         }),
         ("📅 Abwesenheit", {
-            "fields": ("start_date", "end_date", "reason", "active")
+            "fields": ("start_date", "end_date", "reason", "duration_workdays", "remaining_days", "return_date", "active")
         }),
         ("📊 System", {
             "fields": ("id", "created_at", "updated_at"),
             "classes": ("collapse",)
         }),
     )
+
+    form = DoctorAbsenceForm
+
+    change_list_template = "admin/appointments/doctorabsence/change_list.html"
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "calendar/",
+                self.admin_site.admin_view(self.calendar_view),
+                name="appointments_doctorabsence_calendar",
+            ),
+        ]
+        return custom_urls + urls
+
+    def calendar_view(self, request):
+        today = timezone.localdate()
+        try:
+            year = int(request.GET.get("year", today.year))
+            month = int(request.GET.get("month", today.month))
+        except (TypeError, ValueError):
+            year = today.year
+            month = today.month
+
+        if month < 1 or month > 12:
+            month = today.month
+
+        first_day = date(year, month, 1)
+        days_in_month = pycalendar.monthrange(year, month)[1]
+        last_day = date(year, month, days_in_month)
+        dates = [first_day + timedelta(days=i) for i in range(days_in_month)]
+
+        def shift_month(target_year, target_month, delta):
+            new_month = target_month + delta
+            new_year = target_year
+            if new_month < 1:
+                new_month = 12
+                new_year -= 1
+            elif new_month > 12:
+                new_month = 1
+                new_year += 1
+            return new_year, new_month
+
+        prev_year, prev_month = shift_month(year, month, -1)
+        next_year, next_month = shift_month(year, month, 1)
+
+        User = get_user_model()
+        doctors = (
+            User.objects.filter(role__name="doctor")
+            .order_by("last_name", "first_name", "username")
+        )
+
+        absences = (
+            DoctorAbsence.objects.select_related("doctor")
+            .filter(start_date__lte=last_day, end_date__gte=first_day, active=True)
+        )
+
+        absence_map = {}
+        for absence in absences:
+            if not absence.doctor_id:
+                continue
+            absence_map.setdefault(absence.doctor_id, []).append(absence)
+
+        calendar_rows = []
+        for doctor in doctors:
+            entries = []
+            doctor_absences = absence_map.get(doctor.id, [])
+            for day in dates:
+                match = None
+                for absence in doctor_absences:
+                    if absence.start_date and absence.end_date and absence.start_date <= day <= absence.end_date:
+                        match = absence
+                        break
+                entries.append(match)
+            calendar_rows.append(
+                {
+                    "doctor": doctor,
+                    "entries": entries,
+                }
+            )
+
+        context = dict(
+            self.admin_site.each_context(request),
+            title="Abwesenheiten – Kalenderansicht",
+            opts=self.model._meta,
+            dates=dates,
+            calendar_rows=calendar_rows,
+            month_label=first_day.strftime("%B %Y"),
+            prev_url=f"?year={prev_year}&month={prev_month}",
+            next_url=f"?year={next_year}&month={next_month}",
+            changelist_url=reverse(f"{self.admin_site.name}:appointments_doctorabsence_changelist"),
+        )
+        return self.render_calendar(request, context)
+
+    def render_calendar(self, request, context):
+        from django.shortcuts import render
+
+        return render(request, "admin/appointments/doctorabsence/calendar.html", context)
 
     def date_range(self, obj):
         """Datumsbereich"""
@@ -246,6 +468,13 @@ class DoctorAbsenceAdmin(admin.ModelAdmin):
             obj.end_date.strftime("%d.%m.%Y")
         )
     date_range.short_description = "Zeitraum"
+
+    def doctor_display(self, obj):
+        doctor = getattr(obj, "doctor", None)
+        if not doctor:
+            return "—"
+        return doctor.get_full_name() or doctor.username
+    doctor_display.short_description = "Arzt"
 
     def reason_display(self, obj):
         if obj.reason:
@@ -523,10 +752,38 @@ class OperationTypeAdmin(admin.ModelAdmin):
 class OperationAdmin(admin.ModelAdmin):
     """Admin für Operationen mit Geräte-Inline"""
     
+    change_list_template = "admin/appointments/operation/change_list.html"
+
+    class OperationForm(forms.ModelForm):
+        class Meta:
+            model = Operation
+            fields = "__all__"
+            widgets = {
+                "start_time": forms.SplitDateTimeWidget(
+                    date_attrs={"type": "date", "class": "prx-date"},
+                    time_attrs={"type": "time", "class": "prx-time"},
+                ),
+                "end_time": forms.SplitDateTimeWidget(
+                    date_attrs={"type": "date", "class": "prx-date"},
+                    time_attrs={"type": "time", "class": "prx-time"},
+                ),
+            }
+
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            for field_name in ("primary_surgeon", "assistant", "anesthesist"):
+                field = self.fields.get(field_name)
+                if field is not None:
+                    field.label_from_instance = (
+                        lambda u: u.get_full_name() or u.username
+                    )
+
+    form = OperationForm
+
     list_display = (
         "id",
-        "patient_id",
-        "primary_surgeon",
+        "patient_display",
+        "primary_surgeon_display",
         "op_type",
         "op_room",
         "time_display",
@@ -564,6 +821,52 @@ class OperationAdmin(admin.ModelAdmin):
             "classes": ("collapse",)
         }),
     )
+
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        extra_context = extra_context or {}
+        if object_id:
+            obj = self.get_object(request, object_id)
+            if obj:
+                op_type = getattr(getattr(obj, "op_type", None), "name", None) or "Operation"
+                surgeon = getattr(getattr(obj, "primary_surgeon", None), "get_full_name", lambda: "")() or getattr(getattr(obj, "primary_surgeon", None), "username", "—")
+                patient = get_patient_display_name(getattr(obj, "patient_id", None)) if getattr(obj, "patient_id", None) else "—"
+                extra_context["title"] = f"OP #{obj.id} – {op_type} – {surgeon} – {patient}"
+        return super().changeform_view(request, object_id, form_url, extra_context=extra_context)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "calendar/",
+                self.admin_site.admin_view(self.calendar_view),
+                name="appointments_operation_calendar",
+            ),
+        ]
+        return custom_urls + urls
+
+    def calendar_view(self, request):
+        context = dict(
+            self.admin_site.each_context(request),
+            title="Operationen – Kalenderansicht",
+            opts=self.model._meta,
+            changelist_url=reverse(f"{self.admin_site.name}:appointments_operation_changelist"),
+        )
+        from django.shortcuts import render
+
+        return render(request, "admin/appointments/operation/calendar.html", context)
+
+    def patient_display(self, obj):
+        if not obj.patient_id:
+            return mark_safe('<span style="color: #9AA0A6;">—</span>')
+        return get_patient_display_name(obj.patient_id)
+    patient_display.short_description = "Patient"
+
+    def primary_surgeon_display(self, obj):
+        surgeon = getattr(obj, "primary_surgeon", None)
+        if not surgeon:
+            return mark_safe('<span style="color: #9AA0A6;">—</span>')
+        return surgeon.get_full_name() or surgeon.username
+    primary_surgeon_display.short_description = "Hauptoperateur"
 
     def time_display(self, obj):
         if not obj.start_time:
@@ -662,7 +965,7 @@ class PatientFlowAdmin(admin.ModelAdmin):
     def appointment_display(self, obj):
         if obj.appointment:
             return format_html(
-                '<a href="/praxiadmin/appointments/appointment/{}/change/" '
+                '<a href="/praxi_backend/appointments/appointment/{}/change/" '
                 'style="color: #1A73E8;">Termin #{}</a>',
                 obj.appointment.id, obj.appointment.id
             )
@@ -672,7 +975,7 @@ class PatientFlowAdmin(admin.ModelAdmin):
     def operation_display(self, obj):
         if obj.operation:
             return format_html(
-                '<a href="/praxiadmin/appointments/operation/{}/change/" '
+                '<a href="/praxi_backend/appointments/operation/{}/change/" '
                 'style="color: #1A73E8;">OP #{}</a>',
                 obj.operation.id, obj.operation.id
             )

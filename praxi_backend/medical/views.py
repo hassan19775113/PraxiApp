@@ -1,6 +1,7 @@
 from django.db.models import Q
 
 from rest_framework.generics import ListAPIView, RetrieveAPIView
+from rest_framework.permissions import IsAuthenticated
 
 from praxi_backend.core.permissions import IsAdmin, IsAssistant, IsBilling, IsDoctor
 from praxi_backend.core.utils import log_patient_action
@@ -57,14 +58,24 @@ class PatientDetailView(RetrieveAPIView):
 
 
 class PatientSearchView(ListAPIView):
-    """Read-only patient search on the legacy medical database."""
-    permission_classes = [IsAdmin | IsDoctor | IsAssistant | IsBilling]
+    """Read-only patient search on the legacy medical database.
+    
+    Returns all patients if no query parameter is provided.
+    Filters by query if 'q' parameter is provided.
+    
+    Permission: Any authenticated user can search patients.
+    This is needed for appointment creation/editing where users need to select a patient.
+    """
+    permission_classes = [IsAuthenticated]  # Simplified: any authenticated user can search patients
 
     def get_queryset(self):
         q = (self.request.query_params.get('q') or '').strip()
+        
+        # Wenn keine Suche, alle Patienten zurückgeben (limit auf 100 für Performance)
         if not q:
-            return Patient.objects.using('medical').none()
+            return Patient.objects.using('medical').order_by('last_name', 'first_name', 'id')[:100]
 
+        # Wenn Suche, filtere
         return (
             Patient.objects.using('medical')
             .filter(
@@ -73,7 +84,7 @@ class PatientSearchView(ListAPIView):
                 | Q(phone__icontains=q)
                 | Q(email__icontains=q)
             )
-            .order_by('id')[:50]
+            .order_by('last_name', 'first_name', 'id')[:50]
         )
 
     def get_serializer_class(self):

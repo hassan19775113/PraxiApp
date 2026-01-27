@@ -7,6 +7,7 @@ from rest_framework import serializers
 
 from praxi_backend.core.models import User, AuditLog
 from praxi_backend.core.utils import log_patient_action
+from praxi_backend.dashboard.utils import get_patient_display_name
 
 from .models import (
     Appointment,
@@ -49,6 +50,20 @@ class AppointmentTypeNestedSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'color']
 
 
+class DoctorListSerializer(serializers.ModelSerializer):
+    """Serializer für Arzt-Listen (nur Anzeigename, keine IDs sichtbar)."""
+    name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = User
+        fields = ['id', 'name', 'calendar_color']
+        read_only_fields = fields
+    
+    def get_name(self, obj):
+        """Holt den Anzeigenamen des Arztes."""
+        return doctor_display_name(obj)
+
+
 class ResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resource
@@ -86,14 +101,14 @@ class PracticeHoursSerializer(serializers.ModelSerializer):
 
     def validate_weekday(self, value):
         if value is None or not (0 <= int(value) <= 6):
-            raise serializers.ValidationError('weekday must be between 0 (Monday) and 6 (Sunday).')
+            raise serializers.ValidationError('Wochentag muss zwischen 0 (Montag) und 6 (Sonntag) liegen.')
         return value
 
     def validate(self, attrs):
         start_time = attrs.get('start_time')
         end_time = attrs.get('end_time')
         if start_time is not None and end_time is not None and start_time >= end_time:
-            raise serializers.ValidationError({'end_time': 'end_time must be after start_time.'})
+            raise serializers.ValidationError({'end_time': 'Endzeit muss nach der Startzeit liegen.'})
         return attrs
 
 
@@ -115,14 +130,14 @@ class DoctorHoursSerializer(serializers.ModelSerializer):
 
     def validate_weekday(self, value):
         if value is None or not (0 <= int(value) <= 6):
-            raise serializers.ValidationError('weekday must be between 0 (Monday) and 6 (Sunday).')
+            raise serializers.ValidationError('Wochentag muss zwischen 0 (Montag) und 6 (Sonntag) liegen.')
         return value
 
     def validate(self, attrs):
         start_time = attrs.get('start_time', getattr(self.instance, 'start_time', None))
         end_time = attrs.get('end_time', getattr(self.instance, 'end_time', None))
         if start_time is not None and end_time is not None and start_time >= end_time:
-            raise serializers.ValidationError({'end_time': 'end_time must be after start_time.'})
+            raise serializers.ValidationError({'end_time': 'Endzeit muss nach der Startzeit liegen.'})
         return attrs
 
 
@@ -151,7 +166,7 @@ class DoctorAbsenceSerializer(serializers.ModelSerializer):
         start_date = attrs.get('start_date', getattr(self.instance, 'start_date', None))
         end_date = attrs.get('end_date', getattr(self.instance, 'end_date', None))
         if start_date is not None and end_date is not None and start_date > end_date:
-            raise serializers.ValidationError({'end_date': 'end_date must be on or after start_date.'})
+            raise serializers.ValidationError({'end_date': 'Enddatum muss am oder nach dem Startdatum liegen.'})
         return attrs
 
 
@@ -185,7 +200,7 @@ class DoctorBreakSerializer(serializers.ModelSerializer):
         start_time = attrs.get('start_time', getattr(self.instance, 'start_time', None))
         end_time = attrs.get('end_time', getattr(self.instance, 'end_time', None))
         if start_time is not None and end_time is not None and start_time >= end_time:
-            raise serializers.ValidationError({'end_time': 'end_time must be after start_time.'})
+            raise serializers.ValidationError({'end_time': 'Endzeit muss nach der Startzeit liegen.'})
         return attrs
 
 
@@ -194,15 +209,23 @@ class AppointmentSerializer(serializers.ModelSerializer):
     resources = ResourceSerializer(many=True, read_only=True)
     appointment_color = serializers.SerializerMethodField()
     doctor_color = serializers.SerializerMethodField()
+    patient_name = serializers.SerializerMethodField()
+    doctor_name = serializers.SerializerMethodField()
+    room_name = serializers.SerializerMethodField()
+    resource_names = serializers.SerializerMethodField()
 
     class Meta:
         model = Appointment
         fields = [
             'id',
             'patient_id',
+            'patient_name',
             'type',
             'doctor',
+            'doctor_name',
             'resources',
+            'room_name',
+            'resource_names',
             'appointment_color',
             'doctor_color',
             'start_time',
@@ -220,6 +243,29 @@ class AppointmentSerializer(serializers.ModelSerializer):
     def get_doctor_color(self, obj):
         doctor = getattr(obj, 'doctor', None)
         return getattr(doctor, 'calendar_color', None) if doctor is not None else None
+
+    def get_patient_name(self, obj):
+        """Holt den Anzeigenamen des Patienten (Name + Geburtsdatum)."""
+        return get_patient_display_name(obj.patient_id)
+
+    def get_doctor_name(self, obj):
+        """Holt den Anzeigenamen des Arztes."""
+        doctor = getattr(obj, 'doctor', None)
+        if doctor is None:
+            return None
+        return doctor_display_name(doctor)
+
+    def get_room_name(self, obj):
+        """Holt den Namen des ersten Raumes (Resource mit type='room')."""
+        room_resources = obj.resources.filter(type=Resource.TYPE_ROOM, active=True).first()
+        if room_resources:
+            return room_resources.name
+        return None
+
+    def get_resource_names(self, obj):
+        """Holt eine Liste aller Resource-Namen (außer Räume, die sind in room_name)."""
+        resources = obj.resources.filter(active=True).exclude(type=Resource.TYPE_ROOM)
+        return [resource.name for resource in resources]
 
 
 class AppointmentCreateUpdateSerializer(serializers.ModelSerializer):
@@ -309,13 +355,13 @@ class AppointmentCreateUpdateSerializer(serializers.ModelSerializer):
         start_time = attrs.get('start_time', getattr(instance, 'start_time', None))
         end_time = attrs.get('end_time', getattr(instance, 'end_time', None))
         if start_time is not None and end_time is not None and start_time >= end_time:
-            raise serializers.ValidationError({'end_time': 'end_time muss nach start_time liegen.'})
+            raise serializers.ValidationError({'end_time': 'Endzeit muss nach der Startzeit liegen.'})
 
         doctor = attrs.get('doctor', getattr(instance, 'doctor', None))
         if doctor is not None:
             role = getattr(doctor, 'role', None)
             if not role or getattr(role, 'name', None) != 'doctor':
-                raise serializers.ValidationError({'doctor': 'doctor muss die Rolle "doctor" haben.'})
+                raise serializers.ValidationError({'doctor': 'Der Arzt muss die Rolle "doctor" haben.'})
 
         if request is not None:
             user = getattr(request, 'user', None)
@@ -333,7 +379,7 @@ class AppointmentCreateUpdateSerializer(serializers.ModelSerializer):
                 try:
                     rid_int = int(rid)
                 except (TypeError, ValueError):
-                    raise serializers.ValidationError({'resource_ids': 'resource_ids must be a list of integers.'})
+                    raise serializers.ValidationError({'resource_ids': 'resource_ids muss eine Liste von Ganzzahlen sein.'})
                 if rid_int not in seen:
                     seen.add(rid_int)
                     unique_ids.append(rid_int)
@@ -343,7 +389,7 @@ class AppointmentCreateUpdateSerializer(serializers.ModelSerializer):
                 found_ids = {r.id for r in resource_objs}
                 missing = [rid for rid in unique_ids if rid not in found_ids]
                 if missing:
-                    raise serializers.ValidationError({'resource_ids': 'resource_ids contains unknown or inactive resource(s).'})
+                    raise serializers.ValidationError({'resource_ids': 'resource_ids enthält unbekannte oder inaktive Ressource(n).'})
             else:
                 resource_objs = []
 
@@ -602,12 +648,14 @@ class OperationSerializer(serializers.ModelSerializer):
     op_devices = ResourceSerializer(many=True, read_only=True)
     team = serializers.SerializerMethodField()
     color = serializers.SerializerMethodField()
+    patient_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Operation
         fields = [
             'id',
             'patient_id',
+            'patient_name',
             'op_type',
             'op_room',
             'op_devices',
@@ -636,6 +684,11 @@ class OperationSerializer(serializers.ModelSerializer):
     def get_color(self, obj):
         t = getattr(obj, 'op_type', None)
         return getattr(t, 'color', None) if t is not None else None
+
+    def get_patient_name(self, obj):
+        if not getattr(obj, "patient_id", None):
+            return ""
+        return get_patient_display_name(obj.patient_id)
 
 
 class OperationDashboardSerializer(serializers.ModelSerializer):
@@ -895,17 +948,17 @@ class PatientFlowCreateUpdateSerializer(serializers.ModelSerializer):
         appt = attrs.get('appointment', getattr(self.instance, 'appointment', None))
         op = attrs.get('operation', getattr(self.instance, 'operation', None))
         if appt is None and op is None:
-            raise serializers.ValidationError({'non_field_errors': 'Either appointment or operation must be set.'})
+            raise serializers.ValidationError({'non_field_errors': 'Entweder Termin oder Operation muss gesetzt sein.'})
 
         old_status = getattr(self.instance, 'status', PatientFlow.STATUS_REGISTERED) if self.instance else None
         new_status = attrs.get('status', old_status or PatientFlow.STATUS_REGISTERED)
 
         if self.instance is not None and getattr(self.instance, 'status', None) == PatientFlow.STATUS_DONE:
-            raise serializers.ValidationError({'status': 'done is read-only.'})
+            raise serializers.ValidationError({'status': '"done" ist schreibgeschützt.'})
 
         if old_status is not None and new_status != old_status:
             if not _allowed_patient_flow_transition(old_status, new_status):
-                raise serializers.ValidationError({'status': f'Invalid transition {old_status} -> {new_status}.'})
+                raise serializers.ValidationError({'status': f'Ungültiger Übergang {old_status} -> {new_status}.'})
 
         return attrs
 
@@ -921,11 +974,11 @@ class PatientFlowStatusUpdateSerializer(serializers.ModelSerializer):
             return value
         old = getattr(inst, 'status', None)
         if old == PatientFlow.STATUS_DONE:
-            raise serializers.ValidationError('done is read-only.')
+            raise serializers.ValidationError('"done" ist schreibgeschützt.')
         if value == old:
             return value
         if not _allowed_patient_flow_transition(old, value):
-            raise serializers.ValidationError(f'Invalid transition {old} -> {value}.')
+            raise serializers.ValidationError(f'Ungültiger Übergang {old} -> {value}.')
         return value
 
 
@@ -1043,9 +1096,9 @@ class OperationCreateUpdateSerializer(serializers.ModelSerializer):
         if room is None:
             raise serializers.ValidationError({'op_room': 'op_room ist ein Pflichtfeld.'})
         if getattr(room, 'type', None) != 'room':
-            raise serializers.ValidationError({'op_room': 'op_room must be a Resource with type="room".'})
+            raise serializers.ValidationError({'op_room': 'op_room muss eine Ressource mit type="room" sein.'})
         if not getattr(room, 'active', True):
-            raise serializers.ValidationError({'op_room': 'op_room must be active.'})
+            raise serializers.ValidationError({'op_room': 'op_room muss aktiv sein.'})
 
         # Validate devices
         raw_device_ids = attrs.get('op_device_ids', None)
@@ -1057,7 +1110,7 @@ class OperationCreateUpdateSerializer(serializers.ModelSerializer):
                 try:
                     rid = int(rid)
                 except (TypeError, ValueError):
-                    raise serializers.ValidationError({'op_device_ids': 'op_device_ids must be a list of integers.'})
+                    raise serializers.ValidationError({'op_device_ids': 'op_device_ids muss eine Liste von Ganzzahlen sein.'})
                 if rid not in seen:
                     seen.add(rid)
                     unique.append(rid)
@@ -1071,7 +1124,7 @@ class OperationCreateUpdateSerializer(serializers.ModelSerializer):
                 found = {r.id for r in device_objs}
                 missing = [rid for rid in unique if rid not in found]
                 if missing:
-                    raise serializers.ValidationError({'op_device_ids': 'op_device_ids contains unknown/inactive/non-device resource(s).'})
+                    raise serializers.ValidationError({'op_device_ids': 'op_device_ids enthält unbekannte/inaktive/nicht-Gerät-Ressource(n).'})
             else:
                 device_objs = []
             attrs['_device_objs'] = device_objs

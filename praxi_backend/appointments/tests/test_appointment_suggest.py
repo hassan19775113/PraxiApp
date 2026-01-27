@@ -46,9 +46,12 @@ class AppointmentSuggestMiniTest(TestCase):
 		self.client.defaults["HTTP_HOST"] = "localhost"
 		self.client.force_authenticate(user=self.admin)
 
-		# Pick a deterministic Monday in the near future.
-		base = timezone.localdate() + timedelta(days=1)
-		self.monday = base - timedelta(days=base.weekday())
+		# Pick the next Monday strictly in the future.
+		today = timezone.localdate()
+		days_ahead = (7 - today.weekday()) % 7
+		if days_ahead == 0:
+			days_ahead = 7
+		self.monday = today + timedelta(days=days_ahead)
 
 		# Working hours: Practice Mon 08:00-16:00, Doctor Mon 09:00-12:00
 		PracticeHours.objects.using("default").create(

@@ -19,11 +19,16 @@ def seed_medical() -> dict:
     random.seed(RANDOM_SEED)
     stats: dict[str, int] = {"medical_patients": 0}
 
-    # Wenn bereits Patienten vorhanden sind, nicht anfassen
-    if Patient.objects.exists():
+    # Prüfe, ob die Tabelle existiert (für Development)
+    try:
+        # Wenn bereits Patienten vorhanden sind, nicht anfassen
+        if Patient.objects.exists():
+            return stats
+    except Exception:
+        # Tabelle existiert nicht - in Development kann das passieren
         return stats
 
-    with transaction.atomic():
+    with transaction.atomic(using='default'):
         patients = _seed_patients()
         stats["medical_patients"] = len(patients)
 

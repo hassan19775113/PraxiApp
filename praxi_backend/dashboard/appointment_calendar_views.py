@@ -23,6 +23,7 @@ from django.views import View
 
 from praxi_backend.appointments.models import Appointment
 from praxi_backend.core.models import User
+from praxi_backend.dashboard.utils import get_patient_display_name
 
 
 @dataclass(frozen=True)
@@ -122,7 +123,7 @@ def _unique_doctor_items(*, doctors_qs, limit: int = 60) -> list[dict]:
 class AppointmentCalendarDayView(View):
 	"""Staff-only day calendar HTML view.
 
-	GET /praxiadmin/dashboard/appointments/?date=YYYY-MM-DD
+	GET /praxi_backend/dashboard/appointments/?date=YYYY-MM-DD
 	"""
 
 	@method_decorator(staff_member_required)
@@ -326,17 +327,19 @@ def _event_payload(
 	label_de, status_key = _status_label(appt.status)
 	doctor_name = appt.doctor.get_full_name() or getattr(appt.doctor, "username", str(appt.doctor_id))
 	type_name = appt.type.name if appt.type else "Termin"
+	patient_name = get_patient_display_name(appt.patient_id)
 
 	accent = None
 	try:
 		accent = getattr(appt.type, "color", None) or getattr(appt.doctor, "calendar_color", None)
 	except Exception:
 		accent = None
-	accent = accent or "#0078D4"
+	accent = accent or "#4A90E2"
 
 	return {
 		"id": appt.id,
 		"patient_id": appt.patient_id,
+		"patient_name": patient_name,
 		"doctor": doctor_name,
 		"type": type_name,
 		"status": label_de,
@@ -353,7 +356,7 @@ def _event_payload(
 class AppointmentCalendarWeekView(View):
 	"""Staff-only week calendar HTML view (no JS).
 
-	GET /praxiadmin/dashboard/appointments/week/?date=YYYY-MM-DD
+	GET /praxi_backend/dashboard/appointments/week/?date=YYYY-MM-DD
 	"""
 
 	@method_decorator(staff_member_required)
@@ -445,7 +448,7 @@ class AppointmentCalendarWeekView(View):
 class AppointmentCalendarMonthView(View):
 	"""Staff-only month calendar HTML view (no JS).
 
-	GET /praxiadmin/dashboard/appointments/month/?date=YYYY-MM-DD
+	GET /praxi_backend/dashboard/appointments/month/?date=YYYY-MM-DD
 	"""
 
 	@method_decorator(staff_member_required)

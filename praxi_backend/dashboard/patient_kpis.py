@@ -186,6 +186,71 @@ def _generate_demo_medications(patient_id: int) -> list[dict]:
     return selected
 
 
+def _generate_demo_documents(patient_id: int) -> list[dict]:
+    """Generiert Demo-Dokumente für einen Patienten."""
+    random.seed(patient_id + 6000)
+    today = date.today()
+
+    document_types = [
+        ("Arztbrief", "Bericht"),
+        ("Befund", "Bericht"),
+        ("Laborbericht", "Bericht"),
+        ("Röntgenbericht", "Bericht"),
+        ("Überweisung", "Dokument"),
+        ("AU-Bescheinigung", "Dokument"),
+        ("Entlassungsbrief", "Bericht"),
+    ]
+
+    items = []
+    for i in range(random.randint(2, 6)):
+        title, kind = random.choice(document_types)
+        days_ago = random.randint(3, 365)
+        items.append(
+            {
+                "id": 100000 + i + 1,
+                "title": title,
+                "kind": kind,
+                "date": (today - timedelta(days=days_ago)).isoformat(),
+                "source": "Praxis",
+                "url": None,
+            }
+        )
+
+    items.sort(key=lambda x: x["date"], reverse=True)
+    return items
+
+
+def _generate_demo_prescriptions(patient_id: int) -> list[dict]:
+    """Generiert Demo-Rezepte für einen Patienten."""
+    random.seed(patient_id + 7000)
+    today = date.today()
+
+    meds = [
+        "Metoprolol 47,5mg",
+        "Ramipril 5mg",
+        "Metformin 1000mg",
+        "Ibuprofen 400mg",
+        "Pantoprazol 40mg",
+        "L-Thyroxin 75µg",
+    ]
+
+    items = []
+    for i in range(random.randint(1, 4)):
+        issued = today - timedelta(days=random.randint(10, 180))
+        items.append(
+            {
+                "id": i + 1,
+                "medication": random.choice(meds),
+                "issued_at": issued.isoformat(),
+                "valid_until": (issued + timedelta(days=90)).isoformat(),
+                "status": "aktiv" if (today - issued).days <= 90 else "abgelaufen",
+            }
+        )
+
+    items.sort(key=lambda x: x["issued_at"], reverse=True)
+    return items
+
+
 def _generate_demo_allergies(patient_id: int) -> list[str]:
     """Generiert Demo-Allergien für einen Patienten."""
     random.seed(patient_id + 5000)
@@ -952,6 +1017,9 @@ def get_all_patient_kpis(patient_id: int) -> dict[str, Any]:
     vitals = calculate_vital_trends(patient_id)
     labs = calculate_lab_traffic_light(patient_id)
     conditions = get_chronic_conditions(patient_id)
+    documents = _generate_demo_documents(patient_id)
+    reports = [d for d in documents if d.get("kind") == "Bericht"]
+    prescriptions = _generate_demo_prescriptions(patient_id)
     
     return {
         'profile': profile,
@@ -967,4 +1035,7 @@ def get_all_patient_kpis(patient_id: int) -> dict[str, Any]:
         'vitals': vitals,
         'labs': labs,
         'conditions': conditions,
+        'documents': documents,
+        'reports': reports,
+        'prescriptions': prescriptions,
     }

@@ -1,6 +1,6 @@
 """praxi_backend.medical.admin
 
-Medical App - Admin classes (read-only)
+Medical App - Admin classes
 
 The `medical.Patient` model is unmanaged (`managed = False`) and is expected to live
 in a separate legacy database (alias: `medical`).
@@ -28,7 +28,7 @@ from .models import Patient
 
 @admin.register(Patient, site=praxi_admin_site)
 class PatientAdmin(admin.ModelAdmin):
-    """Admin-Klasse für Patienten (Read-Only, legacy medical DB).
+    """Admin-Klasse für Patienten (legacy medical DB).
 
     If the `medical` database (or its `patients` table) is missing (common in dev
     SQLite setups), the changelist will show empty results instead of erroring.
@@ -48,17 +48,7 @@ class PatientAdmin(admin.ModelAdmin):
     ordering = ("last_name", "first_name")
     list_per_page = 50
 
-    readonly_fields = (
-        "id",
-        "first_name",
-        "last_name",
-        "birth_date",
-        "gender",
-        "phone",
-        "email",
-        "created_at",
-        "updated_at",
-    )
+    readonly_fields = ("id", "created_at", "updated_at")
 
     fieldsets = (
         (
@@ -105,7 +95,7 @@ class PatientAdmin(admin.ModelAdmin):
         return False
 
     def has_change_permission(self, request, obj=None):
-        """Nur Lesezugriff"""
+        """Bearbeitung erlaubt (legacy DB muss schreibbar sein)."""
         return True
 
     def gender_badge(self, obj):

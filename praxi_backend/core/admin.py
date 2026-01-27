@@ -3,9 +3,12 @@ PraxiApp - Custom Admin Site & Admin Classes
 Medizinisches Premium-Branding mit Custom AdminSite
 """
 
+from django import forms
 from django.contrib import admin
 from django.contrib.admin import AdminSite
+from django.contrib.admin import SimpleListFilter
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.db import models
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from .models import AuditLog, Role, User
@@ -20,14 +23,17 @@ class PraxiAdminSite(AdminSite):
     site_title = "PraxiApp Admin"
     index_title = "Systemübersicht"
     site_url = None
+    formfield_overrides = {
+        models.DateField: {"widget": forms.DateInput(attrs={"type": "date", "class": "prx-date"})},
+    }
     
     def each_context(self, request):
         """Zusätzlicher Kontext für alle Admin-Seiten"""
         context = super().each_context(request)
         context['site_subtitle'] = 'Praxis & OP Management System'
         context['site_version'] = 'v1.0.0'
-        context['dashboard_url'] = '/praxiadmin/dashboard/'
-        context['scheduling_dashboard_url'] = '/praxiadmin/dashboard/scheduling/'
+        context['dashboard_url'] = '/praxi_backend/dashboard/'
+        context['scheduling_dashboard_url'] = '/praxi_backend/dashboard/scheduling/'
         return context
     
     def get_app_list(self, request, app_label=None):
@@ -38,37 +44,37 @@ class PraxiAdminSite(AdminSite):
         dashboard_app = {
             'name': '📊 Dashboards',
             'app_label': 'dashboard',
-            'app_url': '/praxiadmin/dashboard/',
+            'app_url': '/praxi_backend/dashboard/',
             'has_module_perms': True,
             'models': [
                 {
                     'name': '📊 Haupt-Dashboard',
                     'object_name': 'Dashboard',
-                    'admin_url': '/praxiadmin/dashboard/',
+                    'admin_url': '/praxi_backend/dashboard/',
                     'view_only': True,
                 },
                 {
                     'name': '📈 Scheduling KPIs',
                     'object_name': 'SchedulingDashboard',
-                    'admin_url': '/praxiadmin/dashboard/scheduling/',
+                    'admin_url': '/praxi_backend/dashboard/scheduling/',
                     'view_only': True,
                 },
                 {
                     'name': '👤 Patienten-Dashboard',
                     'object_name': 'PatientDashboard',
-                    'admin_url': '/praxiadmin/dashboard/patients/',
+                    'admin_url': '/praxi_backend/dashboard/patients/',
                     'view_only': True,
                 },
                 {
                     'name': '👨‍⚕️ Ärzte-Dashboard',
                     'object_name': 'DoctorDashboard',
-                    'admin_url': '/praxiadmin/dashboard/doctors/',
+                    'admin_url': '/praxi_backend/dashboard/doctors/',
                     'view_only': True,
                 },
                 {
                     'name': '⚙️ Operations-Dashboard',
                     'object_name': 'OperationsDashboard',
-                    'admin_url': '/praxiadmin/dashboard/operations/',
+                    'admin_url': '/praxi_backend/dashboard/operations/',
                     'view_only': True,
                 },
             ],
@@ -76,9 +82,13 @@ class PraxiAdminSite(AdminSite):
         
         return [dashboard_app] + app_list
 
-
 # Globale Instanz der Custom AdminSite
-praxi_admin_site = PraxiAdminSite(name='praxiadmin')
+praxi_admin_site = PraxiAdminSite(name='praxi_backend')
+
+admin.site.formfield_overrides = {
+    **getattr(admin.site, "formfield_overrides", {}),
+    models.DateField: {"widget": forms.DateInput(attrs={"type": "date", "class": "prx-date"})},
+}
 
 
 # ============================================================================
@@ -125,6 +135,54 @@ class RoleAdmin(admin.ModelAdmin):
 # ============================================================================
 # User Admin (Enhanced)
 # ============================================================================
+class FullNameFilter(SimpleListFilter):
+    title = "Name vorhanden"
+    parameter_name = "has_full_name"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("yes", "Mit Namen"),
+            ("no", "Ohne Namen"),
+        )
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value == "yes":
+            return queryset.exclude(first_name__exact="", last_name__exact="")
+        if value == "no":
+            return queryset.filter(first_name__exact="", last_name__exact="")
+        return queryset
+
+
+class UserStatusFilter(SimpleListFilter):
+    title = "Status"
+    parameter_name = "status"
+
+    def lookups(self, request, model_admin):
+        return (
+            ("superuser", "Superuser"),
+            ("staff", "Staff"),
+            ("active", "Aktiv"),
+            ("inactive", "Inaktiv"),
+        )
+
+    def queryset(self, request, queryset):
+        value = self.value()
+        if value == "superuser":
+            return queryset.filter(is_superuser=True)
+        if value == "staff":
+            return queryset.filter(is_staff=True, is_superuser=False)
+        if value == "active":
+            return queryset.filter(
+                is_active=True,
+                is_staff=False,
+                is_superuser=False,
+            )
+        if value == "inactive":
+            return queryset.filter(is_active=False)
+        return queryset
+
+
 @admin.register(User, site=praxi_admin_site)
 class UserAdmin(DjangoUserAdmin):
     """Admin-Klasse für Benutzer mit Premium-Badges"""
@@ -137,7 +195,7 @@ class UserAdmin(DjangoUserAdmin):
         "status_badge",
         "last_login_display",
     )
-    list_filter = ("role", "is_staff", "is_active", "is_superuser")
+    list_filter = (FullNameFilter, "role", UserStatusFilter)
     search_fields = ("username", "email", "first_name", "last_name")
     ordering = ("username",)
     list_per_page = 50
@@ -173,7 +231,7 @@ class UserAdmin(DjangoUserAdmin):
 
         Django admin rejects arbitrary querystring filters for security reasons.
         The PraxiApp UI links to user lists like:
-        - /praxiadmin/core/user/?role__name=doctor
+        - /praxi_backend/core/user/?role__name=doctor
 		
         So we explicitly allow filtering by role name.
         """
@@ -188,6 +246,7 @@ class UserAdmin(DjangoUserAdmin):
             return format_html('<strong style="color: #1A73E8; font-size: 14px;">{}</strong>', full_name)
         return mark_safe('<span style="color: #9AA0A6; font-style: italic;">Kein Name</span>')
     full_name_display.short_description = "Name"
+    full_name_display.admin_order_field = "first_name"
 
     def role_badge(self, obj):
         """Rolle als farbiges Badge"""
@@ -210,6 +269,7 @@ class UserAdmin(DjangoUserAdmin):
             color, icon, role_name
         )
     role_badge.short_description = "Rolle"
+    role_badge.admin_order_field = "role__name"
 
     def status_badge(self, obj):
         """Benutzer-Status als Badge"""
@@ -222,6 +282,7 @@ class UserAdmin(DjangoUserAdmin):
         else:
             return mark_safe('<span class="status-badge status-info">👤 Aktiv</span>')
     status_badge.short_description = "Status"
+    status_badge.admin_order_field = "is_active"
 
     def last_login_display(self, obj):
         """Letzter Login mit relativer Zeitangabe"""
@@ -316,7 +377,7 @@ class AuditLogAdmin(admin.ModelAdmin):
         """Benutzer mit Link"""
         if obj.user:
             return format_html(
-                '<a href="/praxiadmin/core/user/{}/change/" style="color: #1A73E8;">{}</a>',
+                '<a href="/praxi_backend/core/user/{}/change/" style="color: #1A73E8;">{}</a>',
                 obj.user.id, obj.user.username
             )
         return mark_safe('<span style="color: #9AA0A6; font-style: italic;">System</span>')

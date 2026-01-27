@@ -10,9 +10,19 @@ from .appointment_calendar_views import (
     AppointmentCalendarWeekView,
     AppointmentCalendarMonthView,
 )
-from .patient_views import PatientDashboardView, PatientAPIView, PatientOverviewView
+from .appointment_calendar_fullcalendar_view import AppointmentCalendarFullCalendarView
+from .patient_views import (
+    PatientDashboardView,
+    PatientAPIView,
+    PatientOverviewView,
+    PatientDocumentDetailView,
+    PatientPrescriptionDetailView,
+    PatientDocumentUploadView,
+    PatientNoteCreateView,
+)
 from .doctor_views import DoctorDashboardView, DoctorAPIView
 from .operations_views import OperationsDashboardView, OperationsAPIView
+from .resources_views import ResourcesDashboardView
 
 app_name = 'dashboard'
 
@@ -25,15 +35,38 @@ urlpatterns = [
     path('scheduling/', SchedulingDashboardView.as_view(), name='scheduling'),
     path('scheduling/api/', SchedulingAPIView.as_view(), name='scheduling_api'),
 
-    # Termine (Kalenderansicht)
-    path('appointments/', AppointmentCalendarDayView.as_view(), name='appointments_calendar_day'),
-    path('appointments/week/', AppointmentCalendarWeekView.as_view(), name='appointments_calendar_week'),
-    path('appointments/month/', AppointmentCalendarMonthView.as_view(), name='appointments_calendar_month'),
+    # Termine (Kalenderansicht) - Neue FullCalendar-Integration
+    path('appointments/', AppointmentCalendarFullCalendarView.as_view(), name='appointments_calendar'),
+    path('appointments/fullcalendar/', AppointmentCalendarFullCalendarView.as_view(), name='appointments_calendar_fullcalendar'),
+    # Legacy-Kalenderansichten (falls noch benötigt)
+    path('appointments/legacy/day/', AppointmentCalendarDayView.as_view(), name='appointments_calendar_day_legacy'),
+    path('appointments/legacy/week/', AppointmentCalendarWeekView.as_view(), name='appointments_calendar_week_legacy'),
+    path('appointments/legacy/month/', AppointmentCalendarMonthView.as_view(), name='appointments_calendar_month_legacy'),
     
     # Patienten Dashboard
-    path('patients/', PatientDashboardView.as_view(), name='patients'),
-    path('patients/overview/', PatientOverviewView.as_view(), name='patients_overview'),
-    path('patients/<int:patient_id>/', PatientDashboardView.as_view(), name='patient_detail'),
+    path('patients/', PatientOverviewView.as_view(), name='patients'),  # Patientenliste
+    path('patients/overview/', PatientOverviewView.as_view(), name='patients_overview'),  # Alias
+    path('patients/<int:patient_id>/', PatientDashboardView.as_view(), name='patient_detail'),  # Detail-Ansicht
+    path(
+        'patients/<int:patient_id>/documents/<int:doc_id>/',
+        PatientDocumentDetailView.as_view(),
+        name='patient_document_detail',
+    ),
+    path(
+        'patients/<int:patient_id>/documents/upload/',
+        PatientDocumentUploadView.as_view(),
+        name='patient_document_upload',
+    ),
+    path(
+        'patients/<int:patient_id>/notes/create/',
+        PatientNoteCreateView.as_view(),
+        name='patient_note_create',
+    ),
+    path(
+        'patients/<int:patient_id>/prescriptions/<int:prescription_id>/',
+        PatientPrescriptionDetailView.as_view(),
+        name='patient_prescription_detail',
+    ),
     path('patients/api/', PatientAPIView.as_view(), name='patients_api'),
     path('patients/api/<int:patient_id>/', PatientAPIView.as_view(), name='patient_api_detail'),
     
@@ -46,4 +79,7 @@ urlpatterns = [
     # Operations Dashboard
     path('operations/', OperationsDashboardView.as_view(), name='operations'),
     path('operations/api/', OperationsAPIView.as_view(), name='operations_api'),
+    
+    # Ressourcen & Räume
+    path('resources/', ResourcesDashboardView.as_view(), name='resources'),
 ]

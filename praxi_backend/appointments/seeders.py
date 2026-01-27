@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from medical.models import Patient
+from praxi_backend.medical.models import Patient
 from .models import (
     AppointmentType,
     PracticeHours,

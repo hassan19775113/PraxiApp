@@ -223,6 +223,27 @@ def calculate_no_show_rate() -> dict[str, Any]:
     }
 
 
+def calculate_completion_rate() -> dict[str, Any]:
+    """Completion Rate für die letzten 30 Tage."""
+    ranges = get_scheduling_date_ranges()
+    last_30_start, last_30_end = ranges['last_30']
+
+    appointments = Appointment.objects.using('default').filter(
+        start_time__gte=last_30_start,
+        start_time__lte=last_30_end,
+    )
+
+    total = appointments.count()
+    completed = appointments.filter(status='completed').count()
+    rate = round((completed / total) * 100, 1) if total > 0 else 0
+
+    return {
+        'rate': rate,
+        'completed': completed,
+        'total': total,
+    }
+
+
 def calculate_cancellation_rate() -> dict[str, Any]:
     """Cancellation Rate - Stornierte Termine."""
     ranges = get_scheduling_date_ranges()
@@ -303,6 +324,33 @@ def calculate_average_lead_time() -> dict[str, Any]:
         'same_day_bookings': same_day,
         'same_day_rate': round((same_day / len(lead_times)) * 100, 1),
     }
+
+
+def calculate_average_duration() -> float:
+    """Durchschnittliche Termindauer (Minuten) der letzten 30 Tage."""
+    ranges = get_scheduling_date_ranges()
+    last_30_start, last_30_end = ranges['last_30']
+
+    appointments = Appointment.objects.using('default').filter(
+        start_time__gte=last_30_start,
+        end_time__lte=last_30_end,
+        status__in=['scheduled', 'confirmed', 'completed'],
+    ).only('start_time', 'end_time')
+
+    if not appointments.exists():
+        return 0
+
+    total_minutes = 0
+    count = 0
+    for appt in appointments:
+        if appt.start_time and appt.end_time:
+            total_minutes += (appt.end_time - appt.start_time).total_seconds() / 60
+            count += 1
+
+    if count == 0:
+        return 0
+
+    return round(total_minutes / count, 1)
 
 
 def calculate_rebooking_rate() -> dict[str, Any]:
@@ -646,17 +694,53 @@ def get_scheduling_trends() -> dict[str, Any]:
 
 def get_all_scheduling_kpis() -> dict[str, Any]:
     """Sammelt alle Scheduling-KPIs."""
+    slot_utilization = calculate_slot_utilization()
+    no_show = calculate_no_show_rate()
+    cancellation = calculate_cancellation_rate()
+    lead_time = calculate_average_lead_time()
+    rebooking = calculate_rebooking_rate()
+    efficiency = calculate_scheduling_efficiency()
+    new_patient = calculate_new_patient_conversion()
+    completion_rate = calculate_completion_rate()
+    avg_duration = calculate_average_duration()
+
+    # Template-friendly aliases for existing structures
+    lead_time_display = {
+        'avg_days': lead_time['avg_lead_time_days'],
+        'min_days': round(lead_time['min_lead_time_hours'] / 24, 1),
+        'max_days': lead_time['max_lead_time_days'],
+    }
+    new_patient_display = {
+        'rate': new_patient['new_patient_rate'],
+        'new_patient_count': new_patient['new_patients'],
+        'total_appointments': new_patient['total_appointments'],
+    }
+    no_show_display = {
+        'rate': no_show['no_show_rate'],
+        'no_show': no_show['no_show_count'],
+        'total': no_show['total_past_appointments'],
+    }
+
+    # Inject aliases into the original dicts for template compatibility
+    lead_time.update(lead_time_display)
+    new_patient.update(new_patient_display)
+
     return {
-        'slot_utilization': calculate_slot_utilization(),
-        'no_show': calculate_no_show_rate(),
-        'cancellation': calculate_cancellation_rate(),
-        'lead_time': calculate_average_lead_time(),
-        'rebooking': calculate_rebooking_rate(),
-        'efficiency': calculate_scheduling_efficiency(),
-        'new_patient': calculate_new_patient_conversion(),
+        'slot_utilization': slot_utilization,
+        'no_show': no_show,
+        'cancellation': cancellation,
+        'lead_time': lead_time,
+        'rebooking': rebooking,
+        'efficiency': efficiency,
+        'new_patient': new_patient,
         'peak_load': calculate_peak_load_heatmap(),
         'doctor_utilization': calculate_doctor_capacity_utilization(),
         'room_utilization': calculate_room_capacity_utilization(),
         'trends': get_scheduling_trends(),
         'generated_at': timezone.now().isoformat(),
+        # Keys used directly in scheduling.html
+        'efficiency_score': efficiency['efficiency_score'],
+        'completion_rate': completion_rate,
+        'no_show_rate': no_show_display,
+        'avg_duration': avg_duration,
     }
