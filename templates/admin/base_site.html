@@ -3,7 +3,7 @@
 
 {#
 This template lives in BASE_DIR/templates so it overrides Django's built-in
-admin/base_site.html for BOTH /admin/ and the custom /praxiadmin/ AdminSite.
+admin/base_site.html for BOTH /admin/ and the custom /praxi_backend/ AdminSite.
 
 Goal: Force Fluent/Outlook-like light styling via praxiapp-admin.css.
 #}
@@ -33,7 +33,7 @@ Goal: Force Fluent/Outlook-like light styling via praxiapp-admin.css.
     </style>
 
     {# PraxiApp Admin Design System (Outlook/Fluent palette overrides live inside) #}
-    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/praxiapp-admin.css' %}?v=3.2">
+    <link rel="stylesheet" type="text/css" href="{% static 'admin/css/praxiapp-admin.css' %}?v=3.3">
 
     <script>
         // Force light theme on page load (Django 5+ supports theme toggling)
@@ -43,6 +43,91 @@ Goal: Force Fluent/Outlook-like light styling via praxiapp-admin.css.
             document.documentElement.classList.remove('dark');
             document.documentElement.classList.add('light');
         })();
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const body = document.body;
+            if (!body || !body.classList.contains('app-appointments') || !body.classList.contains('model-doctorabsence')) {
+                return;
+            }
+            document.querySelectorAll('input.vDateField').forEach((input) => {
+                const row = input.closest('.form-row');
+                if (!row) return;
+                const shortcuts = row.querySelector('.datetimeshortcuts');
+                if (!shortcuts) return;
+
+                const dateWrap = input.closest('p.date') || input.parentElement || row;
+                if (shortcuts.parentElement !== dateWrap) {
+                    dateWrap.appendChild(shortcuts);
+                }
+                input.insertAdjacentElement('afterend', shortcuts);
+
+                dateWrap.querySelectorAll('br').forEach((br) => br.remove());
+            });
+
+            const doctorField = document.getElementById('id_doctor');
+            const startField = document.getElementById('id_start_date');
+            const endField = document.getElementById('id_end_date');
+            const reasonField = document.getElementById('id_reason');
+
+            const setFieldValue = (id, value) => {
+                const input = document.getElementById(id);
+                if (input) {
+                    input.value = value ?? '';
+                    return;
+                }
+                const readonly = document.querySelector(`#${id}.readonly, #${id} .readonly, #${id}`);
+                if (readonly) {
+                    readonly.textContent = value ?? '';
+                }
+            };
+
+            const updatePreview = async () => {
+                const doctorId = doctorField?.value;
+                const startDate = startField?.value;
+                const endDate = endField?.value;
+                const reason = reasonField?.value || '';
+                if (!doctorId || !startDate || !endDate) {
+                    setFieldValue('id_duration_workdays', '');
+                    setFieldValue('id_return_date', '');
+                    setFieldValue('id_remaining_days', '');
+                    return;
+                }
+                const params = new URLSearchParams({
+                    doctor_id: doctorId,
+                    start_date: startDate,
+                    end_date: endDate,
+                    reason: reason,
+                });
+                try {
+                    const response = await fetch(`/api/doctor-absences/preview/?${params.toString()}`, {
+                        headers: { 'Accept': 'application/json' },
+                        credentials: 'same-origin',
+                    });
+                    if (!response.ok) return;
+                    const data = await response.json();
+                    setFieldValue('id_duration_workdays', data.duration_workdays ?? '');
+                    setFieldValue('id_return_date', data.return_date ?? '');
+                    if (data.remaining_days === null || typeof data.remaining_days === 'undefined') {
+                        setFieldValue('id_remaining_days', '');
+                    } else {
+                        setFieldValue('id_remaining_days', data.remaining_days);
+                    }
+                } catch (e) {
+                    // ignore
+                }
+            };
+
+            [doctorField, startField, endField, reasonField].forEach((el) => {
+                if (el) {
+                    el.addEventListener('change', updatePreview);
+                }
+            });
+            if (startField) startField.addEventListener('input', updatePreview);
+            if (endField) endField.addEventListener('input', updatePreview);
+            updatePreview();
+        });
     </script>
 {% endblock %}
 
@@ -63,6 +148,8 @@ Goal: Force Fluent/Outlook-like light styling via praxiapp-admin.css.
     </p>
 {% endif %}
 {% endblock %}
+
+{% block nav-sidebar %}{% endblock %}
 
 {% block footer %}
 <div id="footer">

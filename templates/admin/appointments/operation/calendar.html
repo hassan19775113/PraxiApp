@@ -1,0 +1,208 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <link rel="stylesheet" href="{% static 'js/calendar/calendar.css' %}?v=1.0">
+    <link rel="stylesheet" href="{% static 'js/calendar/modal.css' %}?v=1.0">
+    <link rel="stylesheet" href="{% static 'css/pages/appointments_calendar_modern.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+<div class="app-appointments module">
+    <div class="prx-card">
+        <div class="prx-card__body" style="padding: 0;">
+            <div class="prx-calendar-layout">
+                <div class="prx-calendar-main">
+                    <div id="operationCalendar"></div>
+                </div>
+                <aside class="prx-calendar-sidebar">
+                    <div class="prx-calendar-filter">
+                        <div class="prx-calendar-filter__title">Ansicht</div>
+                        <p class="prx-calendar-filter__hint">Kalenderansicht der Operationen</p>
+                        <a class="button" href="{{ changelist_url }}">Listenansicht</a>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="opDetailsModal" class="calendar-modal-backdrop">
+    <div class="calendar-modal">
+        <div class="calendar-modal__header">
+            <h3 class="calendar-modal__title" id="opModalTitle">Operation</h3>
+            <button type="button" class="calendar-modal__close" id="opModalClose">×</button>
+        </div>
+        <div class="calendar-modal__body">
+            <div id="opModalSubtitle" style="font-size: 13px; color: #5F6368; margin-bottom: 12px;"></div>
+            <div id="opModalBody"></div>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+    import { ModernCalendar } from "{% static 'js/calendar/calendar.js' %}";
+
+    const calendar = new ModernCalendar('operationCalendar', {
+        apiUrl: '/api/operations/',
+        initialView: 'month',
+        locale: 'de',
+        dayStartHour: 6,
+        dayEndHour: 20,
+    });
+
+    let opAutoJumped = false;
+    calendar.options.onAppointmentsLoaded = (appointments) => {
+        if (opAutoJumped || !appointments || !appointments.length) return;
+        opAutoJumped = true;
+        const first = appointments.reduce((min, cur) => {
+            return new Date(cur.start) < new Date(min.start) ? cur : min;
+        }, appointments[0]);
+        calendar.currentDate = new Date(first.start);
+        if (calendar.currentView !== 'month') {
+            calendar.switchView('month');
+        } else {
+            calendar.renderView();
+        }
+    };
+
+    calendar.openNewAppointment = () => {};
+    calendar.handleSave = () => {};
+    calendar.handleDelete = () => {};
+
+    calendar.transformAppointments = function(apiOps) {
+        return apiOps.map((op) => {
+            const start = new Date(op.start_time);
+            const end = new Date(op.end_time);
+            if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+                return null;
+            }
+            const primary = op.team?.primary_surgeon;
+            const doctorName = primary?.name || '';
+            const doctorColor = primary?.color || op.color || '#4A90E2';
+            return {
+                id: op.id,
+                start: start.toISOString(),
+                end: end.toISOString(),
+                title: op.op_type?.name || 'Operation',
+                doctorName: doctorName,
+                patientName: op.patient_name || '',
+                description: op.notes || '',
+                appointmentTypeId: op.op_type?.id,
+                doctorId: primary?.id,
+                patientId: op.patient_id,
+                doctorColor: doctorColor,
+                appointmentColor: op.color,
+                raw: op,
+            };
+        }).filter(Boolean);
+    };
+
+    const openModal = (data) => {
+        const modal = document.getElementById('opDetailsModal');
+        const title = document.getElementById('opModalTitle');
+        const subtitle = document.getElementById('opModalSubtitle');
+        const body = document.getElementById('opModalBody');
+
+        const formatRow = (icon, label, value) => {
+            return `
+                <div style="display:flex; gap:10px; margin-bottom:8px; align-items:flex-start;">
+                    <div style="width:20px; text-align:center; color:#4A90E2;">${icon}</div>
+                    <div style="min-width:130px; color:#5F6368;">${label}</div>
+                    <div style="color:#1F2937;">${value || '—'}</div>
+                </div>
+            `;
+        };
+
+        const opTypeName = data.op_type?.name || 'Operation';
+        title.textContent = `OP #${data.id} – ${opTypeName}`;
+        subtitle.textContent = data.patient_name || data.patientName || '';
+        body.innerHTML = `
+            <div style="display:grid; gap:12px;">
+                <div style="border:1px solid #E6E8EC; border-radius:12px; padding:12px;">
+                    <div style="font-weight:600; margin-bottom:8px;">Übersicht</div>
+                    ${[
+                        formatRow('🧾', 'OP‑Typ', opTypeName),
+                        formatRow('📌', 'Status', data.status),
+                        formatRow('🏥', 'OP‑Raum', data.op_room?.name),
+                        formatRow('🧰', 'Geräte', (data.op_devices || []).map(r => r.name).join(', ') || '—'),
+                    ].join('')}
+                </div>
+                <div style="border:1px solid #E6E8EC; border-radius:12px; padding:12px;">
+                    <div style="font-weight:600; margin-bottom:8px;">Beteiligte</div>
+                    ${[
+                        formatRow('🧑‍🦱', 'Patient', data.patient_name || data.patientName),
+                        formatRow('👨‍⚕️', 'Hauptoperateur', data.team?.primary_surgeon?.name),
+                        formatRow('🩺', 'Assistent', data.team?.assistant?.name),
+                        formatRow('💉', 'Anästhesist', data.team?.anesthesist?.name),
+                    ].join('')}
+                </div>
+                <div style="border:1px solid #E6E8EC; border-radius:12px; padding:12px;">
+                    <div style="font-weight:600; margin-bottom:8px;">Zeiten</div>
+                    ${[
+                        formatRow('⏱️', 'Start', data.start_time ? new Date(data.start_time).toLocaleString('de-DE') : '—'),
+                        formatRow('⏱️', 'Ende', data.end_time ? new Date(data.end_time).toLocaleString('de-DE') : '—'),
+                    ].join('')}
+                </div>
+                <div style="border:1px solid #E6E8EC; border-radius:12px; padding:12px;">
+                    <div style="font-weight:600; margin-bottom:8px;">Notizen</div>
+                    ${formatRow('📝', 'Notizen', data.notes || '—')}
+                </div>
+            </div>
+        `;
+        modal.classList.add('calendar-modal-backdrop--open');
+    };
+
+    calendar.createAppointmentElement = function(appointment) {
+        const element = document.createElement('div');
+        element.className = 'calendar-appointment';
+        element.dataset.appointmentId = appointment.id;
+        element.style.backgroundColor = appointment.doctorColor || '#4A90E2';
+
+        const start = new Date(appointment.start);
+        const end = new Date(appointment.end);
+        const duration = (end - start) / (1000 * 60);
+        const top = this.calculateAppointmentTop(start);
+        const height = this.calculateAppointmentHeight(duration);
+        element.style.top = `${top}%`;
+        element.style.height = `${height}%`;
+
+        element.innerHTML = `
+            <div class="calendar-appointment__title">${appointment.title || 'Operation'}</div>
+            <div class="calendar-appointment__meta">
+                <span class="calendar-appointment__doctor">${appointment.doctorName || ''}</span>
+                <span class="calendar-appointment__patient">${appointment.patientName || ''}</span>
+            </div>
+            <div class="calendar-appointment__time">${this.formatTime(start)} - ${this.formatTime(end)}</div>
+        `;
+
+        element.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (appointment.raw) {
+                openModal(appointment.raw);
+            }
+        });
+
+        return element;
+    };
+
+    calendar.render();
+    calendar.loadAppointments();
+
+    const newButton = document.getElementById('calendarNewAppointment');
+    if (newButton) {
+        newButton.style.display = 'none';
+    }
+
+    document.getElementById('opModalClose')?.addEventListener('click', () => {
+        document.getElementById('opDetailsModal').classList.remove('calendar-modal-backdrop--open');
+    });
+    document.getElementById('opDetailsModal')?.addEventListener('click', (event) => {
+        if (event.target === event.currentTarget) {
+            event.currentTarget.classList.remove('calendar-modal-backdrop--open');
+        }
+    });
+</script>
+{% endblock %}

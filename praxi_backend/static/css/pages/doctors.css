@@ -7,7 +7,7 @@ Design: Calm Medical UI - Outlook-Inspired
 Seite: Ärzteprofil, Performance, Termine, Auslastung
 
 Farbschema:
-- Primär: #0078D4 (Outlook Blue)
+- Primär: #4A90E2 (Soft Azure)
 - Sekundär: #4FB3BF (Soft Teal)
 - Akzent: #7BC6B0 (Mint Green)
 - Hintergrund: #F5F7FA
@@ -106,7 +106,7 @@ Farbschema:
 }
 
 /* KPI Varianten */
-.page-doctors .prx-kpi--primary::before { background: #0078D4; }
+.page-doctors .prx-kpi--primary::before { background: #4A90E2; }
 .page-doctors .prx-kpi--success::before { background: #22C55E; }
 .page-doctors .prx-kpi--accent::before { background: #7BC6B0; }
 .page-doctors .prx-kpi--info::before { background: #0EA5E9; }
@@ -379,7 +379,7 @@ Farbschema:
 }
 
 .page-doctors .performance-bar__fill--primary {
-    background: linear-gradient(90deg, #0078D4 0%, #5AA3F9 100%);
+    background: linear-gradient(90deg, #4A90E2 0%, #5AA3F9 100%);
 }
 
 .page-doctors .performance-bar__fill--success {
@@ -427,7 +427,7 @@ Farbschema:
 }
 
 .page-doctors .prx-table a {
-    color: #0078D4;
+    color: #4A90E2;
     text-decoration: none;
     font-weight: 500;
 }
@@ -480,8 +480,8 @@ Farbschema:
 
 .page-doctors .prx-btn--outline {
     background: #FFFFFF;
-    color: #0078D4;
-    border: 1px solid #0078D4;
+    color: #4A90E2;
+    border: 1px solid #4A90E2;
 }
 
 .page-doctors .prx-btn--outline:hover {

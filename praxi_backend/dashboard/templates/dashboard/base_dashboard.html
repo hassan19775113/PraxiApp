@@ -7,19 +7,82 @@
     <meta name="color-scheme" content="light only">
     <title>{% block title %}Dashboard{% endblock %} | PraxiApp</title>
     
+    <!-- Favicon -->
+    <link rel="icon" href="{% static 'favicon.ico' %}">
+    
     <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     
-    <!-- PraxiApp Design System - Fluent Modern Base -->
+    <!-- PraxiApp Modern Design System -->
+    <link rel="stylesheet" href="{% static 'css/design-tokens-modern.css' %}?v=4.0">
+    <link rel="stylesheet" href="{% static 'css/base-modern.css' %}?v=4.0">
+    <link rel="stylesheet" href="{% static 'css/components-modern.css' %}?v=4.0">
+    
+    <!-- Legacy Base CSS (Fallback) -->
     <link rel="stylesheet" href="{% static 'css/base.css' %}?v=3.2">
     
     <!-- Page-Specific Styles (loaded in child templates) -->
     {% block page_css %}{% endblock %}
+
+    <style>
+      .prx-info-btn {
+        background: #fff;
+        border: 1px solid var(--border-subtle);
+        border-radius: 999px;
+        width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text);
+        position: relative;
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+      }
+      .prx-kpi,
+      .prx-kpi__header,
+      .prx-kpi__label {
+        overflow: visible;
+      }
+      .prx-kpi__label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .prx-kpi__label .prx-info-btn {
+        width: 18px;
+        height: 18px;
+        font-size: 10px;
+      }
+      .prx-info-tooltip {
+        position: fixed;
+        background: #0f172a;
+        color: #fff;
+        padding: 6px 8px;
+        border-radius: 8px;
+        font-size: 11px;
+        max-width: 240px;
+        white-space: normal;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+        pointer-events: none;
+        z-index: 100000;
+        opacity: 0;
+        transform: translateY(4px);
+        transition: opacity 0.12s ease, transform 0.12s ease;
+      }
+      .prx-info-tooltip.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    </style>
     
-    <!-- Chart.js -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- FullCalendar CSS -->
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
+    
+    <!-- Chart.js (nur laden, wenn benötigt) -->
+    {% block chart_js %}{% endblock %}
     
     {% block extra_head %}{% endblock %}
 </head>
@@ -40,14 +103,14 @@
             </div>
             
             <nav class="prx-header__nav" role="navigation" aria-label="Hauptnavi">
-                <a href="{% url 'dashboard:index' %}" class="prx-header__link {% block nav_active_main %}{% endblock %}">
+                <a href="/praxi_backend/Dashboardadministration/" class="prx-header__link {% block nav_active_main %}{% endblock %}">
                     <span class="fluent-icon" aria-hidden>
                         <!-- Chart icon -->
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h2v18H3V3zm5 6h2v12H8V9zm5-4h2v16h-2V5zm5 8h2v8h-2v-8z"/></svg>
                     </span>
-                    <span class="prx-nav-label">Haupt-Dashboard</span>
+                    <span class="prx-nav-label">Dashboards</span>
                 </a>
-                <a href="{% url 'dashboard:scheduling' %}" class="prx-header__link {% block nav_active_scheduling %}{% endblock %}">
+                <a href="{% url 'dashboard:appointments_calendar' %}" class="prx-header__link {% block nav_active_scheduling %}{% endblock %}">
                     <span class="fluent-icon" aria-hidden>
                         <!-- Calendar icon -->
                         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M7 10h5v5H7v-5zm0 7h5v2H7v-2zM3 5h2V3h2v2h8V3h2v2h2a1 1 0 0 1 1 1v3H2V6a1 1 0 0 1 1-1z"/></svg>
@@ -75,6 +138,13 @@
                     </span>
                     <span class="prx-nav-label">Operationen</span>
                 </a>
+                <a href="{% url 'dashboard:resources' %}" class="prx-header__link {% block nav_active_resources %}{% endblock %}">
+                    <span class="fluent-icon" aria-hidden>
+                        <!-- Resources / rooms icon -->
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h18v18H3V3zm4 4h2v10H7V7zm5-4h2v14h-2V3zm5 8h2v6h-2v-6z"/></svg>
+                    </span>
+                    <span class="prx-nav-label">Ressourcen</span>
+                </a>
 
                 <span class="prx-header__sep" aria-hidden>|</span>
 
@@ -98,20 +168,62 @@
     
     {% block footer %}{% endblock %}
     
+    <!-- FullCalendar JS - MUSS VOR appointment-calendar.js geladen werden -->
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js'></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales-all.global.min.js'></script>
+    <script src="{% static 'js/prx_colors.js' %}"></script>
+
+    
+    {% block legacy_calendar_scripts %}{% endblock %}
+    
     {% block extra_scripts %}{% endblock %}
     
-    <!-- Chart.js Defaults (kept, you already have PRX_COLORS inlined per page) -->
+    <!-- Chart.js Defaults - PRX_COLORS Fallback -->
     <script>
-      // Small enhancement: read CSS fluent primary color into JS PRX_COLORS (if present)
+      // PRX_COLORS Fallback: Definiere globale Variable, falls nicht bereits vorhanden
       (function(){
-        try {
-          const style = getComputedStyle(document.documentElement);
-          const cssPrimary = style.getPropertyValue('--fluent-blue-500').trim() || null;
-          if (cssPrimary && typeof PRX_COLORS !== 'undefined') {
-            PRX_COLORS.primary = PRX_COLORS.primary || cssPrimary;
-            // You can map more if needed
+        // Wenn PRX_COLORS bereits existiert, nichts tun
+        if (typeof window.PRX_COLORS !== 'undefined' && window.PRX_COLORS) {
+          return;
+        }
+
+        // Helper: Lese CSS-Variable mit Fallback
+        const cssVar = (name, fallback) => {
+          try {
+            const style = getComputedStyle(document.documentElement);
+            const value = style.getPropertyValue(name).trim();
+            return value || fallback;
+          } catch (e) {
+            return fallback;
           }
-        } catch (e) { /* ignore */ }
+        };
+
+        // Definiere PRX_COLORS mit CSS-Variablen oder Fallbacks
+        window.PRX_COLORS = {
+          primary: cssVar('--color-primary-azure', '#4A90E2'),      // Soft Azure
+          secondary: cssVar('--color-primary-mint', '#7ED6C1'),    // Calm Mint
+          success: cssVar('--color-primary-green', '#6FCF97'),      // Soft Green
+          warning: cssVar('--color-primary-amber', '#F2C94C'),      // Soft Amber
+          danger: cssVar('--color-primary-coral', '#EB5757'),       // Soft Coral
+          info: '#0EA5E9',
+          neutralDark: cssVar('--color-text-dark', '#2D3A45'),
+          neutralMedium: cssVar('--color-text-light', '#7A8A99'),
+          neutralLight: 'rgba(45, 58, 69, 0.1)',
+          palette: [
+            cssVar('--color-primary-azure', '#4A90E2'),
+            cssVar('--color-primary-mint', '#7ED6C1'),
+            cssVar('--color-primary-green', '#6FCF97'),
+            cssVar('--color-primary-amber', '#F2C94C'),
+            cssVar('--color-primary-coral', '#EB5757')
+          ],
+          paletteLight: [
+            'rgba(74, 144, 226, 0.12)',   // Soft Azure
+            'rgba(126, 214, 193, 0.12)', // Calm Mint
+            'rgba(111, 207, 151, 0.12)', // Soft Green
+            'rgba(242, 201, 76, 0.12)',  // Soft Amber
+            'rgba(235, 87, 87, 0.12)'    // Soft Coral
+          ]
+        };
       })();
 
       // Animate progress bars set by template (adds .animated and applies widths)
@@ -124,6 +236,87 @@
           if (bg) bar.style.background = bg;
         });
       }, 120);
+    </script>
+
+    <script>
+      (function () {
+        const infoButtons = document.querySelectorAll('.prx-info-btn');
+        if (!infoButtons.length) {
+          return;
+        }
+
+        const tooltip = document.createElement('div');
+        tooltip.className = 'prx-info-tooltip';
+        document.body.appendChild(tooltip);
+
+        const showTooltip = (btn) => {
+          const info = btn.getAttribute('data-info') || '';
+          if (!info) return;
+          tooltip.textContent = info;
+          const rect = btn.getBoundingClientRect();
+          const left = Math.min(rect.left, window.innerWidth - 260);
+          const top = rect.top - 8;
+          tooltip.style.left = `${Math.max(8, left)}px`;
+          tooltip.style.top = `${Math.max(8, top - tooltip.offsetHeight)}px`;
+          tooltip.classList.add('is-visible');
+        };
+
+        const hideTooltip = () => tooltip.classList.remove('is-visible');
+
+        infoButtons.forEach((btn) => {
+          btn.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          });
+          btn.addEventListener('mouseenter', () => showTooltip(btn));
+          btn.addEventListener('mouseleave', hideTooltip);
+          btn.addEventListener('blur', hideTooltip);
+        });
+
+        // Modal for detailed info on double click
+        let modal = document.getElementById('prx-info-modal');
+        if (!modal) {
+          modal = document.createElement('div');
+          modal.id = 'prx-info-modal';
+          modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:9999;padding:16px;';
+          modal.innerHTML = `
+            <div style="background:#fff;border-radius:12px;padding:16px;max-width:520px;width:100%;box-shadow:0 12px 30px rgba(15,23,42,0.2);">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <div data-role="title" style="font-weight:600;font-size:16px;">Info</div>
+                <button data-role="close" type="button" style="border:0;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:#6b7280;">×</button>
+              </div>
+              <div data-role="body" style="margin-top:8px;color:#334155;white-space:pre-line;"></div>
+            </div>
+          `;
+          document.body.appendChild(modal);
+        }
+
+        const modalTitle = modal.querySelector('[data-role="title"]');
+        const modalBody = modal.querySelector('[data-role="body"]');
+        const closeBtn = modal.querySelector('[data-role="close"]');
+
+        const closeModal = () => {
+          modal.style.display = 'none';
+        };
+        if (closeBtn) {
+          closeBtn.addEventListener('click', closeModal);
+        }
+        modal.addEventListener('click', (event) => {
+          if (event.target === modal) closeModal();
+        });
+
+        infoButtons.forEach((btn) => {
+          btn.addEventListener('dblclick', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            const title = btn.getAttribute('data-title') || 'Info';
+            const detail = btn.getAttribute('data-detail') || btn.getAttribute('data-info') || '';
+            if (modalTitle) modalTitle.textContent = title;
+            if (modalBody) modalBody.textContent = detail;
+            modal.style.display = 'flex';
+          });
+        });
+      })();
     </script>
 
     {% block inline_scripts %}{% endblock %}

@@ -878,13 +878,10 @@ th.sorted.descending a::after {
     tbody td {
         padding: 10px !important;
     }
-}# 1. Gehe ins Backend-Verzeichnis
-cd C:\DEV_2026\PraxiApp\postgres\praxi_backend
+}
+/* Removed accidental shell commands from CSS. */
 
-# 2. Aktiviere Virtual Environment
-.venv\Scripts\Activate
-
-# 3. Sammle Static Files
+/* 3. Sammle Static Files
 python manage.py collectstatic --noinput
 
 # 4. Starte Server
@@ -898,4 +895,4 @@ cd C:\DEV_2026\PraxiApp\postgres\praxi_backend
 python manage.py collectstatic --noinput
 
 # 4. Starte Server
-python manage.py runserver
+python manage.py runserver*/

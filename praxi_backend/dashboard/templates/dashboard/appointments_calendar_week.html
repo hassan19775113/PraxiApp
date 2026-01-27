@@ -21,9 +21,9 @@
 			<a class="cal-btn" href="?date={{ anchor|date:'Y-m-d' }}">Aktuelle Woche</a>
 			<a class="cal-btn cal-btn--ghost" href="?date={{ next_week }}">Woche →</a>
 			<span class="cal-sep" aria-hidden="true"></span>
-			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:appointments_calendar_day' %}?date={{ anchor|date:'Y-m-d' }}">Tag</a>
-			<a class="cal-btn" aria-current="page" href="{% url 'dashboard:appointments_calendar_week' %}?date={{ anchor|date:'Y-m-d' }}">Woche</a>
-			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:appointments_calendar_month' %}?date={{ anchor|date:'Y-m-d' }}">Monat</a>
+			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:appointments_calendar_day_legacy' %}?date={{ anchor|date:'Y-m-d' }}">Tag</a>
+			<a class="cal-btn" aria-current="page" href="{% url 'dashboard:appointments_calendar_week_legacy' %}?date={{ anchor|date:'Y-m-d' }}">Woche</a>
+			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:appointments_calendar_month_legacy' %}?date={{ anchor|date:'Y-m-d' }}">Monat</a>
 			<span class="cal-sep" aria-hidden="true"></span>
 			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:index' %}">← Zurück</a>
 		</div>
@@ -42,7 +42,7 @@
 							<div class="cal-week__corner" aria-hidden="true"></div>
 							{% for d in week_days %}
 							<div class="cal-week__dayhead {% if d.is_today %}cal-week__dayhead--today{% endif %}">
-								<a class="cal-week__daylink" href="{% url 'dashboard:appointments_calendar_day' %}?date={{ d.iso }}&doctor={{ doctor_query|urlencode }}{% if selected_doctor_id %}&doctor_id={{ selected_doctor_id }}{% endif %}">{{ d.label }}</a>
+								<a class="cal-week__daylink" href="{% url 'dashboard:appointments_calendar_day_legacy' %}?date={{ d.iso }}&doctor={{ doctor_query|urlencode }}{% if selected_doctor_id %}&doctor_id={{ selected_doctor_id }}{% endif %}">{{ d.label }}</a>
 							</div>
 							{% endfor %}
 
@@ -58,7 +58,7 @@
 									{% for a in d.events %}
 									<div class="cal-event cal-event--{{ a.status_key }}" style="--cal-top: {{ a.top_px }}px; --cal-height: {{ a.height_px }}px; --cal-accent: {{ a.accent }};">
 										<div class="cal-event__time">{{ a.time_range }}</div>
-										<div class="cal-event__title">Patient ID: {{ a.patient_id }}</div>
+										<div class="cal-event__title">{{ a.patient_name|default:a.patient_id }}</div>
 										<div class="cal-event__meta">{{ a.doctor }} · {{ a.type }}</div>
 									</div>
 									{% endfor %}

@@ -35,10 +35,10 @@ Struktur:
     /* ──────────────────────────────────────────────────────────────────────
        Farben – Primär
        ────────────────────────────────────────────────────────────────────── */
-    --color-primary: #0078D4;
-    --color-primary-hover: #005A9E;
-    --color-primary-light: #E1EFFF;
-    --color-primary-dark: #004578;
+    --color-primary: #4A90E2;
+    --color-primary-hover: #3A7BC8;
+    --color-primary-light: #E8F2FC;
+    --color-primary-dark: #2F66A5;
 
     /* ──────────────────────────────────────────────────────────────────────
        Farben – Sekundär & Akzent
@@ -73,7 +73,7 @@ Struktur:
        ────────────────────────────────────────────────────────────────────── */
     --color-border: #E1E4E8;
     --color-border-light: #F0F2F5;
-    --color-border-focus: #0078D4;
+    --color-border-focus: #4A90E2;
 
     /* ──────────────────────────────────────────────────────────────────────
        Farben – Status
@@ -382,7 +382,7 @@ code {
     padding: var(--spacing-2) var(--spacing-4);
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);
-    color: #1a1818;
+    color: #121111 important;
     text-decoration: none;
     border-radius: var(--radius-md);
     transition: all var(--transition-fast);

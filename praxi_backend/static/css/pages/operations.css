@@ -7,7 +7,7 @@ Design: Calm Medical UI - Outlook-Inspired
 Seite: OP-Flow, Pipeline, Heatmap, Engpässe, Statistiken
 
 Farbschema:
-- Primär: #0078D4 (Outlook Blue)
+- Primär: #4A90E2 (Soft Azure)
 - Sekundär: #4FB3BF (Soft Teal)
 - Akzent: #7BC6B0 (Mint Green)
 - Hintergrund: #F5F7FA
@@ -106,7 +106,7 @@ Farbschema:
 }
 
 /* KPI Varianten */
-.page-operations .prx-kpi--primary::before { background: #0078D4; }
+.page-operations .prx-kpi--primary::before { background: #4A90E2; }
 .page-operations .prx-kpi--success::before { background: #22C55E; }
 .page-operations .prx-kpi--accent::before { background: #7BC6B0; }
 .page-operations .prx-kpi--danger::before { background: #EF4444; }
@@ -558,7 +558,7 @@ Farbschema:
 }
 
 .page-operations .prx-table a {
-    color: #0078D4;
+    color: #4A90E2;
     text-decoration: none;
     font-weight: 500;
 }
@@ -654,7 +654,7 @@ Farbschema:
 }
 
 .page-operations .prx-btn--primary {
-    background: #0078D4;
+    background: #4A90E2;
     color: #FFFFFF;
 }
 
@@ -664,8 +664,8 @@ Farbschema:
 
 .page-operations .prx-btn--outline {
     background: #FFFFFF;
-    color: #0078D4;
-    border: 1px solid #0078D4;
+    color: #4A90E2;
+    border: 1px solid #4A90E2;
 }
 
 .page-operations .prx-btn--outline:hover {

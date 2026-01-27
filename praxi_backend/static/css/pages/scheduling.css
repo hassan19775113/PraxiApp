@@ -7,7 +7,7 @@ Design: Calm Medical UI - Outlook-Inspired
 Seite: Terminplanung KPIs, Buchungs-Funnel, Trends
 
 Farbschema:
-- Primär: #0078D4 (Outlook Blue)
+- Primär: #4A90E2 (Soft Azure)
 - Sekundär: #4FB3BF (Soft Teal)
 - Akzent: #7BC6B0 (Mint Green)
 - Hintergrund: #F5F7FA
@@ -118,7 +118,7 @@ Farbschema:
 }
 
 /* KPI Varianten */
-.page-scheduling .prx-kpi--primary::before { background: #0078D4; }
+.page-scheduling .prx-kpi--primary::before { background: #4A90E2; }
 .page-scheduling .prx-kpi--success::before { background: #22C55E; }
 .page-scheduling .prx-kpi--warning::before { background: #F4A259; }
 .page-scheduling .prx-kpi--danger::before { background: #D9534F; }
@@ -179,7 +179,7 @@ Farbschema:
 
 .page-scheduling .funnel-stage--scheduled {
     background: linear-gradient(90deg, #E1EFFF 0%, #F0F7FF 100%);
-    border-left: 4px solid #0078D4;
+    border-left: 4px solid #4A90E2;
 }
 
 .page-scheduling .funnel-stage--confirmed {
@@ -270,7 +270,7 @@ Farbschema:
 }
 
 .page-scheduling .prx-stat__value--primary {
-    color: #0078D4;
+    color: #4A90E2;
 }
 
 .page-scheduling .prx-stat__value--success {
@@ -388,7 +388,7 @@ Farbschema:
 }
 
 .page-scheduling .prx-btn--primary {
-    background: #0078D4;
+    background: #4A90E2;
     color: #FFFFFF;
 }
 
@@ -398,8 +398,8 @@ Farbschema:
 
 .page-scheduling .prx-btn--outline {
     background: #FFFFFF;
-    color: #0078D4;
-    border: 1px solid #0078D4;
+    color: #4A90E2;
+    border: 1px solid #4A90E2;
 }
 
 .page-scheduling .prx-btn--outline:hover {

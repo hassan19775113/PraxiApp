@@ -11,26 +11,49 @@ Voraussetzung: base.css muss zuerst geladen werden
    Abschnitt: Patient Selector
    ============================================================================ */
 
+/* Patient Selector Dropdown - Sichtbare Optionen */
 .patient-selector {
     padding: var(--spacing-2) var(--spacing-4);
     padding-right: var(--spacing-10);
     font-size: var(--font-size-sm);
     font-weight: var(--font-weight-medium);
-    color: var(--color-text-inverse);
-    background: var(--color-primary);
+    color: var(--color-text-inverse) !important;
+    background: var(--color-primary) !important;
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: var(--radius-md);
     cursor: pointer;
     appearance: none;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e") !important;
     background-position: right var(--spacing-3) center;
     background-repeat: no-repeat;
     background-size: 20px;
+    min-width: 200px;
 }
 
+/* WICHTIG: Optionen müssen sichtbar sein! 
+   Browser respektieren option-Styles unterschiedlich, daher !important und explizite Farben */
 .patient-selector option {
-    color: var(--color-text);
-    background: var(--color-surface);
+    color: #2D3A45 !important;  /* Dunkler Text - explizit */
+    background: #FFFFFF !important;  /* Weißer Hintergrund - explizit */
+    padding: 8px 12px !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    display: block !important;
+    line-height: 1.5 !important;
+}
+
+/* Hover-State für Optionen (wenn unterstützt) */
+.patient-selector option:hover,
+.patient-selector option:focus {
+    background: #E5E9F0 !important;  /* Helles Grau */
+    color: #2D3A45 !important;
+}
+
+/* Selected Option im Dropdown */
+.patient-selector option:checked {
+    background: #E1EFFF !important;  /* Helles Blau */
+    color: #4A90E2 !important;  /* Soft Azure */
+    font-weight: 600 !important;
 }
 
 /* ============================================================================

@@ -837,6 +837,7 @@ select {
     color: #2E2E2E !important;
     transition: border-color 150ms ease, box-shadow 150ms ease !important;
     font-family: 'Segoe UI', 'Inter', sans-serif !important;
+    height: 45px;
 }
 
 input[type="text"]:focus,
@@ -1453,7 +1454,7 @@ refactor every earlier hard-coded color.
 /* Global links */
 a:link,
 a:visited {
-    color: var(--prx-outlook-link) !important;
+    color: #FFFFFF;
 }
 
 a:hover {
@@ -1585,4 +1586,248 @@ textarea:focus,
 select:focus {
     border-color: var(--prx-outlook-primary) !important;
     box-shadow: 0 0 0 3px rgba(15, 108, 189, 0.18) !important;
+}
+
+/*
+================================================================================
+DoctorAbsence Add/Edit - Modern Layout
+================================================================================
+*/
+body.app-appointments.model-doctorabsence.change-form #content,
+body.app-appointments.model-doctorabsence.add-form #content {
+    max-width: 1280px;
+    margin: 24px auto;
+    padding: 0 16px;
+}
+
+body.app-appointments.model-doctorabsence.change-form fieldset,
+body.app-appointments.model-doctorabsence.add-form fieldset {
+    background: #FFFFFF;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+    padding: 16px 20px;
+    margin-bottom: 16px;
+}
+
+body.app-appointments.model-doctorabsence.change-form fieldset h2,
+body.app-appointments.model-doctorabsence.add-form fieldset h2 {
+    background: transparent;
+    color: var(--body-loud-color);
+    font-size: 16px;
+    font-weight: 600;
+    padding: 0;
+    margin: 0 0 12px 0;
+}
+
+body.app-appointments.model-doctorabsence.change-form fieldset .form-row,
+body.app-appointments.model-doctorabsence.add-form fieldset .form-row {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    align-items: start;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--hairline-color);
+}
+
+body.app-appointments.model-doctorabsence.change-form fieldset .form-row:last-child,
+body.app-appointments.model-doctorabsence.add-form fieldset .form-row:last-child {
+    border-bottom: none;
+}
+
+body.app-appointments.model-doctorabsence.change-form fieldset .form-row label,
+body.app-appointments.model-doctorabsence.add-form fieldset .form-row label {
+    font-weight: 600;
+    color: var(--body-loud-color);
+    margin-bottom: 2px;
+}
+
+body.app-appointments.model-doctorabsence.change-form .form-row input,
+body.app-appointments.model-doctorabsence.change-form .form-row select,
+body.app-appointments.model-doctorabsence.change-form .form-row textarea,
+body.app-appointments.model-doctorabsence.add-form .form-row input,
+body.app-appointments.model-doctorabsence.add-form .form-row select,
+body.app-appointments.model-doctorabsence.add-form .form-row textarea {
+    width: 100%;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 12px 14px;
+    min-height: 20px;
+    background: #FFFFFF;
+}
+
+body.app-appointments.model-doctorabsence.change-form .form-row input[type="date"],
+body.app-appointments.model-doctorabsence.add-form .form-row input[type="date"] {
+    width: 220px !important;
+    max-width: 220px !important;
+    flex: 0 0 auto;
+}
+
+body.app-appointments.model-doctorabsence.change-form .form-row .vDateField,
+body.app-appointments.model-doctorabsence.add-form .form-row .vDateField {
+    height: 20px;
+    min-height: 20px;
+    padding: 4px 8px;
+    line-height: 1.2;
+}
+
+body.app-appointments.model-doctorabsence.change-form .datetimeshortcuts,
+body.app-appointments.model-doctorabsence.add-form .datetimeshortcuts {
+    position: static;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 6px;
+    margin-left: 8px;
+    margin-top: 0;
+    background: transparent;
+    padding: 0;
+    white-space: nowrap;
+}
+
+body.app-appointments.model-doctorabsence.change-form p.date,
+body.app-appointments.model-doctorabsence.add-form p.date {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+}
+
+body.app-appointments.model-doctorabsence.change-form .form-row .fieldBox,
+body.app-appointments.model-doctorabsence.add-form .form-row .fieldBox {
+    position: relative;
+    max-width: none;
+    display: inline-flex !important;
+    align-items: center;
+    gap: 8px;
+    white-space: nowrap;
+}
+
+body.app-appointments.model-doctorabsence.change-form .datetimeshortcuts + br,
+body.app-appointments.model-doctorabsence.add-form .datetimeshortcuts + br {
+    display: none !important;
+}
+
+body.app-appointments.model-doctorabsence.change-form .form-row .fieldBox p,
+body.app-appointments.model-doctorabsence.add-form .form-row .fieldBox p {
+    display: inline-flex;
+    align-items: center;
+    margin: 0;
+    gap: 8px;
+}
+
+body.app-appointments.model-doctorabsence.change-form .form-row .fieldBox br,
+body.app-appointments.model-doctorabsence.add-form .form-row .fieldBox br {
+    display: none !important;
+}
+
+body.app-appointments.model-doctorabsence.change-form .timezonewarning,
+body.app-appointments.model-doctorabsence.add-form .timezonewarning {
+    display: none !important;
+}
+
+body.app-appointments.model-doctorabsence.change-form .datetimeshortcuts a,
+body.app-appointments.model-doctorabsence.add-form .datetimeshortcuts a {
+    margin: 0;
+}
+
+body.app-appointments.model-doctorabsence.change-form .form-row textarea,
+body.app-appointments.model-doctorabsence.add-form .form-row textarea {
+    min-height: 120px;
+}
+
+body.app-appointments.model-doctorabsence.change-form .related-widget-wrapper,
+body.app-appointments.model-doctorabsence.add-form .related-widget-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+body.app-appointments.model-doctorabsence.change-form .related-widget-wrapper select,
+body.app-appointments.model-doctorabsence.add-form .related-widget-wrapper select {
+    min-width: 320px;
+}
+
+body.app-appointments.model-doctorabsence.change-form .form-row .help,
+body.app-appointments.model-doctorabsence.add-form .form-row .help {
+    grid-column: 1;
+    color: var(--body-quiet-color);
+    margin-top: 4px;
+}
+
+body.app-appointments.model-doctorabsence.change-form .submit-row,
+body.app-appointments.model-doctorabsence.add-form .submit-row {
+    background: #FFFFFF;
+    border-radius: 12px;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+    padding: 14px 16px;
+}
+
+@media (max-width: 768px) {
+    body.app-appointments.model-doctorabsence.change-form fieldset .form-row,
+    body.app-appointments.model-doctorabsence.add-form fieldset .form-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/*
+================================================================================
+ADMIN DASHBOARD TILES
+================================================================================
+*/
+
+.prx-admin-tiles {
+    display: grid;
+    gap: 24px;
+}
+
+.prx-admin-section {
+    background: #FFFFFF;
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 16px 18px;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}
+
+.prx-admin-section__title {
+    margin: 0 0 12px 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--body-loud-color);
+}
+
+.prx-tile-grid {
+    display: grid;
+    gap: 12px;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+}
+
+.prx-tile {
+    display: block;
+    background: #F8FAFC;
+    border: 1px solid var(--hairline-color);
+    border-radius: 10px;
+    padding: 12px 14px;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+}
+
+.prx-tile:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+    border-color: #C6D4E1;
+}
+
+.prx-tile__title {
+    font-weight: 600;
+    color: var(--body-loud-color);
+    margin-bottom: 6px;
+}
+
+.prx-tile__hint {
+    font-size: 12px;
+    color: var(--body-quiet-color);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
 }

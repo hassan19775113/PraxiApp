@@ -1,0 +1,162 @@
+/* PraxiApp Patients List Page Styles - Modernisiert */
+
+.prx-search-filter-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-4);
+    flex-wrap: wrap;
+}
+
+.prx-search-box {
+    position: relative;
+    flex: 1;
+    min-width: 250px;
+}
+
+.prx-search-box__icon {
+    position: absolute;
+    left: var(--spacing-3);
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--color-text-light);
+    pointer-events: none;
+}
+
+.prx-input--search {
+    padding-left: calc(var(--spacing-3) + 20px + var(--spacing-2));
+}
+
+.prx-filter-group {
+    display: flex;
+    gap: var(--spacing-3);
+    flex-wrap: wrap;
+}
+
+.prx-table-cell-patient {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-1);
+}
+
+.prx-table-cell-patient__name {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+}
+
+.prx-table-cell-patient__meta {
+    font-size: var(--font-size-sm);
+    color: var(--color-text-light);
+}
+
+.prx-btn--sm {
+    height: var(--button-height-sm);
+    padding: 0 var(--spacing-2);
+    font-size: var(--font-size-sm);
+}
+
+.prx-badge--mint {
+    background: var(--color-primary-mint-bg);
+    color: var(--color-primary-mint);
+    border-color: var(--color-primary-mint);
+}
+
+/* Verbesserte leere Tabelle */
+.prx-table-wrapper {
+    min-height: 400px;
+}
+
+.prx-empty-state {
+    padding: var(--spacing-12) var(--spacing-8) !important;
+    text-align: center;
+    color: var(--color-text-light);
+}
+
+.prx-empty-state-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto var(--spacing-4);
+    opacity: 0.5;
+    color: var(--color-text-light);
+    display: block;
+}
+
+.prx-empty-state-title {
+    font-size: var(--font-size-lg);
+    font-weight: 600;
+    color: var(--color-text-dark);
+    margin-bottom: var(--spacing-2);
+}
+
+.prx-empty-state-text {
+    font-size: var(--font-size-base);
+    color: var(--color-text-light);
+    margin-bottom: var(--spacing-6);
+    line-height: 1.6;
+}
+
+.prx-empty-state-text code {
+    background: var(--color-background);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace;
+    font-size: 0.9em;
+    color: var(--color-text-dark);
+}
+
+/* Verbesserte Tabellen-Styles */
+.prx-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+/* Patienten-Zeilen müssen immer sichtbar sein (außer wenn durch Filter versteckt) */
+.prx-table tbody tr.prx-patient-row {
+    display: table-row !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Empty-State nur anzeigen, wenn keine Patienten vorhanden */
+.prx-table tbody tr .prx-empty-state {
+    /* Empty state wird durch JavaScript verwaltet */
+}
+
+.prx-table tbody tr:not(.prx-patient-row) {
+    /* Alle Zeilen außer Patienten-Zeilen werden durch JavaScript verwaltet */
+}
+
+.prx-table tbody tr.prx-patient-row:hover {
+    background-color: var(--color-bg);
+}
+
+/* Modernere Badge-Farben für Geschlecht */
+.prx-badge--primary {
+    background: rgba(74, 144, 226, 0.1);
+    color: #4A90E2;
+    border: 1px solid rgba(74, 144, 226, 0.2);
+}
+
+.prx-badge--mint {
+    background: rgba(126, 214, 193, 0.1);
+    color: #7ED6C1;
+    border: 1px solid rgba(126, 214, 193, 0.2);
+}
+
+/* Responsive Verbesserungen */
+@media (max-width: 768px) {
+    .prx-search-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    
+    .prx-search-box {
+        min-width: 100%;
+    }
+    
+    .prx-filter-group {
+        width: 100%;
+    }
+    
+    .prx-filter-group .prx-select {
+        flex: 1;
+    }
+}

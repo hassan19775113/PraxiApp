@@ -1,0 +1,140 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <style>
+        .prx-admin-tiles {
+            display: grid;
+            gap: 24px;
+        }
+        .prx-admin-section {
+            background: #FFFFFF;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 18px;
+            box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+        }
+        .prx-admin-section__title {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--body-loud-color);
+        }
+        .prx-tile-grid {
+            display: grid;
+            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        }
+        .prx-tile {
+            display: block;
+            background: #F8FAFC;
+            border: 1px solid var(--hairline-color);
+            border-radius: 10px;
+            padding: 12px 14px;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease;
+        }
+        .prx-tile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 14px rgba(15, 23, 42, 0.08);
+            border-color: #C6D4E1;
+        }
+        .prx-tile__title {
+            font-weight: 600;
+            color: var(--body-loud-color);
+            margin-bottom: 6px;
+        }
+        .prx-tile__hint {
+            font-size: 12px;
+            color: var(--body-quiet-color);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="prx-admin-tiles">
+    <section class="prx-admin-section">
+        <h2 class="prx-admin-section__title">Dashboards</h2>
+        <div class="prx-tile-grid">
+            {% for app in app_list %}
+                {% if app.app_label == "dashboard" %}
+                    {% for model in app.models %}
+                        <a class="prx-tile" href="{{ model.admin_url }}">
+                            <div class="prx-tile__title">{{ model.name }}</div>
+                            <div class="prx-tile__hint">Öffnen</div>
+                        </a>
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="prx-admin-section">
+        <h2 class="prx-admin-section__title">Termine & Planung</h2>
+        <div class="prx-tile-grid">
+            {% for app in app_list %}
+                {% if app.app_label == "appointments" %}
+                    {% for model in app.models %}
+                        <a class="prx-tile" href="{{ model.admin_url }}">
+                            <div class="prx-tile__title">{{ model.name }}</div>
+                            <div class="prx-tile__hint">Verwalten</div>
+                        </a>
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="prx-admin-section">
+        <h2 class="prx-admin-section__title">Core (Benutzer & Rollen)</h2>
+        <div class="prx-tile-grid">
+            {% for app in app_list %}
+                {% if app.app_label == "core" %}
+                    {% for model in app.models %}
+                        <a class="prx-tile" href="{{ model.admin_url }}">
+                            <div class="prx-tile__title">{{ model.name }}</div>
+                            <div class="prx-tile__hint">Verwalten</div>
+                        </a>
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="prx-admin-section">
+        <h2 class="prx-admin-section__title">Medical (Medizinische Daten)</h2>
+        <div class="prx-tile-grid">
+            {% for app in app_list %}
+                {% if app.app_label == "medical" %}
+                    {% for model in app.models %}
+                        <a class="prx-tile" href="{{ model.admin_url }}">
+                            <div class="prx-tile__title">{{ model.name }}</div>
+                            <div class="prx-tile__hint">Verwalten</div>
+                        </a>
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="prx-admin-section">
+        <h2 class="prx-admin-section__title">Patients</h2>
+        <div class="prx-tile-grid">
+            {% for app in app_list %}
+                {% if app.app_label == "patients" %}
+                    {% for model in app.models %}
+                        <a class="prx-tile" href="{{ model.admin_url }}">
+                            <div class="prx-tile__title">{{ model.name }}</div>
+                            <div class="prx-tile__hint">Verwalten</div>
+                        </a>
+                    {% endfor %}
+                {% endif %}
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}

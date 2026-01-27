@@ -1,0 +1,471 @@
+/**
+ * Modern Outlook-Style Calendar Component Styles
+ * 
+ * Verwendet das bestehende Design-System und CSS-Variablen
+ */
+
+/* ============================================================
+   Calendar Container
+   ============================================================ */
+
+.modern-calendar {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 600px;
+    background: var(--color-surface, #FFFFFF);
+    border-radius: var(--radius-md, 10px);
+    box-shadow: var(--shadow-md, 0 4px 8px rgba(45, 58, 69, 0.08));
+    overflow: hidden;
+    font-family: var(--font-family, "Inter", "Segoe UI", sans-serif);
+}
+
+/* ============================================================
+   Toolbar
+   ============================================================ */
+
+.calendar-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-4, 16px) var(--spacing-6, 24px);
+    border-bottom: 1px solid var(--color-border, #E5E9F0);
+    background: var(--color-surface, #FFFFFF);
+    flex-shrink: 0;
+}
+
+.calendar-toolbar__left {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2, 8px);
+}
+
+.calendar-toolbar__title {
+    margin: 0;
+    margin-left: var(--spacing-4, 16px);
+    font-size: var(--font-size-lg, 17px);
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--color-text, #2D3A45);
+}
+
+.calendar-toolbar__right {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-4, 16px);
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+
+.calendar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2, 8px);
+    padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+    border: 1px solid var(--color-border, #E5E9F0);
+    border-radius: var(--radius-sm, 6px);
+    background: var(--color-surface, #FFFFFF);
+    color: var(--color-text, #2D3A45);
+    font-size: var(--font-size-sm, 13px);
+    font-weight: var(--font-weight-medium, 500);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.calendar-btn:hover {
+    background: var(--color-surface-hover, #FAFBFC);
+    border-color: var(--color-border-strong, #C8C6C4);
+}
+
+.calendar-btn--icon {
+    padding: var(--spacing-2, 8px);
+    min-width: 36px;
+}
+
+.calendar-btn--primary {
+    background: #4A90E2;
+    color: #111111;
+    border-color: var(--color-primary-azure, #4A90E2);
+}
+
+.calendar-btn--primary:hover {
+    background: var(--color-primary-azure-hover, #3A7BC8);
+    border-color: var(--color-primary-azure-hover, #3A7BC8);
+}
+
+.calendar-btn--secondary {
+    background: var(--color-surface, #FFFFFF);
+    color: var(--color-text, #2D3A45);
+}
+
+.calendar-btn--danger {
+    background: var(--color-primary-coral, #EB5757);
+    color: #FFFFFF;
+    border-color: var(--color-primary-coral, #EB5757);
+}
+
+.calendar-btn--danger:hover {
+    background: var(--color-primary-coral-hover, #DB4747);
+    border-color: var(--color-primary-coral-hover, #DB4747);
+}
+
+/* ============================================================
+   View Switcher
+   ============================================================ */
+
+.calendar-view-switcher {
+    display: flex;
+    background: var(--color-bg, #F7F9FB);
+    border-radius: var(--radius-sm, 6px);
+    padding: 2px;
+    gap: 2px;
+}
+
+.calendar-view-btn {
+    padding: var(--spacing-2, 8px) var(--spacing-4, 16px);
+    border: none;
+    background: transparent;
+    color: var(--color-text-light, #7A8A99);
+    font-size: var(--font-size-sm, 13px);
+    font-weight: var(--font-weight-medium, 500);
+    border-radius: var(--radius-sm, 6px);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.calendar-view-btn:hover {
+    color: var(--color-text, #2D3A45);
+    background: var(--color-surface, #FFFFFF);
+}
+
+.calendar-view-btn.active {
+    background: var(--color-surface, #FFFFFF);
+    color: var(--color-text, #2D3A45);
+    box-shadow: var(--shadow-xs, 0 1px 2px rgba(45, 58, 69, 0.04));
+}
+
+/* ============================================================
+   Calendar Grid
+   ============================================================ */
+
+.calendar-grid {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* ============================================================
+   Day View
+   ============================================================ */
+
+.calendar-grid--day {
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-day-header {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    border-bottom: 1px solid var(--color-border, #E5E9F0);
+    background: var(--color-surface, #FFFFFF);
+}
+
+.calendar-day-body {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+}
+
+.calendar-time-column {
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid var(--color-border, #E5E9F0);
+    background: var(--color-bg, #F7F9FB);
+}
+
+.calendar-time-slot {
+    height: 140px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-end;
+    padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+    border-bottom: 1px solid var(--color-border-light, #F0F2F5);
+}
+
+.calendar-time-label {
+    font-size: var(--font-size-xs, 11px);
+    color: var(--color-text-muted, #9FA8B3);
+    font-weight: var(--font-weight-medium, 500);
+    margin-top: -6px;
+}
+
+.calendar-day-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-day-name {
+    font-size: var(--font-size-sm, 13px);
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--color-text, #2D3A45);
+    text-align: center;
+    padding: var(--spacing-2, 8px);
+}
+
+.calendar-day-date {
+    font-size: var(--font-size-xs, 11px);
+    color: var(--color-text-light, #7A8A99);
+    text-align: center;
+    padding-bottom: var(--spacing-2, 8px);
+}
+
+.calendar-day-timeline {
+    position: relative;
+    flex: 1;
+    min-height: 1540px; /* 11 Stunden (07-18) * 2 Slots * 70px */
+}
+
+.calendar-hour-slot {
+    height: 70px;
+    border-bottom: 1px solid var(--color-border-light, #F0F2F5);
+    position: relative;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+
+.calendar-hour-slot:hover {
+    background: var(--color-primary-azure-bg, #E8F2FC);
+}
+
+.calendar-hour-slot--half {
+    height: 70px;
+    border-bottom: 1px dashed var(--color-border-light, #F0F2F5);
+}
+
+/* ============================================================
+   Week View
+   ============================================================ */
+
+.calendar-grid--week {
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-week-header {
+    display: grid;
+    grid-template-columns: 80px repeat(7, 1fr);
+    border-bottom: 1px solid var(--color-border, #E5E9F0);
+    background: var(--color-surface, #FFFFFF);
+}
+
+.calendar-week-body {
+    display: grid;
+    grid-template-columns: 80px repeat(7, 1fr);
+    flex: 1;
+    overflow-y: auto;
+    position: relative;
+}
+
+.calendar-week-header .calendar-day-column,
+.calendar-week-body .calendar-day-column {
+    border-right: 1px solid var(--color-border-light, #F0F2F5);
+}
+
+.calendar-week-header .calendar-day-column:last-child,
+.calendar-week-body .calendar-day-column:last-child {
+    border-right: none;
+}
+
+/* ============================================================
+   Month View
+   ============================================================ */
+
+.calendar-grid--month {
+    display: flex;
+    flex-direction: column;
+}
+
+.calendar-month-header {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    border-bottom: 1px solid var(--color-border, #E5E9F0);
+    background: var(--color-surface, #FFFFFF);
+}
+
+.calendar-month-day-name {
+    padding: var(--spacing-3, 12px);
+    text-align: center;
+    font-size: var(--font-size-sm, 13px);
+    font-weight: var(--font-weight-semibold, 600);
+    color: var(--color-text-light, #7A8A99);
+    border-right: 1px solid var(--color-border-light, #F0F2F5);
+}
+
+.calendar-month-day-name:last-child {
+    border-right: none;
+}
+
+.calendar-month-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+}
+
+.calendar-month-week {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    flex: 1;
+    min-height: 120px;
+}
+
+.calendar-month-day {
+    border-right: 1px solid var(--color-border-light, #F0F2F5);
+    border-bottom: 1px solid var(--color-border-light, #F0F2F5);
+    padding: var(--spacing-2, 8px);
+    background: var(--color-surface, #FFFFFF);
+    cursor: pointer;
+    transition: background 0.15s ease;
+    position: relative;
+    min-height: 100px;
+}
+
+.calendar-month-day:hover {
+    background: var(--color-surface-hover, #FAFBFC);
+}
+
+.calendar-month-day--other {
+    background: var(--color-bg, #F7F9FB);
+    color: var(--color-text-muted, #9FA8B3);
+}
+
+.calendar-month-day--today {
+    background: var(--color-primary-azure-bg, #E8F2FC);
+}
+
+.calendar-month-day--today .calendar-month-day-number {
+    background: var(--color-primary-azure, #4A90E2);
+    color: #FFFFFF;
+    border-radius: var(--radius-full, 9999px);
+    width: 28px;
+    height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: var(--font-weight-semibold, 600);
+}
+
+.calendar-month-day-number {
+    font-size: var(--font-size-sm, 13px);
+    font-weight: var(--font-weight-medium, 500);
+    color: var(--color-text, #2D3A45);
+    margin-bottom: var(--spacing-1, 4px);
+}
+
+.calendar-month-day-events {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    margin-top: var(--spacing-1, 4px);
+}
+
+/* ============================================================
+   Appointments
+   ============================================================ */
+
+.calendar-appointment {
+    position: absolute;
+    left: 2px;
+    right: 2px;
+    padding: var(--spacing-1, 4px) var(--spacing-2, 8px);
+    border-radius: var(--radius-sm, 6px);
+    background: var(--color-primary-azure, #4A90E2);
+    color: #111111;
+    font-size: var(--font-size-xs, 11px);
+    cursor: pointer;
+    box-shadow: var(--shadow-sm, 0 2px 4px rgba(45, 58, 69, 0.06));
+    transition: all 0.2s ease;
+    overflow: hidden;
+    z-index: 10;
+    border-left: 3px solid rgba(255, 255, 255, 0.5);
+}
+
+.calendar-appointment:hover {
+    box-shadow: var(--shadow-md, 0 4px 8px rgba(45, 58, 69, 0.08));
+    transform: translateY(-1px);
+    z-index: 20;
+}
+
+.calendar-appointment__title {
+    font-weight: var(--font-weight-semibold, 600);
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.calendar-appointment__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    font-size: 10px;
+    opacity: 0.9;
+    margin-top: 2px;
+}
+
+.calendar-appointment__doctor,
+.calendar-appointment__patient {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.calendar-appointment__time {
+    font-size: 10px;
+    opacity: 0.8;
+    margin-top: 2px;
+}
+
+/* Month View Appointments */
+.calendar-month-day-events .calendar-appointment {
+    position: relative;
+    left: 0;
+    right: 0;
+    margin-bottom: 2px;
+    height: auto;
+    min-height: 20px;
+}
+
+/* ============================================================
+   Responsive
+   ============================================================ */
+
+@media (max-width: 768px) {
+    .calendar-toolbar {
+        flex-direction: column;
+        gap: var(--spacing-3, 12px);
+        align-items: stretch;
+    }
+    
+    .calendar-toolbar__left,
+    .calendar-toolbar__right {
+        justify-content: center;
+    }
+    
+    .calendar-week-body {
+        grid-template-columns: 60px repeat(7, 1fr);
+    }
+    
+    .calendar-time-column {
+        width: 60px;
+    }
+}
+
+

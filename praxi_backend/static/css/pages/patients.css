@@ -7,7 +7,7 @@ Design: Calm Medical UI - Outlook-Inspired
 Seite: Patientenprofil, Vitale, Timeline, Labor, Risikobewertung
 
 Farbschema:
-- Primär: #0078D4 (Outlook Blue)
+- Primär: #4A90E2 (Soft Azure)
 - Sekundär: #4FB3BF (Soft Teal)
 - Akzent: #7BC6B0 (Mint Green)
 - Hintergrund: #F5F7FA
@@ -53,7 +53,7 @@ Farbschema:
     padding: 10px 16px;
     border-radius: 8px;
     border: 1px solid rgba(255, 255, 255, 0.3);
-    background: #0078D4;
+    background: #4A90E2;
     color: #FFFFFF;
     font-size: 13px;
     font-weight: 500;
@@ -85,7 +85,7 @@ Farbschema:
     width: 80px;
     height: 80px;
     border-radius: 50%;
-    background: linear-gradient(135deg, #0078D4 0%, #4FB3BF 100%);
+    background: linear-gradient(135deg, #4A90E2 0%, #4FB3BF 100%);
     color: #FFFFFF;
     display: flex;
     align-items: center;
@@ -259,7 +259,7 @@ Farbschema:
     top: 0;
     bottom: 0;
     width: 2px;
-    background: linear-gradient(180deg, #0078D4 0%, #E1E4E8 100%);
+    background: linear-gradient(180deg, #4A90E2 0%, #E1E4E8 100%);
 }
 
 .page-patients .timeline-item {
@@ -283,9 +283,9 @@ Farbschema:
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background: #0078D4;
+    background: #4A90E2;
     border: 3px solid #FFFFFF;
-    box-shadow: 0 0 0 2px #0078D4;
+    box-shadow: 0 0 0 2px #4A90E2;
 }
 
 .page-patients .timeline-item.future::before {
@@ -486,8 +486,8 @@ Farbschema:
 
 .page-patients .prx-btn--outline {
     background: #FFFFFF;
-    color: #0078D4;
-    border: 1px solid #0078D4;
+    color: #4A90E2;
+    border: 1px solid #4A90E2;
 }
 
 .page-patients .prx-btn--outline:hover {

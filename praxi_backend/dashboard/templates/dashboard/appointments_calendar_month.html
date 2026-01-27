@@ -21,9 +21,9 @@
 			<a class="cal-btn" href="?date={{ anchor|date:'Y-m-d' }}">Dieser Monat</a>
 			<a class="cal-btn cal-btn--ghost" href="?date={{ next_month }}">Monat →</a>
 			<span class="cal-sep" aria-hidden="true"></span>
-			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:appointments_calendar_day' %}?date={{ anchor|date:'Y-m-d' }}">Tag</a>
-			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:appointments_calendar_week' %}?date={{ anchor|date:'Y-m-d' }}">Woche</a>
-			<a class="cal-btn" aria-current="page" href="{% url 'dashboard:appointments_calendar_month' %}?date={{ anchor|date:'Y-m-d' }}">Monat</a>
+			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:appointments_calendar_day_legacy' %}?date={{ anchor|date:'Y-m-d' }}">Tag</a>
+			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:appointments_calendar_week_legacy' %}?date={{ anchor|date:'Y-m-d' }}">Woche</a>
+			<a class="cal-btn" aria-current="page" href="{% url 'dashboard:appointments_calendar_month_legacy' %}?date={{ anchor|date:'Y-m-d' }}">Monat</a>
 			<span class="cal-sep" aria-hidden="true"></span>
 			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:index' %}">← Zurück</a>
 		</div>
@@ -47,7 +47,7 @@
 								{% for day in week %}
 								<div class="cal-month__cell {% if not day.in_month %}cal-month__cell--out{% endif %} {% if day.is_today %}cal-month__cell--today{% endif %}">
 									<div class="cal-month__cellhead">
-										<a class="cal-month__daylink" href="{% url 'dashboard:appointments_calendar_day' %}?date={{ day.iso }}&doctor={{ doctor_query|urlencode }}{% if selected_doctor_id %}&doctor_id={{ selected_doctor_id }}{% endif %}">{{ day.day }}</a>
+										<a class="cal-month__daylink" href="{% url 'dashboard:appointments_calendar_day_legacy' %}?date={{ day.iso }}&doctor={{ doctor_query|urlencode }}{% if selected_doctor_id %}&doctor_id={{ selected_doctor_id }}{% endif %}">{{ day.day }}</a>
 									</div>
 									<div class="cal-month__events">
 										{% for a in day.events %}
@@ -58,7 +58,7 @@
 										{% endfor %}
 										{% if day.more_count %}
 										<div class="cal-month__more">
-											+{{ day.more_count }} weitere · <a href="{% url 'dashboard:appointments_calendar_day' %}?date={{ day.iso }}&doctor={{ doctor_query|urlencode }}{% if selected_doctor_id %}&doctor_id={{ selected_doctor_id }}{% endif %}">anzeigen</a>
+											+{{ day.more_count }} weitere · <a href="{% url 'dashboard:appointments_calendar_day_legacy' %}?date={{ day.iso }}&doctor={{ doctor_query|urlencode }}{% if selected_doctor_id %}&doctor_id={{ selected_doctor_id }}{% endif %}">anzeigen</a>
 										</div>
 										{% endif %}
 									</div>

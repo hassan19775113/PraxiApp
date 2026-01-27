@@ -1,0 +1,249 @@
+/* PraxiApp Modern Calendar - FullCalendar Anpassungen */
+
+#appointmentCalendar {
+    padding: var(--spacing-5);
+    min-height: 600px;
+}
+
+.prx-calendar-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 260px;
+    gap: var(--spacing-4);
+}
+
+.prx-calendar-main {
+    min-width: 0;
+}
+
+.prx-calendar-sidebar {
+    border-left: 1px solid var(--color-border);
+    background: var(--color-bg);
+    padding: var(--spacing-4);
+}
+
+.prx-calendar-filter__title {
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: var(--spacing-3);
+}
+
+.prx-calendar-filter__hint {
+    margin-top: var(--spacing-2);
+}
+
+.prx-calendar-filter .prx-input {
+    width: 100%;
+}
+
+@media (max-width: 1100px) {
+    .prx-calendar-layout {
+        grid-template-columns: 1fr;
+    }
+    .prx-calendar-sidebar {
+        border-left: none;
+        border-top: 1px solid var(--color-border);
+    }
+}
+
+/* FullCalendar Basis-Anpassungen */
+.fc {
+    font-family: var(--font-family);
+    color: var(--color-text);
+}
+
+/* Header Toolbar */
+.fc-header-toolbar {
+    margin-bottom: var(--spacing-5);
+    padding: 0 var(--spacing-4);
+}
+
+.fc-toolbar-title {
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text);
+}
+
+.fc-button {
+    background: var(--color-surface) !important;
+    border: 1px solid var(--color-border) !important;
+    color: var(--color-text) !important;
+    border-radius: var(--radius-md) !important;
+    padding: var(--spacing-2) var(--spacing-3) !important;
+    font-weight: var(--font-weight-medium) !important;
+    font-size: var(--font-size-sm) !important;
+    transition: all var(--transition-base) !important;
+    box-shadow: none !important;
+}
+
+.fc-button:hover {
+    background: var(--color-bg) !important;
+    border-color: var(--color-border) !important;
+    box-shadow: var(--shadow-sm) !important;
+}
+
+.fc-button:focus {
+    outline: 2px solid var(--color-primary-azure);
+    outline-offset: 2px;
+}
+
+.fc-button-primary:not(:disabled).fc-button-active,
+.fc-button-primary:not(:disabled):active {
+    background: var(--color-primary-azure) !important;
+    border-color: var(--color-primary-azure) !important;
+    color: #FFFFFF !important;
+}
+
+/* Calendar Grid */
+.fc-daygrid-day {
+    border-color: var(--color-border-light) !important;
+}
+
+.fc-col-header-cell {
+    border-color: var(--color-border-light) !important;
+    background: var(--color-bg) !important;
+    padding: var(--spacing-3) 0 !important;
+}
+
+.fc-col-header-cell-cushion {
+    font-weight: var(--font-weight-semibold) !important;
+    font-size: var(--font-size-sm) !important;
+    color: var(--color-text-light) !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.fc-day-today {
+    background: var(--color-primary-azure-bg) !important;
+}
+
+/* Time Slots */
+.fc-timegrid-slot {
+    border-color: var(--color-border-light) !important;
+    height: 60px !important;
+}
+
+.fc-timegrid-slot-label {
+    border-color: var(--color-border-light) !important;
+    font-size: var(--font-size-sm) !important;
+    color: var(--color-text-light) !important;
+    padding: var(--spacing-2) !important;
+}
+
+.fc-timegrid-axis {
+    border-color: var(--color-border-light) !important;
+}
+
+.fc-timegrid-now-indicator-line {
+    border-color: var(--color-primary-coral) !important;
+    border-width: 2px !important;
+}
+
+/* Events */
+.fc-event {
+    border-radius: var(--radius-sm) !important;
+    border: none !important;
+    padding: var(--spacing-1) var(--spacing-2) !important;
+    font-size: var(--font-size-sm) !important;
+    font-weight: var(--font-weight-medium) !important;
+    cursor: pointer;
+    transition: all var(--transition-fast) !important;
+    box-shadow: var(--shadow-xs) !important;
+}
+
+.fc-event:hover {
+    opacity: 0.9 !important;
+    box-shadow: var(--shadow-sm) !important;
+    transform: translateY(-1px);
+}
+
+.fc-event-title {
+    font-weight: var(--font-weight-semibold) !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fc-event-time {
+    font-weight: var(--font-weight-medium) !important;
+    opacity: 0.9;
+}
+
+/* Event Selection */
+.fc-event-selected,
+.fc-event-selected:hover {
+    box-shadow: 0 0 0 2px var(--color-primary-azure) !important;
+}
+
+/* More Link */
+.fc-more-link {
+    background: var(--color-bg) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-sm) !important;
+    padding: var(--spacing-1) var(--spacing-2) !important;
+    font-size: var(--font-size-sm) !important;
+    color: var(--color-primary-azure) !important;
+    font-weight: var(--font-weight-medium) !important;
+}
+
+.fc-more-link:hover {
+    background: var(--color-primary-azure-bg) !important;
+}
+
+/* Popover */
+.fc-popover {
+    border: 1px solid var(--color-border) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-lg) !important;
+    background: var(--color-surface) !important;
+}
+
+.fc-popover-header {
+    background: var(--color-bg) !important;
+    border-bottom: 1px solid var(--color-border-light) !important;
+    padding: var(--spacing-3) var(--spacing-4) !important;
+    font-weight: var(--font-weight-semibold) !important;
+}
+
+.fc-popover-body {
+    padding: var(--spacing-3) !important;
+}
+
+/* Scrollbars (optional - für bessere Optik) */
+.fc-scroller::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.fc-scroller::-webkit-scrollbar-track {
+    background: var(--color-bg);
+}
+
+.fc-scroller::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: var(--radius-full);
+}
+
+.fc-scroller::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-light);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .fc-header-toolbar {
+        flex-direction: column;
+        gap: var(--spacing-3);
+    }
+    
+    .fc-toolbar-chunk {
+        width: 100%;
+    }
+    
+    .fc-button {
+        font-size: var(--font-size-xs) !important;
+        padding: var(--spacing-1) var(--spacing-2) !important;
+    }
+    
+    #appointmentCalendar {
+        padding: var(--spacing-3);
+    }
+}
+

@@ -1,12 +1,17 @@
 {% extends "dashboard/base_dashboard.html" %}
 {% load static %}
 
+{% block chart_js %}
+<!-- Chart.js für Operations-Diagramme -->
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+{% endblock %}
+
 {% block title %}Operations-Dashboard{% endblock %}
 {% block header_title %}PraxiApp - Operationen{% endblock %}
 {% block nav_active_operations %}prx-header__link--active{% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="{% static 'css/pages/haupt_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/haupt_dashboard.css' %}?v=4.0">
 {% endblock %}
 
 {% block page_header %}
@@ -14,73 +19,204 @@
     <div class="prx-section__header">
         <div>
             <h1 class="prx-section__title">
-                <span>🩺</span> Operations-Dashboard
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                        <path d="M2 21l6-6 9-9 2 2-9 9-6 6H2zM20 4l.7-.7 1.4 1.4L21.4 5.4 20 4z"/>
+                    </svg>
+                </span>
+                Operations-Dashboard
             </h1>
             <p class="prx-section__subtitle">
                 Patientenfluss, Ressourcen und OP-Kennzahlen
             </p>
+            <div id="ops-chart-debug" class="text-muted text-sm" style="margin-top:6px;"></div>
         </div>
-        <div class="flex gap-2 items-center">
-            <select class="selector" id="periodSelect" onchange="window.location.href='?period=' + this.value" style="background: var(--color-accent-500); color: white;">
-                <option value="today" {% if period == "today" %}selected{% endif %}>Heute</option>
-                <option value="week" {% if period == "week" %}selected{% endif %}>Woche</option>
-                <option value="month" {% if period == "month" %}selected{% endif %}>Monat</option>
+        <div class="prx-flex prx-gap-3">
+            <select class="prx-select" id="periodSelect" onchange="window.location.href='?days=' + this.value" style="min-width: 150px;">
+                <option value="1" {% if selected_days == 1 %}selected{% endif %}>Heute</option>
+                <option value="7" {% if selected_days == 7 %}selected{% endif %}>Woche</option>
+                <option value="30" {% if selected_days == 30 %}selected{% endif %}>Monat</option>
             </select>
-            <a href="{% url 'dashboard:index' %}" class="prx-btn prx-btn--outline">
-                ← Zurück
+            <a href="{% url 'dashboard:index' %}" class="prx-btn prx-btn--secondary">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                    </svg>
+                </span>
+                Zurück
             </a>
+            <button class="prx-btn prx-btn--primary" onclick="location.reload()">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                </span>
+                Aktualisieren
+            </button>
         </div>
     </div>
 </section>
 {% endblock %}
 
 {% block kpi_section %}
-<section class="prx-kpi-grid" style="margin-bottom: var(--space-6);">
+<section class="prx-kpi-grid">
     <div class="prx-kpi prx-kpi--primary">
         <div class="prx-kpi__header">
-            <span class="prx-kpi__icon">🩺</span>
+            <span class="prx-kpi__icon">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2 21l6-6 9-9 2 2-9 9-6 6H2zM20 4l.7-.7 1.4 1.4L21.4 5.4 20 4z"/>
+                    </svg>
+                </span>
+            </span>
+            <div>
+                <div class="prx-kpi__label">
+                    Operationen
+                    <span
+                        class="prx-info-btn"
+                        role="button"
+                        tabindex="0"
+                        data-title="Operationen"
+                        data-info="Gesamtzahl der Operationen im Zeitraum."
+                        data-detail="Alle OPs zwischen den angezeigten Daten."
+                        aria-label="Info zu Operationen"
+                    >i</span>
+                </div>
+                <div class="prx-kpi__value">{{ utilization.total_operations|default:"0" }}</div>
+                <div class="prx-kpi__description">{{ period.from|date:"d.m.Y" }} – {{ period.to|date:"d.m.Y" }}</div>
+            </div>
         </div>
-        <div class="prx-kpi__label">Operationen</div>
-        <div class="prx-kpi__value">{{ kpis.total_operations|default:"0" }}</div>
-        <div class="prx-kpi__description">{{ period_label }}</div>
     </div>
     <div class="prx-kpi prx-kpi--success">
         <div class="prx-kpi__header">
-            <span class="prx-kpi__icon">✅</span>
-        </div>
-        <div class="prx-kpi__label">Abgeschlossen</div>
-        <div class="prx-kpi__value">{{ kpis.completed|default:"0" }}</div>
-        <div class="prx-kpi__footer">
-            <span class="prx-kpi__trend prx-kpi__trend--up">{{ kpis.completion_rate|default:"0" }}%</span>
+            <span class="prx-kpi__icon">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>
+                    </svg>
+                </span>
+            </span>
+            <div>
+                <div class="prx-kpi__label">
+                    Abgeschlossen
+                    <span
+                        class="prx-info-btn"
+                        role="button"
+                        tabindex="0"
+                        data-title="Abgeschlossen"
+                        data-info="Anzahl abgeschlossener Operationen."
+                        data-detail="Nur OPs mit Status abgeschlossen im Zeitraum."
+                        aria-label="Info zu Abgeschlossen"
+                    >i</span>
+                </div>
+                <div class="prx-kpi__value">{{ throughput.completed|default:"0" }}</div>
+                <div class="prx-kpi__description">{{ throughput.completion_rate|default:"0" }}% Abschlussquote</div>
+            </div>
         </div>
     </div>
     <div class="prx-kpi prx-kpi--warning">
         <div class="prx-kpi__header">
-            <span class="prx-kpi__icon">🔄</span>
+            <span class="prx-kpi__icon">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/>
+                    </svg>
+                </span>
+            </span>
+            <div>
+                <div class="prx-kpi__label">
+                    In Bearbeitung
+                    <span
+                        class="prx-info-btn"
+                        role="button"
+                        tabindex="0"
+                        data-title="In Bearbeitung"
+                        data-info="OPs im laufenden Status."
+                        data-detail="Operationen, die aktuell bearbeitet werden."
+                        aria-label="Info zu In Bearbeitung"
+                    >i</span>
+                </div>
+                <div class="prx-kpi__value">{{ utilization.in_progress|default:"0" }}</div>
+            </div>
         </div>
-        <div class="prx-kpi__label">In Bearbeitung</div>
-        <div class="prx-kpi__value">{{ kpis.in_progress|default:"0" }}</div>
     </div>
     <div class="prx-kpi prx-kpi--info">
         <div class="prx-kpi__header">
-            <span class="prx-kpi__icon">⏱️</span>
+            <span class="prx-kpi__icon">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                    </svg>
+                </span>
+            </span>
+            <div>
+                <div class="prx-kpi__label">
+                    Ø OP-Dauer
+                    <span
+                        class="prx-info-btn"
+                        role="button"
+                        tabindex="0"
+                        data-title="Ø OP-Dauer"
+                        data-info="Durchschnittliche OP-Dauer."
+                        data-detail="Mittlere Dauer aller Operationen im Zeitraum."
+                        aria-label="Info zu Ø OP-Dauer"
+                    >i</span>
+                </div>
+                <div class="prx-kpi__value">{{ throughput.avg_duration_minutes|default:"0" }}<span class="prx-kpi__unit">min</span></div>
+            </div>
         </div>
-        <div class="prx-kpi__label">Ø OP-Dauer</div>
-        <div class="prx-kpi__value">{{ kpis.avg_duration|default:"0" }}<span class="prx-kpi__unit">min</span></div>
     </div>
-    <div class="prx-kpi prx-kpi--accent">
+    <div class="prx-kpi prx-kpi--mint">
         <div class="prx-kpi__header">
-            <span class="prx-kpi__icon">🏥</span>
+            <span class="prx-kpi__icon">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M3 11h18v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-9zM7 7h10v4H7V7zM12 2l4 3h-3v2h-2V5H8l4-3z"/>
+                    </svg>
+                </span>
+            </span>
+            <div>
+                <div class="prx-kpi__label">
+                    Raum-Auslastung
+                    <span
+                        class="prx-info-btn"
+                        role="button"
+                        tabindex="0"
+                        data-title="Raum-Auslastung"
+                        data-info="Auslastung der OP-Raeume."
+                        data-detail="Belegte OP-Zeit im Verhaeltnis zur Verfuegbarkeit."
+                        aria-label="Info zu Raum-Auslastung"
+                    >i</span>
+                </div>
+                <div class="prx-kpi__value">{{ utilization.room_utilization_percent|default:"0" }}<span class="prx-kpi__unit">%</span></div>
+            </div>
         </div>
-        <div class="prx-kpi__label">Raum-Auslastung</div>
-        <div class="prx-kpi__value">{{ kpis.room_utilization|default:"0" }}<span class="prx-kpi__unit">%</span></div>
     </div>
-    <div class="prx-kpi prx-kpi--{% if kpis.punctuality_rate >= 90 %}success{% elif kpis.punctuality_rate >= 70 %}warning{% else %}danger{% endif %}">
+    <div class="prx-kpi prx-kpi--{% if punctuality.rate >= 90 %}success{% elif punctuality.rate >= 70 %}warning{% else %}danger{% endif %}">
         <div class="prx-kpi__header">
-            <span class="prx-kpi__icon">⏰</span>
+            <span class="prx-kpi__icon">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                    </svg>
+                </span>
+            </span>
+            <div>
+                <div class="prx-kpi__label">
+                    Pünktlichkeit
+                    <span
+                        class="prx-info-btn"
+                        role="button"
+                        tabindex="0"
+                        data-title="Pünktlichkeit"
+                        data-info="Anteil puenktlicher OPs."
+                        data-detail="Misst, wie viele OPs ohne Verzoegerung starten."
+                        aria-label="Info zu Pünktlichkeit"
+                    >i</span>
+                </div>
+                <div class="prx-kpi__value">{{ punctuality.rate|default:"0" }}<span class="prx-kpi__unit">%</span></div>
+            </div>
         </div>
-        <div class="prx-kpi__label">Pünktlichkeit</div>
-        <div class="prx-kpi__value">{{ kpis.punctuality_rate|default:"0" }}<span class="prx-kpi__unit">%</span></div>
     </div>
 </section>
 {% endblock %}
@@ -89,11 +225,20 @@
 <!-- Patient Flow Pipeline -->
 <section class="prx-section">
     <div class="prx-card">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2);">
             <h3 class="prx-card__title">
                 <span class="prx-card__title-icon">🚶</span>
                 Patientenfluss Live
             </h3>
+            <span
+                class="prx-info-btn"
+                role="button"
+                tabindex="0"
+                data-title="Patientenfluss Live"
+                data-info="Aktueller Status der Patienten im OP-Prozess."
+                data-detail="Zeigt die Verteilung in den Phasen: angemeldet, warten, Vorbereitung, Behandlung, Nachbereitung, abgeschlossen."
+                aria-label="Info zu Patientenfluss Live"
+            >i</span>
         </div>
         <div class="prx-card__body">
             <div class="flow-pipeline">
@@ -114,15 +259,27 @@
 <div class="prx-content-grid">
     <!-- Stündliche Verteilung -->
     <div class="prx-card prx-span-2">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2);">
             <h3 class="prx-card__title">
                 <span class="prx-card__title-icon">📈</span>
                 Stündliche Verteilung
             </h3>
-            <span class="prx-badge prx-badge--info">Peak: {{ hourly.peak_hour }}:00 Uhr</span>
+            <div style="display: inline-flex; align-items: center; gap: var(--spacing-2);">
+                <span class="prx-badge prx-badge--info">Peak: {{ hourly.peak_hour }}:00 Uhr</span>
+                <span
+                    class="prx-info-btn"
+                    role="button"
+                    tabindex="0"
+                    data-title="Stündliche Verteilung"
+                    data-info="Verteilung der OPs über den Tag."
+                    data-detail="Zeigt, in welchen Stunden die meisten OPs stattfinden."
+                    aria-label="Info zur Stündlichen Verteilung"
+                >i</span>
+            </div>
         </div>
         <div class="prx-card__body">
             <div class="prx-chart-container prx-chart-container--md">
+                <div class="text-muted text-sm prx-text-center prx-chart-placeholder">Diagramm lädt…</div>
                 <canvas id="hourlyChart"></canvas>
             </div>
         </div>
@@ -130,11 +287,20 @@
 
     <!-- Durchlaufzeiten -->
     <div class="prx-card">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2);">
             <h3 class="prx-card__title">
                 <span class="prx-card__title-icon">⏱️</span>
                 Durchlaufzeiten
             </h3>
+            <span
+                class="prx-info-btn"
+                role="button"
+                tabindex="0"
+                data-title="Durchlaufzeiten"
+                data-info="Durchschnittliche Zeiten je Prozessschritt."
+                data-detail="Wartezeit, Vorbereitung, Behandlung und Nachbereitung in Minuten."
+                aria-label="Info zu Durchlaufzeiten"
+            >i</span>
         </div>
         <div class="prx-card__body">
             <div class="flow-times-grid">
@@ -163,11 +329,20 @@
 
     <!-- Ressourcen-Auslastung -->
     <div class="prx-card prx-span-2">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2);">
             <h3 class="prx-card__title">
                 <span class="prx-card__title-icon">🏥</span>
                 Ressourcen-Auslastung
             </h3>
+            <span
+                class="prx-info-btn"
+                role="button"
+                tabindex="0"
+                data-title="Ressourcen-Auslastung"
+                data-info="Auslastung aller Ressourcen."
+                data-detail="Uebersicht der Auslastung je Raum und Geraet."
+                aria-label="Info zu Ressourcen-Auslastung"
+            >i</span>
         </div>
         <div class="prx-card__body">
             <div class="prx-table-wrapper">
@@ -211,11 +386,20 @@
 
     <!-- Engpass-Analyse -->
     <div class="prx-card">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2);">
             <h3 class="prx-card__title">
                 <span class="prx-card__title-icon">🚨</span>
                 Engpass-Analyse
             </h3>
+            <span
+                class="prx-info-btn"
+                role="button"
+                tabindex="0"
+                data-title="Engpass-Analyse"
+                data-info="Faktoren, die Engpaesse verursachen."
+                data-detail="Bewertet Ressourcen, No-Show und Stornoquote als Einflussfaktoren."
+                aria-label="Info zu Engpass-Analyse"
+            >i</span>
         </div>
         <div class="prx-card__body">
             <div class="prx-text-center mb-4">
@@ -252,33 +436,63 @@
 
     <!-- Status Charts Row -->
     <div class="prx-card">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2);">
             <h3 class="prx-card__title">📊 Status-Verteilung</h3>
+            <span
+                class="prx-info-btn"
+                role="button"
+                tabindex="0"
+                data-title="Status-Verteilung"
+                data-info="Verteilung der OP-Status."
+                data-detail="Zeigt Anteile pro Status (geplant, in Arbeit, abgeschlossen)."
+                aria-label="Info zu Status-Verteilung"
+            >i</span>
         </div>
         <div class="prx-card__body">
             <div class="prx-chart-container prx-chart-container--sm">
+                <div class="text-muted text-sm prx-text-center prx-chart-placeholder">Diagramm lädt…</div>
                 <canvas id="statusChart"></canvas>
             </div>
         </div>
     </div>
 
     <div class="prx-card">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2);">
             <h3 class="prx-card__title">⏰ Pünktlichkeit</h3>
+            <span
+                class="prx-info-btn"
+                role="button"
+                tabindex="0"
+                data-title="Pünktlichkeit"
+                data-info="Puenktliche Starts vs. Verzoegerungen."
+                data-detail="Vergleicht geplante und tatsaechliche Startzeiten."
+                aria-label="Info zu Pünktlichkeit (Chart)"
+            >i</span>
         </div>
         <div class="prx-card__body">
             <div class="prx-chart-container prx-chart-container--sm">
+                <div class="text-muted text-sm prx-text-center prx-chart-placeholder">Diagramm lädt…</div>
                 <canvas id="punctualityChart"></canvas>
             </div>
         </div>
     </div>
 
     <div class="prx-card">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2);">
             <h3 class="prx-card__title">📝 Dokumentation</h3>
+            <span
+                class="prx-info-btn"
+                role="button"
+                tabindex="0"
+                data-title="Dokumentation"
+                data-info="Erfasste vs. fehlende Dokumentation."
+                data-detail="Zeigt, wie viele OPs vollstaendig dokumentiert sind."
+                aria-label="Info zu Dokumentation"
+            >i</span>
         </div>
         <div class="prx-card__body">
             <div class="prx-chart-container prx-chart-container--sm">
+                <div class="text-muted text-sm prx-text-center prx-chart-placeholder">Diagramm lädt…</div>
                 <canvas id="documentationChart"></canvas>
             </div>
         </div>
@@ -286,14 +500,24 @@
 
     <!-- Daily Trend -->
     <div class="prx-card prx-span-full">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2);">
             <h3 class="prx-card__title">
                 <span class="prx-card__title-icon">📈</span>
                 Täglicher Trend
             </h3>
+            <span
+                class="prx-info-btn"
+                role="button"
+                tabindex="0"
+                data-title="Täglicher Trend"
+                data-info="Trend der OP-Kennzahlen pro Tag."
+                data-detail="Zeigt Verlauf der wichtigsten OP-Kennzahlen im Zeitfenster."
+                aria-label="Info zu Täglicher Trend"
+            >i</span>
         </div>
         <div class="prx-card__body">
             <div class="prx-chart-container prx-chart-container--md">
+                <div class="text-muted text-sm prx-text-center prx-chart-placeholder">Diagramm lädt…</div>
                 <canvas id="dailyTrendChart"></canvas>
             </div>
         </div>
@@ -301,11 +525,20 @@
 
     <!-- Room Heatmap -->
     <div class="prx-card prx-span-2">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-2);">
             <h3 class="prx-card__title">
                 <span class="prx-card__title-icon">🔥</span>
                 Raum-Heatmap
             </h3>
+            <span
+                class="prx-info-btn"
+                role="button"
+                tabindex="0"
+                data-title="Raum-Heatmap"
+                data-info="Heatmap der Raumbelegung."
+                data-detail="Dunklere Felder bedeuten hoeher ausgelastete Zeiten."
+                aria-label="Info zu Raum-Heatmap"
+            >i</span>
         </div>
         <div class="prx-card__body">
             {% if charts.room_heatmap.rooms %}
@@ -384,15 +617,77 @@
 {% endblock %}
 
 {% block inline_scripts %}
+<script type="application/json" id="prx-operations-charts-data">{{ charts_json|default:"{}"|safe }}</script>
 <script>
-    const chartsData = {{ charts_json|safe|default:"{}" }};
+    const _readJson = (id, fallback) => {
+        const el = document.getElementById(id);
+        if (!el) return fallback;
+        try {
+            return JSON.parse(el.textContent || '');
+        } catch (e) {
+            return fallback;
+        }
+    };
+
+    const runCharts = () => {
+    const debugEl = document.getElementById('ops-chart-debug');
+    document.querySelectorAll('.prx-chart-placeholder').forEach((el) => {
+        if (!el.dataset.touched) {
+            el.dataset.touched = '1';
+            el.textContent = 'Charts initialisieren…';
+        }
+    });
+    const renderMessage = (canvasId, message) => {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const container = canvas.parentElement;
+        if (!container) return;
+        const ph = container.querySelector('.prx-chart-placeholder');
+        if (ph) {
+            ph.textContent = message;
+            return;
+        }
+        container.innerHTML = `<div class="text-muted text-sm prx-text-center prx-chart-placeholder">${message}</div>`;
+    };
+
+    const clearPlaceholder = (canvasId) => {
+        const canvas = document.getElementById(canvasId);
+        if (!canvas) return;
+        const container = canvas.parentElement;
+        if (!container) return;
+        const ph = container.querySelector('.prx-chart-placeholder');
+        if (ph) ph.remove();
+    };
+    const chartsData = _readJson('prx-operations-charts-data', {});
+    if (debugEl) {
+        const keys = Object.keys(chartsData || {});
+        debugEl.textContent = `Chart.js: ${window.Chart ? 'ok' : 'missing'} | keys: ${keys.join(', ') || 'none'}`;
+    }
+    const palette = (window.PRX_COLORS && window.PRX_COLORS.palette && window.PRX_COLORS.palette.length)
+        ? window.PRX_COLORS.palette
+        : ['#4A90E2', '#7ED6C1', '#6FCF97', '#F2C94C', '#EB5757'];
+    const paletteLight = (window.PRX_COLORS && window.PRX_COLORS.paletteLight && window.PRX_COLORS.paletteLight.length)
+        ? window.PRX_COLORS.paletteLight
+        : ['rgba(74,144,226,0.12)', 'rgba(126,214,193,0.12)', 'rgba(111,207,151,0.12)', 'rgba(242,201,76,0.12)', 'rgba(235,87,87,0.12)'];
+
+    try {
+
+    if (!window.Chart) {
+        ['hourlyChart', 'statusChart', 'punctualityChart', 'documentationChart', 'dailyTrendChart'].forEach((id) => {
+            renderMessage(id, 'Chart.js nicht geladen');
+        });
+        return;
+    }
     
     // Stündliche Verteilung
-    if (chartsData.hourly_distribution) {
+    if (!chartsData.hourly_distribution || !chartsData.hourly_distribution.labels || !chartsData.hourly_distribution.labels.length) {
+        renderMessage('hourlyChart', 'Keine Daten verfügbar');
+    } else if (window.Chart) {
         chartsData.hourly_distribution.datasets.forEach((ds, i) => {
-            ds.backgroundColor = PRX_COLORS.palette[i];
+            ds.backgroundColor = palette[i % palette.length];
         });
         
+        clearPlaceholder('hourlyChart');
         new Chart(document.getElementById('hourlyChart'), {
             type: 'bar',
             data: chartsData.hourly_distribution,
@@ -409,11 +704,14 @@
     }
     
     // Status-Verteilung
-    if (chartsData.status_distribution) {
+    if (!chartsData.status_distribution || !chartsData.status_distribution.labels || !chartsData.status_distribution.labels.length) {
+        renderMessage('statusChart', 'Keine Daten verfügbar');
+    } else if (window.Chart) {
         chartsData.status_distribution.datasets[0].backgroundColor = [
             PRX_COLORS.success, PRX_COLORS.warning, PRX_COLORS.accent, PRX_COLORS.neutralMedium
         ];
         
+        clearPlaceholder('statusChart');
         new Chart(document.getElementById('statusChart'), {
             type: 'doughnut',
             data: chartsData.status_distribution,
@@ -427,11 +725,14 @@
     }
     
     // Pünktlichkeit
-    if (chartsData.punctuality) {
+    if (!chartsData.punctuality || !chartsData.punctuality.labels || !chartsData.punctuality.labels.length) {
+        renderMessage('punctualityChart', 'Keine Daten verfügbar');
+    } else if (window.Chart) {
         chartsData.punctuality.datasets[0].backgroundColor = [
             PRX_COLORS.success, PRX_COLORS.warning, PRX_COLORS.danger
         ];
         
+        clearPlaceholder('punctualityChart');
         new Chart(document.getElementById('punctualityChart'), {
             type: 'doughnut',
             data: chartsData.punctuality,
@@ -445,11 +746,14 @@
     }
     
     // Dokumentation
-    if (chartsData.documentation) {
+    if (!chartsData.documentation || !chartsData.documentation.labels || !chartsData.documentation.labels.length) {
+        renderMessage('documentationChart', 'Keine Daten verfügbar');
+    } else if (window.Chart) {
         chartsData.documentation.datasets[0].backgroundColor = [
             PRX_COLORS.success, PRX_COLORS.danger
         ];
         
+        clearPlaceholder('documentationChart');
         new Chart(document.getElementById('documentationChart'), {
             type: 'doughnut',
             data: chartsData.documentation,
@@ -463,13 +767,16 @@
     }
     
     // Täglicher Trend
-    if (chartsData.daily_trend) {
+    if (!chartsData.daily_trend || !chartsData.daily_trend.labels || !chartsData.daily_trend.labels.length) {
+        renderMessage('dailyTrendChart', 'Keine Daten verfügbar');
+    } else if (window.Chart) {
         chartsData.daily_trend.datasets.forEach((ds, i) => {
-            ds.borderColor = PRX_COLORS.palette[i];
-            ds.backgroundColor = PRX_COLORS.paletteLight[i];
+            ds.borderColor = palette[i % palette.length];
+            ds.backgroundColor = paletteLight[i % paletteLight.length];
             ds.fill = true;
         });
         
+        clearPlaceholder('dailyTrendChart');
         new Chart(document.getElementById('dailyTrendChart'), {
             type: 'line',
             data: chartsData.daily_trend,
@@ -483,6 +790,19 @@
                 }
             }
         });
+    }
+    } catch (e) {
+        ['hourlyChart', 'statusChart', 'punctualityChart', 'documentationChart', 'dailyTrendChart'].forEach((id) => {
+            renderMessage(id, 'Chart-Fehler');
+        });
+        console.error('[Operations Charts] Fehler beim Rendern:', e);
+    }
+    };
+
+    if (document.readyState === 'complete') {
+        runCharts();
+    } else {
+        window.addEventListener('load', runCharts);
     }
 </script>
 {% endblock %}

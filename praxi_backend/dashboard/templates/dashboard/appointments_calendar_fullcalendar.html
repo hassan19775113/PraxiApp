@@ -1,0 +1,420 @@
+{% extends "dashboard/base_dashboard.html" %}
+{% load static %}
+
+{% block title %}Terminplanung - Kalender{% endblock %}
+{% block header_title %}PraxiApp - Terminplanung{% endblock %}
+{% block nav_active_scheduling %}prx-header__link--active{% endblock %}
+
+{% block page_css %}
+<link rel="stylesheet" href="{% static 'css/pages/appointments_calendar_modern.css' %}?v=4.1">
+<!-- FullCalendar CSS (wird auch in base_dashboard.html geladen, aber hier als Backup) -->
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.css' rel='stylesheet' />
+<!-- Modern Calendar Component CSS -->
+<link rel="stylesheet" href="{% static 'js/calendar/calendar.css' %}?v=1.0">
+<link rel="stylesheet" href="{% static 'js/calendar/modal.css' %}?v=1.0">
+{% endblock %}
+
+{% block content %}
+<section class="prx-section">
+    <div class="prx-section__header">
+        <div>
+            <h1 class="prx-section__title">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                        <path d="M7 10h5v5H7v-5zm0 7h5v2H7v-2zM3 5h2V3h2v2h8V3h2v2h2a1 1 0 0 1 1 1v3H2V6a1 1 0 0 1 1-1z"/>
+                    </svg>
+                </span>
+                Terminplanung
+            </h1>
+            <p class="prx-section__subtitle"></p>
+            <div id="calendarRangeDebug" class="text-muted text-sm"></div>
+        </div>
+        <div class="prx-flex prx-gap-3">
+            <button class="prx-btn prx-btn--secondary" id="refreshCalendarBtn" type="button" data-calendar-refresh>
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                </span>
+                Aktualisieren
+            </button>
+        </div>
+    </div>
+    
+    <div class="prx-card">
+        <div class="prx-card__body" style="padding: 0;">
+            <div class="prx-calendar-layout">
+                <div class="prx-calendar-main">
+                    <div id="appointmentCalendar"></div>
+                </div>
+                <aside class="prx-calendar-sidebar">
+                    <div class="prx-calendar-filter">
+                        <div class="prx-calendar-filter__title">Filter</div>
+                        <label class="prx-form-label" for="doctorFilter">Arzt</label>
+                        <select id="doctorFilter" class="prx-select">
+                            <option value="">Alle Ärzte</option>
+                        </select>
+                        <label class="prx-form-label" for="titleFilter" style="margin-top: var(--spacing-3);">Titel</label>
+                        <select id="titleFilter" class="prx-select">
+                            <option value="">Alle Titel</option>
+                        </select>
+                        <div class="text-muted text-sm prx-calendar-filter__hint">
+                            Auswahl filtert die Termine im Kalender.
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_scripts %}
+<!-- Modern Calendar Component JS -->
+<script type="module" src="{% static 'js/calendar/index.js' %}?v=1.0"></script>
+
+<!-- Button-Integration für neue Kalender-Komponente -->
+<script>
+// Warte bis die neue Kalender-Komponente geladen ist
+(function() {
+    const populateTitleFilter = (appointments) => {
+        const titleSelect = document.getElementById('titleFilter');
+        if (!titleSelect) return;
+        const current = titleSelect.value;
+        const titles = new Set();
+        (appointments || []).forEach((appt) => {
+            const title = (appt.title || '').trim();
+            if (title) titles.add(title);
+        });
+        const options = [''];
+        Array.from(titles).sort().forEach((title) => options.push(title));
+        titleSelect.innerHTML = '';
+        options.forEach((value) => {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value || 'Alle Titel';
+            titleSelect.appendChild(option);
+        });
+        if (current) {
+            titleSelect.value = current;
+        }
+    };
+
+    function initButtons() {
+        const newBtn = document.getElementById('newAppointmentBtn');
+        const refreshBtn = document.getElementById('refreshCalendarBtn');
+        
+        // "Neuer Termin" Button
+        if (newBtn && window.modernCalendar) {
+            // Entferne alte Event-Listener
+            const newBtnClone = newBtn.cloneNode(true);
+            newBtn.parentNode.replaceChild(newBtnClone, newBtn);
+            
+            newBtnClone.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                if (window.modernCalendar && window.modernCalendar.modal) {
+                    window.modernCalendar.openNewAppointment();
+                } else {
+                    console.warn('[Modern Calendar] Calendar not ready yet');
+                }
+            });
+        }
+        
+        // "Aktualisieren" Button
+        if (refreshBtn && window.modernCalendar) {
+            const refreshBtnClone = refreshBtn.cloneNode(true);
+            refreshBtn.parentNode.replaceChild(refreshBtnClone, refreshBtn);
+            
+            refreshBtnClone.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (window.modernCalendar) {
+                    window.modernCalendar.loadAppointments();
+                }
+            });
+        }
+    }
+
+    async function initDoctorFilter() {
+        const select = document.getElementById('doctorFilter');
+        if (!select) return;
+        const titleSelect = document.getElementById('titleFilter');
+
+        try {
+            const response = await fetch('/api/appointments/doctors/', {
+                headers: { 'Accept': 'application/json' },
+                credentials: 'same-origin',
+            });
+            if (!response.ok) return;
+            const data = await response.json();
+            const doctors = Array.isArray(data) ? data : (data.results || []);
+            doctors.forEach((doc) => {
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = doc.name || `Arzt #${doc.id}`;
+                select.appendChild(option);
+            });
+        } catch (e) {
+            console.warn('[Calendar] Doctor filter load failed', e);
+        }
+
+        select.addEventListener('change', () => {
+            const value = select.value;
+            if (window.modernCalendar) {
+                window.modernCalendar.options.doctorId = value || null;
+                window.modernCalendar.loadAppointments();
+            }
+        });
+
+        if (titleSelect) {
+            titleSelect.addEventListener('change', () => {
+                if (window.modernCalendar) {
+                    window.modernCalendar.options.titleQuery = titleSelect.value;
+                    window.modernCalendar.renderAppointments();
+                }
+            });
+        }
+
+        if (titleSelect) {
+            try {
+                const response = await fetch('/api/appointment-types/', {
+                    headers: { 'Accept': 'application/json' },
+                    credentials: 'same-origin',
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const types = Array.isArray(data) ? data : (data.results || []);
+                    const titles = new Set();
+                    types.forEach((t) => {
+                        const name = (t.name || '').trim();
+                        if (name) titles.add(name);
+                    });
+                    if (titles.size) {
+                        const current = titleSelect.value;
+                        titleSelect.innerHTML = '';
+                        const allOpt = document.createElement('option');
+                        allOpt.value = '';
+                        allOpt.textContent = 'Alle Titel';
+                        titleSelect.appendChild(allOpt);
+                        Array.from(titles).sort().forEach((title) => {
+                            const option = document.createElement('option');
+                            option.value = title;
+                            option.textContent = title;
+                            titleSelect.appendChild(option);
+                        });
+                        if (current) {
+                            titleSelect.value = current;
+                        }
+                    }
+                }
+            } catch (e) {
+                console.warn('[Calendar] Title filter load failed', e);
+            }
+        }
+    }
+    
+    // Warte bis Kalender initialisiert ist
+    let retries = 0;
+    const maxRetries = 50;
+    
+    function checkCalendar() {
+        if (window.modernCalendar) {
+            window.modernCalendar.options.onAppointmentsLoaded = populateTitleFilter;
+            initButtons();
+            initDoctorFilter();
+            populateTitleFilter(window.modernCalendar.appointments || []);
+        } else if (retries < maxRetries) {
+            retries++;
+            setTimeout(checkCalendar, 100);
+        } else {
+            console.warn('[Modern Calendar] Calendar not initialized after', maxRetries, 'retries');
+        }
+    }
+    
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', checkCalendar);
+    } else {
+        checkCalendar();
+    }
+})();
+</script>
+
+<!-- FullCalendar JS (Backup - wird auch in base_dashboard.html geladen, aber hier sicherstellen) -->
+<!-- 
+HINWEIS: Die neue Modern Calendar Component wird automatisch initialisiert.
+Falls Sie weiterhin FullCalendar verwenden möchten, können Sie die folgenden Scripts aktivieren.
+-->
+<!--
+<script>
+// Prüfe ob FullCalendar geladen ist, falls nicht: nachladen
+(function() {
+    // Prüfe verschiedene mögliche globale Variablennamen für FullCalendar
+    var fcLoaded = typeof FullCalendar !== 'undefined' || 
+                   typeof window.FullCalendar !== 'undefined' ||
+                   typeof fc !== 'undefined' ||
+                   typeof window.fc !== 'undefined';
+    
+    if (!fcLoaded) {
+        console.warn('[Appointments Calendar] FullCalendar nicht gefunden, lade nach...');
+        var script1 = document.createElement('script');
+        script1.src = 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js';
+        script1.async = false;
+        script1.defer = false;
+        document.head.appendChild(script1);
+        
+        var script2 = document.createElement('script');
+        script2.src = 'https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales-all.global.min.js';
+        script2.async = false;
+        script2.defer = false;
+        document.head.appendChild(script2);
+    }
+})();
+</script>
+-->
+
+<!-- FullCalendar Initialisierung (auskommentiert, da neue Komponente verwendet wird) -->
+<!--
+<script>
+// Warte bis alle Scripts geladen sind (FullCalendar, AppointmentCalendar, AppointmentDialog)
+var initRetries = 0;
+var maxRetries = 50; // Maximal 5 Sekunden warten (50 * 100ms)
+
+function initAppointmentCalendar() {
+    initRetries++;
+    console.log('[Appointments Calendar] Checking dependencies (attempt ' + initRetries + ')...');
+    
+    // Prüfe ob FullCalendar geladen ist (verschiedene mögliche Variablennamen)
+    var fcAvailable = typeof FullCalendar !== 'undefined' || 
+                      typeof window.FullCalendar !== 'undefined' ||
+                      typeof fc !== 'undefined' ||
+                      typeof window.fc !== 'undefined';
+    
+    if (!fcAvailable) {
+        if (initRetries < maxRetries) {
+            console.warn('[Appointments Calendar] FullCalendar noch nicht geladen, warte...');
+            setTimeout(initAppointmentCalendar, 100);
+        } else {
+            console.error('[Appointments Calendar] FullCalendar konnte nicht geladen werden nach ' + maxRetries + ' Versuchen!');
+            console.error('[Appointments Calendar] Verfügbare globale Variablen:', Object.keys(window).filter(k => k.toLowerCase().includes('calendar')));
+        }
+        return;
+    }
+    
+    // Setze FullCalendar-Referenz für appointment-calendar.js
+    if (typeof FullCalendar === 'undefined' && typeof window.FullCalendar !== 'undefined') {
+        window.FullCalendar = window.FullCalendar;
+    } else if (typeof fc !== 'undefined') {
+        window.FullCalendar = fc;
+    }
+    
+    // Prüfe ob AppointmentDialog geladen ist
+    if (typeof AppointmentDialog === 'undefined') {
+        if (initRetries < maxRetries) {
+            console.warn('[Appointments Calendar] AppointmentDialog noch nicht geladen, warte...');
+            setTimeout(initAppointmentCalendar, 100);
+        } else {
+            console.error('[Appointments Calendar] AppointmentDialog konnte nicht geladen werden!');
+        }
+        return;
+    }
+    
+    // Prüfe ob AppointmentCalendar geladen ist
+    if (typeof AppointmentCalendar === 'undefined') {
+        if (initRetries < maxRetries) {
+            console.warn('[Appointments Calendar] AppointmentCalendar noch nicht geladen, warte...');
+            setTimeout(initAppointmentCalendar, 100);
+        } else {
+            console.error('[Appointments Calendar] AppointmentCalendar konnte nicht geladen werden!');
+        }
+        return;
+    }
+    
+    console.log('[Appointments Calendar] All dependencies loaded');
+    console.log('[Appointments Calendar] FullCalendar available:', fcAvailable);
+    console.log('[Appointments Calendar] AppointmentDialog:', typeof AppointmentDialog);
+    console.log('[Appointments Calendar] AppointmentCalendar:', typeof AppointmentCalendar);
+    
+    // Dialog initialisieren (MUSS VOR Calendar initialisiert werden)
+    try {
+        if (!window.appointmentDialogInstance) {
+            window.appointmentDialogInstance = new AppointmentDialog({
+                apiBaseUrl: '/api/'
+            });
+            console.log('[Appointments Calendar] AppointmentDialog initialized');
+        } else {
+            console.log('[Appointments Calendar] AppointmentDialog already initialized');
+        }
+    } catch (error) {
+        console.error('[Appointments Calendar] Error initializing AppointmentDialog:', error);
+    }
+    
+    // Calendar initialisieren
+    try {
+        if (!window.appointmentCalendar) {
+            window.appointmentCalendar = new AppointmentCalendar('appointmentCalendar', {
+                apiBaseUrl: '/api/calendar/week/',
+                initialView: 'timeGridWeek',
+                locale: 'de'
+            });
+            console.log('[Appointments Calendar] AppointmentCalendar initialized');
+        } else {
+            console.log('[Appointments Calendar] AppointmentCalendar already initialized');
+        }
+    } catch (error) {
+        console.error('[Appointments Calendar] Error initializing AppointmentCalendar:', error);
+    }
+    
+    // Event-Listener für "Neuer Termin" Button
+    const newBtn = document.getElementById('newAppointmentBtn');
+    if (newBtn) {
+        console.log('[Appointments Calendar] Registering click handler for newAppointmentBtn');
+        // Entferne eventuelle alte Listener durch Klonen
+        const newBtnClone = newBtn.cloneNode(true);
+        newBtn.parentNode.replaceChild(newBtnClone, newBtn);
+        
+        newBtnClone.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('[Appointments Calendar] New appointment button clicked');
+            
+            if (typeof window.openAppointmentDialog === 'function') {
+                try {
+                    window.openAppointmentDialog();
+                    console.log('[Appointments Calendar] openAppointmentDialog called');
+                } catch (error) {
+                    console.error('[Appointments Calendar] Error opening dialog:', error);
+                    alert('Fehler beim Öffnen des Termin-Dialogs. Bitte prüfen Sie die Browser-Konsole.');
+                }
+            } else {
+                console.error('[Appointments Calendar] openAppointmentDialog is not a function!', typeof window.openAppointmentDialog);
+                alert('Termin-Dialog konnte nicht geöffnet werden. Bitte laden Sie die Seite neu.');
+            }
+        });
+    } else {
+        console.error('[Appointments Calendar] newAppointmentBtn not found!');
+    }
+    
+    // Refresh-Event: Kalender aktualisieren nach Speichern
+    window.addEventListener('appointmentSaved', function() {
+        console.log('[Appointments Calendar] appointmentSaved event received');
+        if (window.appointmentCalendar) {
+            window.appointmentCalendar.refresh();
+        }
+    });
+}
+
+// Starte Initialisierung wenn DOM bereit ist
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() {
+        // Warte zusätzlich, damit alle Scripts geladen sind
+        setTimeout(initAppointmentCalendar, 300);
+    });
+} else {
+    // DOM ist bereits geladen
+    setTimeout(initAppointmentCalendar, 300);
+}
+</script>
+-->
+{% endblock %}
+
+{% block legacy_calendar_scripts %}{% endblock %}

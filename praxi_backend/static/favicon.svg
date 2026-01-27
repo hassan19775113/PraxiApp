@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- PraxiApp Medical Favicon -->
+  <!-- Design: Medical Cross in Soft Azure (#4A90E2) on white background -->
+  
+  <rect width="32" height="32" fill="#FFFFFF" rx="4"/>
+  
+  <!-- Medical Cross -->
+  <rect x="14" y="8" width="4" height="16" fill="#4A90E2" rx="1"/>
+  <rect x="8" y="14" width="16" height="4" fill="#4A90E2" rx="1"/>
+  
+  <!-- Subtle accent: small circles -->
+  <circle cx="11" cy="11" r="1.5" fill="#7ED6C1" opacity="0.6"/>
+  <circle cx="21" cy="21" r="1.5" fill="#7ED6C1" opacity="0.6"/>
+</svg>
+

@@ -18,8 +18,8 @@
 		</div>
 		<div class="cal-actions">
 			<a class="cal-btn" href="?date={{ day|date:'Y-m-d' }}">Heute</a>
-			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:appointments_calendar_week' %}?date={{ day|date:'Y-m-d' }}">Woche</a>
-			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:appointments_calendar_month' %}?date={{ day|date:'Y-m-d' }}">Monat</a>
+			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:appointments_calendar_week_legacy' %}?date={{ day|date:'Y-m-d' }}">Woche</a>
+			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:appointments_calendar_month_legacy' %}?date={{ day|date:'Y-m-d' }}">Monat</a>
 			<a class="cal-btn cal-btn--ghost" href="{% url 'dashboard:index' %}">← Zurück</a>
 		</div>
 	</div>
@@ -50,7 +50,7 @@
 										style="--cal-top: {{ a.top_px }}px; --cal-height: {{ a.height_px }}px; --cal-accent: {{ a.accent }};"
 									>
 										<div class="cal-event__time">{{ a.time_range }}</div>
-										<div class="cal-event__title">Patient ID: {{ a.patient_id }}</div>
+										<div class="cal-event__title">{{ a.patient_name|default:a.patient_id }}</div>
 										<div class="cal-event__meta">{{ a.doctor }} · {{ a.type }}</div>
 										<div class="cal-event__status">Status: {{ a.status }}</div>
 									</div>

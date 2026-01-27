@@ -3,7 +3,7 @@
 :root {
 	--cal-bg: #FFFFFF;
 	--cal-text: #2E2E2E;
-	--cal-border: #0078D4;
+	--cal-border: #4A90E2;
 	--cal-hover: #E8F3FC;
 
 	--cal-surface: #FFFFFF;
@@ -529,7 +529,7 @@ body {
 /* Optional subtle status tinting */
 .cal-event--cancelled { opacity: 0.78; }
 .cal-event--completed { border-left-color: #22C55E; }
-.cal-event--confirmed { border-left-color: #0078D4; }
+.cal-event--confirmed { border-left-color: #4A90E2; }
 .cal-event--scheduled { border-left-color: #7B61FF; }
 
 .cal-empty {

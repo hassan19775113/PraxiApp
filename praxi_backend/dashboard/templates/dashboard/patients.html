@@ -7,6 +7,52 @@
 
 {% block page_css %}
 <link rel="stylesheet" href="{% static 'css/pages/haupt_dashboard.css' %}">
+<style>
+    .prx-card__header { overflow: visible; }
+    .prx-kpi-grid { overflow: visible; }
+    .prx-kpi { overflow: visible; position: relative; }
+    .prx-kpi__label { display: flex; align-items: center; gap: 6px; }
+    .prx-kpi__label .prx-info-btn { width: 18px; height: 18px; font-size: 10px; }
+    .prx-info-btn {
+        background: #fff;
+        border: 1px solid var(--border-subtle);
+        border-radius: 999px;
+        width: 24px;
+        height: 24px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-text);
+        position: relative;
+        cursor: pointer;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
+    }
+    .prx-info-btn::after { content: none; }
+    .prx-info-tooltip {
+        position: fixed;
+        background: #0f172a;
+        color: #fff;
+        padding: 6px 8px;
+        border-radius: 8px;
+        font-size: 11px;
+        max-width: 240px;
+        white-space: normal;
+        box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+        pointer-events: none;
+        z-index: 100000;
+        opacity: 0;
+        transform: translateY(4px);
+        transition: opacity 0.12s ease, transform 0.12s ease;
+    }
+    .prx-info-tooltip.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+    }
+</style>
+{% endblock %}
+
+{% block chart_js %}
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
 {% endblock %}
 
 {% block page_header %}
@@ -22,16 +68,17 @@
         </div>
         <div class="flex gap-2 items-center">
             <select
-                class="patient-selector"
+                class="patient-selector prx-select"
                 id="patientSelect"
                 data-current-patient-id="{{ selected_patient_id|default:'' }}"
-                style="background: var(--color-primary-500); color: white;"
             >
                 <option value="">Alle Patienten</option>
                 {% for p in patients %}
                 <option value="{{ p.patient_id }}" {% if p.patient_id == selected_patient_id %}selected{% endif %}>
-                    {{ p.display_name }}
+                    {{ p.display_name|default:"Unbekannter Patient" }}
                 </option>
+                {% empty %}
+                <option value="" disabled>Keine Patienten gefunden</option>
                 {% endfor %}
             </select>
             <a href="{% url 'dashboard:index' %}" class="prx-btn prx-btn--outline">
@@ -43,10 +90,31 @@
 {% endblock %}
 
 {% block content %}
-{% if patient %}
-<!-- Patient Profile -->
+{% if error %}
+<!-- Error Message -->
 <section class="prx-section">
     <div class="prx-card">
+        <div style="padding: var(--spacing-6); text-align: center;">
+            <h2 style="color: var(--color-text); margin-bottom: var(--spacing-4);">⚠️ {{ error }}</h2>
+            <p style="color: var(--color-text-light); margin-bottom: var(--spacing-6);">
+                {% if show_redirect_hint %}
+                Bitte verwenden Sie die <a href="{% url 'dashboard:patients_overview' %}" style="color: var(--color-primary-azure); text-decoration: underline;">Patientenliste</a> um einen Patienten auszuwählen.
+                {% else %}
+                Bitte wählen Sie einen Patienten aus der Liste oben aus.
+                {% endif %}
+            </p>
+            {% if show_redirect_hint %}
+            <a href="{% url 'dashboard:patients_overview' %}" class="prx-btn prx-btn--primary">
+                Zur Patientenliste
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% elif patient %}
+<!-- Patient Profile -->
+<section class="prx-section">
+    <div class="prx-card" data-patient-id="{{ patient.patient_id }}">
         <div class="profile-card-content">
             <div class="prx-avatar prx-avatar--xl" style="background: linear-gradient(135deg, var(--color-primary-500), var(--color-primary-600)); color: white; font-size: 2rem;">
                 {{ patient.initials }}
@@ -81,92 +149,205 @@
 <!-- KPIs -->
 <section class="prx-kpi-grid" style="margin-bottom: var(--space-6);">
     <div class="prx-kpi prx-kpi--primary">
-        <div class="prx-kpi__label">Termine Gesamt</div>
+        <div class="prx-kpi__label" style="display: flex; align-items: center; gap: var(--space-2);">
+            Termine Gesamt
+            <button
+                class="prx-info-btn"
+                type="button"
+                data-title="Termine Gesamt"
+                data-info="Summe aller Termine des Patienten."
+                data-detail="Zaehlt vergangene, kommende und stornierte Termine zusammen."
+                aria-label="Info zu Termine Gesamt"
+            >
+                <span style="font-size: 12px; font-weight: 700;">i</span>
+            </button>
+        </div>
         <div class="prx-kpi__value">{{ kpis.total_appointments|default:"0" }}</div>
     </div>
     <div class="prx-kpi prx-kpi--success">
-        <div class="prx-kpi__label">Letzter Besuch</div>
+        <div class="prx-kpi__label" style="display: flex; align-items: center; gap: var(--space-2);">
+            Letzter Besuch
+            <button
+                class="prx-info-btn"
+                type="button"
+                data-title="Letzter Besuch"
+                data-info="Datum des letzten abgeschlossenen Termins."
+                data-detail="Zeigt den letzten Termin mit Status abgeschlossen."
+                aria-label="Info zu Letzter Besuch"
+            >
+                <span style="font-size: 12px; font-weight: 700;">i</span>
+            </button>
+        </div>
         <div class="prx-kpi__value" style="font-size: var(--font-size-lg);">{{ kpis.last_visit|default:"—" }}</div>
     </div>
     <div class="prx-kpi prx-kpi--accent">
-        <div class="prx-kpi__label">Nächster Termin</div>
+        <div class="prx-kpi__label" style="display: flex; align-items: center; gap: var(--space-2);">
+            Nächster Termin
+            <button
+                class="prx-info-btn"
+                type="button"
+                data-title="Naechster Termin"
+                data-info="Datum des naechsten geplanten Termins."
+                data-detail="Zeigt den naechsten Termin in der Zukunft."
+                aria-label="Info zu Naechster Termin"
+            >
+                <span style="font-size: 12px; font-weight: 700;">i</span>
+            </button>
+        </div>
         <div class="prx-kpi__value" style="font-size: var(--font-size-lg);">{{ kpis.next_appointment|default:"—" }}</div>
     </div>
     <div class="prx-kpi prx-kpi--{% if kpis.no_show_rate > 15 %}danger{% elif kpis.no_show_rate > 5 %}warning{% else %}success{% endif %}">
-        <div class="prx-kpi__label">No-Show Rate</div>
+        <div class="prx-kpi__label" style="display: flex; align-items: center; gap: var(--space-2);">
+            No-Show Rate
+            <button
+                class="prx-info-btn"
+                type="button"
+                data-title="No-Show Rate"
+                data-info="Anteil nicht wahrgenommener Termine."
+                data-detail="No-Show Rate = No-Shows / (abgeschlossen + No-Shows) * 100."
+                aria-label="Info zu No-Show Rate"
+            >
+                <span style="font-size: 12px; font-weight: 700;">i</span>
+            </button>
+        </div>
         <div class="prx-kpi__value">{{ kpis.no_show_rate|default:"0" }}<span class="prx-kpi__unit">%</span></div>
     </div>
 </section>
 
 <!-- Main Content Grid -->
 <div class="prx-content-grid--2-cols prx-content-grid">
-    <!-- Vitals -->
+    <!-- Notes -->
     <div class="prx-card">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);">
             <h3 class="prx-card__title">
-                <span class="prx-card__title-icon">❤️</span>
-                Vitalzeichen
+                <span class="prx-card__title-icon">📝</span>
+                Notizen
             </h3>
+            <button
+                class="prx-info-btn"
+                type="button"
+                data-title="Notizen"
+                data-info="Arzt-Notizen und Verlaufseintraege."
+                data-detail="Hier schreibst du neue Notizen und siehst die bisherigen Eintraege mit Datum, Name und Rolle."
+                aria-label="Info zu Notizen"
+            >
+                <span style="font-size: 12px; font-weight: 700;">i</span>
+            </button>
         </div>
         <div class="prx-card__body">
-            {% if vitals %}
-            <div class="vital-grid">
-                {% if vitals.blood_pressure %}
-                <div class="vital-item">
-                    <div class="vital-icon">🩸</div>
-                    <div class="vital-value">{{ vitals.blood_pressure }}</div>
-                    <div class="vital-label">Blutdruck</div>
+            <div style="display: grid; gap: var(--space-4);">
+                <div>
+                    {% if vitals %}
+                    <div class="vital-grid">
+                        {% if vitals.blood_pressure %}
+                        <div class="vital-item">
+                            <div class="vital-icon">🩸</div>
+                            <div class="vital-value">{{ vitals.blood_pressure }}</div>
+                            <div class="vital-label">Blutdruck</div>
+                        </div>
+                        {% endif %}
+                        {% if vitals.heart_rate %}
+                        <div class="vital-item">
+                            <div class="vital-icon">💓</div>
+                            <div class="vital-value">{{ vitals.heart_rate }}</div>
+                            <div class="vital-label">Puls</div>
+                        </div>
+                        {% endif %}
+                        {% if vitals.temperature %}
+                        <div class="vital-item">
+                            <div class="vital-icon">🌡️</div>
+                            <div class="vital-value">{{ vitals.temperature }}°C</div>
+                            <div class="vital-label">Temperatur</div>
+                        </div>
+                        {% endif %}
+                        {% if vitals.weight %}
+                        <div class="vital-item">
+                            <div class="vital-icon">⚖️</div>
+                            <div class="vital-value">{{ vitals.weight }}kg</div>
+                            <div class="vital-label">Gewicht</div>
+                        </div>
+                        {% endif %}
+                        {% if vitals.height %}
+                        <div class="vital-item">
+                            <div class="vital-icon">📏</div>
+                            <div class="vital-value">{{ vitals.height }}cm</div>
+                            <div class="vital-label">Größe</div>
+                        </div>
+                        {% endif %}
+                        {% if vitals.bmi %}
+                        <div class="vital-item">
+                            <div class="vital-icon">📊</div>
+                            <div class="vital-value">{{ vitals.bmi }}</div>
+                            <div class="vital-label">BMI</div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted text-sm prx-text-center">Keine Vitaldaten vorhanden</p>
+                    {% endif %}
                 </div>
-                {% endif %}
-                {% if vitals.heart_rate %}
-                <div class="vital-item">
-                    <div class="vital-icon">💓</div>
-                    <div class="vital-value">{{ vitals.heart_rate }}</div>
-                    <div class="vital-label">Puls</div>
+
+                <div>
+                    <div class="text-sm font-medium" style="margin-bottom: var(--space-2);">Notizen</div>
+                    <form
+                        method="post"
+                        action="{% url 'dashboard:patient_note_create' patient.patient_id %}"
+                        style="display: grid; gap: var(--space-2); margin-bottom: var(--space-4); width: 100%; max-width: 100%; box-sizing: border-box;"
+                    >
+                        {% csrf_token %}
+                        <textarea class="prx-input" name="content" rows="3" placeholder="Neue Notiz schreiben..." required style="width: 100%; max-width: 100%; box-sizing: border-box; display: block;"></textarea>
+                        <button class="prx-btn prx-btn--primary" type="submit" style="width: 100%; max-width: 100%; box-sizing: border-box; display: block;">Notiz speichern</button>
+                    </form>
+                    <div style="max-height: 220px; overflow-y: auto; max-width: 100%; overflow-x: hidden;">
+                        {% if notes %}
+                        <div class="timeline">
+                            {% for note in notes|slice:":20" %}
+                            <div class="timeline-item" style="border-radius: 12px; padding: var(--space-3); background: var(--color-neutral-0); box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);">
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap;">
+                                    <div style="display: flex; align-items: center; gap: var(--space-2);">
+                                        <span class="prx-badge prx-badge--primary" style="font-size: 11px;">
+                                            {{ note.author_name|default:"Unbekannt" }}
+                                        </span>
+                                        {% if note.author_role %}
+                                        <span class="prx-badge" style="font-size: 11px;">
+                                            {{ note.author_role }}
+                                        </span>
+                                        {% endif %}
+                                    </div>
+                                    <div class="text-xs text-muted">{{ note.created_at|date:"d.m.Y H:i" }}</div>
+                                </div>
+                                <div class="text-sm" style="margin-top: var(--space-2); word-break: break-word; overflow-wrap: anywhere;">
+                                    {{ note.content|linebreaksbr }}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted text-sm prx-text-center">Keine Notizen vorhanden</p>
+                        {% endif %}
+                    </div>
                 </div>
-                {% endif %}
-                {% if vitals.temperature %}
-                <div class="vital-item">
-                    <div class="vital-icon">🌡️</div>
-                    <div class="vital-value">{{ vitals.temperature }}°C</div>
-                    <div class="vital-label">Temperatur</div>
-                </div>
-                {% endif %}
-                {% if vitals.weight %}
-                <div class="vital-item">
-                    <div class="vital-icon">⚖️</div>
-                    <div class="vital-value">{{ vitals.weight }}kg</div>
-                    <div class="vital-label">Gewicht</div>
-                </div>
-                {% endif %}
-                {% if vitals.height %}
-                <div class="vital-item">
-                    <div class="vital-icon">📏</div>
-                    <div class="vital-value">{{ vitals.height }}cm</div>
-                    <div class="vital-label">Größe</div>
-                </div>
-                {% endif %}
-                {% if vitals.bmi %}
-                <div class="vital-item">
-                    <div class="vital-icon">📊</div>
-                    <div class="vital-value">{{ vitals.bmi }}</div>
-                    <div class="vital-label">BMI</div>
-                </div>
-                {% endif %}
             </div>
-            {% else %}
-            <p class="text-muted text-sm prx-text-center">Keine Vitaldaten vorhanden</p>
-            {% endif %}
         </div>
     </div>
 
     <!-- Risk Score -->
     <div class="prx-card">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);">
             <h3 class="prx-card__title">
                 <span class="prx-card__title-icon">⚠️</span>
                 Risiko-Score
             </h3>
+            <button
+                class="prx-info-btn"
+                type="button"
+                data-title="Risiko-Score"
+                data-info="Gesundheitsrisiko basierend auf Verlauf und Diagnosen."
+                data-detail="Der Risiko-Score bewertet die aktuelle Risikolage des Patienten anhand der vorhandenen Daten. Hohe Werte deuten auf erhoehten Betreuungsbedarf hin."
+                aria-label="Info zum Risiko-Score"
+            >
+                <span style="font-size: 12px; font-weight: 700;">i</span>
+            </button>
         </div>
         <div class="prx-card__body prx-text-center">
             <div
@@ -194,12 +375,24 @@
 
     <!-- Lab Values -->
     <div class="prx-card">
-        <div class="prx-card__header">
-            <h3 class="prx-card__title">
-                <span class="prx-card__title-icon">🔬</span>
-                Laborwerte
-            </h3>
-            <span class="text-xs text-muted">{{ labs.latest_date|default:"—" }}</span>
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);">
+            <div style="display: flex; align-items: center; gap: var(--space-2);">
+                <h3 class="prx-card__title">
+                    <span class="prx-card__title-icon">🔬</span>
+                    Laborwerte
+                </h3>
+                <span class="text-xs text-muted">{{ labs.latest_date|default:"—" }}</span>
+            </div>
+            <button
+                class="prx-info-btn"
+                type="button"
+                data-title="Laborwerte"
+                data-info="Aktuelle Laborwerte und Ampelstatus."
+                data-detail="Die Laborwerte werden nach Ampelfarben eingeordnet (gruen, gelb, rot). So erkennst du schnell auffaellige Werte."
+                aria-label="Info zu Laborwerten"
+            >
+                <span style="font-size: 12px; font-weight: 700;">i</span>
+            </button>
         </div>
         <div class="prx-card__body">
             {% if labs.values %}
@@ -240,11 +433,21 @@
 
     <!-- Appointments Timeline -->
     <div class="prx-card">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);">
             <h3 class="prx-card__title">
                 <span class="prx-card__title-icon">📅</span>
                 Termine
             </h3>
+            <button
+                class="prx-info-btn"
+                type="button"
+                data-title="Termine"
+                data-info="Letzte und kommende Termine im Verlauf."
+                data-detail="Die Terminliste zeigt geplante und vergangene Termine mit Status und behandelndem Arzt."
+                aria-label="Info zu Terminen"
+            >
+                <span style="font-size: 12px; font-weight: 700;">i</span>
+            </button>
         </div>
         <div class="prx-card__body" style="max-height: 350px; overflow-y: auto;">
             {% if charts.appointments.timeline %}
@@ -268,13 +471,119 @@
             {% endif %}
         </div>
     </div>
+
+    <!-- Dokumente -->
+    <div class="prx-card">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);">
+            <h3 class="prx-card__title">
+                <span class="prx-card__title-icon">📄</span>
+                Dokumente & Berichte
+            </h3>
+            <button
+                class="prx-info-btn"
+                type="button"
+                data-title="Dokumente & Berichte"
+                data-info="Uploads und Dokumentverlauf zum Patienten."
+                data-detail="Hier kannst du Dokumente/Berichte hochladen und bestehende Eintraege oeffnen. Doppelklick zeigt weitere Details."
+                aria-label="Info zu Dokumenten"
+            >
+                <span style="font-size: 12px; font-weight: 700;">i</span>
+            </button>
+        </div>
+        <div class="prx-card__body" style="max-height: 350px; overflow-y: auto;">
+            <form
+                method="post"
+                action="{% url 'dashboard:patient_document_upload' patient.patient_id %}"
+                enctype="multipart/form-data"
+                style="display: grid; gap: var(--space-2); margin-bottom: var(--space-4);"
+            >
+                {% csrf_token %}
+                <input class="prx-input" type="text" name="title" placeholder="Dokumenttitel" required>
+                <select class="prx-select" name="doc_type">
+                    <option value="document">Dokument</option>
+                    <option value="report">Bericht</option>
+                </select>
+                <input class="prx-input" type="file" name="file">
+                <textarea class="prx-input" name="note" rows="2" placeholder="Notiz (optional)"></textarea>
+                <button class="prx-btn prx-btn--primary" type="submit">Dokument speichern</button>
+            </form>
+            {% if documents %}
+            <div class="timeline">
+                {% for doc in documents|slice:":10" %}
+                <div class="timeline-item">
+                    <div class="text-xs text-muted">{{ doc.date|slice:":10" }}</div>
+                    <div class="font-semibold">
+                        <a href="{% url 'dashboard:patient_document_detail' patient.patient_id doc.id %}">
+                            {{ doc.title }}
+                        </a>
+                    </div>
+                    <div class="text-sm text-secondary">{{ doc.kind }} · {{ doc.source|default:"Praxis" }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted text-sm prx-text-center">Keine Dokumente vorhanden</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Rezepte -->
+    <div class="prx-card">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);">
+            <h3 class="prx-card__title">
+                <span class="prx-card__title-icon">🧾</span>
+                Rezepte
+            </h3>
+            <button
+                class="prx-info-btn"
+                type="button"
+                data-title="Rezepte"
+                data-info="Aktive und abgelaufene Rezepte im Verlauf."
+                data-detail="Rezepte zeigen Ausstellungsdatum, Status und Gueltigkeit. Doppelklick fuer Details."
+                aria-label="Info zu Rezepten"
+            >
+                <span style="font-size: 12px; font-weight: 700;">i</span>
+            </button>
+        </div>
+        <div class="prx-card__body" style="max-height: 350px; overflow-y: auto;">
+            {% if prescriptions %}
+            <div class="timeline">
+                {% for rx in prescriptions|slice:":10" %}
+                <div class="timeline-item {% if rx.status == 'abgelaufen' %}cancelled{% endif %}">
+                    <div class="text-xs text-muted">{{ rx.issued_at|slice:":10" }}</div>
+                    <div class="font-semibold">
+                        <a href="{% url 'dashboard:patient_prescription_detail' patient.patient_id rx.id %}">
+                            {{ rx.medication }}
+                        </a>
+                    </div>
+                    <div class="text-sm text-secondary">
+                        {{ rx.status|title }} · gültig bis {{ rx.valid_until|slice:":10" }}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted text-sm prx-text-center">Keine Rezepte vorhanden</p>
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 <!-- Charts Section -->
 <div class="prx-content-grid--2-cols prx-content-grid" style="margin-top: var(--space-6);">
     <div class="prx-card">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);">
             <h3 class="prx-card__title">📈 Blutdruck-Verlauf</h3>
+            <button
+                class="prx-info-btn"
+                type="button"
+                data-title="Blutdruck-Verlauf"
+                data-info="Zeitlicher Verlauf der Blutdruckwerte."
+                data-detail="Das Diagramm zeigt den Verlauf der systolischen/diastolischen Werte ueber die Zeit."
+                aria-label="Info zum Blutdruck-Verlauf"
+            >
+                <span style="font-size: 12px; font-weight: 700;">i</span>
+            </button>
         </div>
         <div class="prx-card__body">
             <div class="prx-chart-container prx-chart-container--md">
@@ -284,8 +593,18 @@
     </div>
     
     <div class="prx-card">
-        <div class="prx-card__header">
+        <div class="prx-card__header" style="display: flex; align-items: center; justify-content: space-between; gap: var(--space-2);">
             <h3 class="prx-card__title">📊 Termin-Historie</h3>
+            <button
+                class="prx-info-btn"
+                type="button"
+                data-title="Termin-Historie"
+                data-info="Uebersicht ueber Terminarten im Verlauf."
+                data-detail="Die Historie zeigt die Verteilung vergangener Termine nach Typ."
+                aria-label="Info zur Termin-Historie"
+            >
+                <span style="font-size: 12px; font-weight: 700;">i</span>
+            </button>
         </div>
         <div class="prx-card__body">
             <div class="prx-chart-container prx-chart-container--md">
@@ -326,9 +645,42 @@
 
         const chartsData = readJson('prx-patient-charts-data', {});
 
+        // PRX_COLORS Definition (muss vor Verwendung stehen!)
+        if (typeof window.PRX_COLORS === 'undefined') {
+            window.PRX_COLORS = {
+                primary: '#4A90E2',      // Soft Azure
+                secondary: '#7ED6C1',   // Calm Mint
+                success: '#6FCF97',      // Soft Green
+                warning: '#F2C94C',      // Soft Amber
+                danger: '#EB5757',       // Soft Coral
+                info: '#0EA5E9',
+                neutralDark: '#2D3A45',
+                neutralMedium: '#7A8A99',
+                neutralLight: 'rgba(45, 58, 69, 0.1)',
+                palette: ['#4A90E2', '#7ED6C1', '#6FCF97', '#F2C94C', '#EB5757'],
+                paletteLight: [
+                    'rgba(74, 144, 226, 0.12)',   // Soft Azure
+                    'rgba(126, 214, 193, 0.12)',  // Calm Mint
+                    'rgba(111, 207, 151, 0.12)',  // Soft Green
+                    'rgba(242, 201, 76, 0.12)',   // Soft Amber
+                    'rgba(235, 87, 87, 0.12)'     // Soft Coral
+                ]
+            };
+        }
+        const PRX_COLORS = window.PRX_COLORS;
+
         // Navigation control (avoid inline onchange)
         const patientSelect = document.getElementById('patientSelect');
         if (patientSelect) {
+            // Debug: Zeige alle Optionen
+            const options = Array.from(patientSelect.options);
+            console.log('[Patient Dropdown] Gefundene Optionen:', options.length);
+            options.forEach((opt, idx) => {
+                if (idx < 5) {  // Erste 5 Optionen
+                    console.log(`  Option ${idx}: value="${opt.value}", text="${opt.text}", visible=${opt.offsetParent !== null}`);
+                }
+            });
+            
             patientSelect.addEventListener('change', function () {
                 const params = new URLSearchParams(window.location.search);
                 if (patientSelect.value) {
@@ -338,6 +690,23 @@
                 }
                 const qs = params.toString();
                 window.location.search = qs ? `?${qs}` : '';
+            });
+        } else {
+            console.warn('[Patient Dropdown] patientSelect Element nicht gefunden!');
+        }
+
+        // Doppelklick auf Patientenkarte → Bearbeitung im Praxi-Admin öffnen
+        const patientCard = document.querySelector('.prx-card[data-patient-id]');
+        if (patientCard) {
+            patientCard.style.cursor = 'pointer';
+            patientCard.addEventListener('dblclick', function () {
+                const patientId = patientCard.getAttribute('data-patient-id');
+                if (!patientId) {
+                    console.error('[Patients Dashboard] Kein patientId-Attribut gefunden.');
+                    return;
+                }
+                const url = `/praxi_backend/medical/patient/${patientId}/change/`;
+                window.location.href = url;
             });
         }
 
@@ -402,6 +771,81 @@
                 },
             });
         }
+
+        // Info-Modal bei Doppelklick
+        const infoButtons = document.querySelectorAll('.prx-info-btn');
+        if (infoButtons.length) {
+            let modal = document.getElementById('prx-info-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'prx-info-modal';
+                modal.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:9999;padding:16px;';
+                modal.innerHTML = `
+                    <div style="background:#fff;border-radius:12px;padding:16px;max-width:520px;width:100%;box-shadow:0 12px 30px rgba(15,23,42,0.2);">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                            <div data-role="title" style="font-weight:600;font-size:16px;">Info</div>
+                            <button data-role="close" type="button" style="border:0;background:transparent;font-size:20px;line-height:1;cursor:pointer;color:#6b7280;">×</button>
+                        </div>
+                        <div data-role="body" style="margin-top:8px;color:#334155;white-space:pre-line;"></div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+
+            const modalTitle = modal.querySelector('[data-role="title"]');
+            const modalBody = modal.querySelector('[data-role="body"]');
+            const closeBtn = modal.querySelector('[data-role="close"]');
+
+            const closeModal = () => {
+                modal.style.display = 'none';
+            };
+            if (closeBtn) {
+                closeBtn.addEventListener('click', closeModal);
+            }
+            modal.addEventListener('click', (event) => {
+                if (event.target === modal) {
+                    closeModal();
+                }
+            });
+
+            infoButtons.forEach((btn) => {
+                btn.addEventListener('dblclick', (event) => {
+                    event.preventDefault();
+                    const title = btn.getAttribute('data-title') || 'Info';
+                    const detail = btn.getAttribute('data-detail') || btn.getAttribute('data-info') || '';
+                    if (modalTitle) modalTitle.textContent = title;
+                    if (modalBody) modalBody.textContent = detail;
+                    modal.style.display = 'flex';
+                });
+            });
+        }
+
+        // Tooltip immer im Vordergrund (fixed)
+        const infoTooltip = document.createElement('div');
+        infoTooltip.className = 'prx-info-tooltip';
+        document.body.appendChild(infoTooltip);
+
+        const showTooltip = (btn) => {
+            const info = btn.getAttribute('data-info') || '';
+            if (!info) return;
+            infoTooltip.textContent = info;
+            const rect = btn.getBoundingClientRect();
+            const top = rect.top - 8;
+            const left = Math.min(rect.left, window.innerWidth - 260);
+            infoTooltip.style.top = `${Math.max(8, top - infoTooltip.offsetHeight)}px`;
+            infoTooltip.style.left = `${Math.max(8, left)}px`;
+            infoTooltip.classList.add('is-visible');
+        };
+
+        const hideTooltip = () => {
+            infoTooltip.classList.remove('is-visible');
+        };
+
+        document.querySelectorAll('.prx-info-btn').forEach((btn) => {
+            btn.addEventListener('mouseenter', () => showTooltip(btn));
+            btn.addEventListener('mouseleave', hideTooltip);
+            btn.addEventListener('blur', hideTooltip);
+        });
     })();
 </script>
 {% endblock %}

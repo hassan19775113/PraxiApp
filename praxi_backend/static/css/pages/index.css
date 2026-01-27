@@ -7,7 +7,7 @@ Design: Calm Medical UI - Outlook-Inspired
 Seite: Praxis-Übersicht mit KPI-Cards, Status-Badges, Charts
 
 Farbschema:
-- Primär: #0078D4 (Outlook Blue)
+- Primär: #4A90E2 (Soft Azure)
 - Sekundär: #4FB3BF (Soft Teal)
 - Akzent: #7BC6B0 (Mint Green)
 - Hintergrund: #F5F7FA
@@ -83,7 +83,7 @@ Farbschema:
 }
 
 /* KPI Varianten */
-.page-index .prx-kpi--primary::before { background: #0078D4; }
+.page-index .prx-kpi--primary::before { background: #4A90E2; }
 .page-index .prx-kpi--secondary::before { background: #4FB3BF; }
 .page-index .prx-kpi--accent::before { background: #7BC6B0; }
 .page-index .prx-kpi--success::before { background: #22C55E; }
@@ -307,7 +307,7 @@ Farbschema:
 }
 
 .page-index .prx-table a {
-    color: #0078D4;
+    color: #4A90E2;
     text-decoration: none;
     font-weight: 500;
 }
@@ -336,7 +336,7 @@ Farbschema:
 }
 
 .page-index .prx-btn--primary {
-    background: #0078D4;
+    background: #4A90E2;
     color: #FFFFFF;
 }
 
@@ -346,8 +346,8 @@ Farbschema:
 
 .page-index .prx-btn--outline {
     background: #FFFFFF;
-    color: #0078D4;
-    border: 1px solid #0078D4;
+    color: #4A90E2;
+    border: 1px solid #4A90E2;
 }
 
 .page-index .prx-btn--outline:hover {

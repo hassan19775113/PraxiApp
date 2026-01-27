@@ -1,12 +1,17 @@
 {% extends "dashboard/base_dashboard.html" %}
 {% load static %}
 
+{% block chart_js %}
+<!-- Chart.js für Doctors-Diagramme -->
+<script src="{% static 'vendor/chartjs/chart.umd.min.js' %}"></script>
+{% endblock %}
+
 {% block title %}Ärzte-Dashboard{% endblock %}
 {% block header_title %}PraxiApp - Ärzte{% endblock %}
 {% block nav_active_doctors %}prx-header__link--active{% endblock %}
 
 {% block page_css %}
-<link rel="stylesheet" href="{% static 'css/pages/haupt_dashboard.css' %}">
+<link rel="stylesheet" href="{% static 'css/pages/haupt_dashboard.css' %}?v=4.0">
 {% endblock %}
 
 {% block page_header %}
@@ -14,19 +19,19 @@
     <div class="prx-section__header">
         <div>
             <h1 class="prx-section__title">
-                <span>👨‍⚕️</span> Ärzte-Dashboard
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false">
+                        <path d="M12 12a4 4 0 100-8 4 4 0 000 8zm-6 8v-1c0-2.8 3.6-4 6-4s6 1.2 6 4v1H6z"/>
+                    </svg>
+                </span>
+                Ärzte-Dashboard
             </h1>
             <p class="prx-section__subtitle">
                 Performance, Termine und Auslastung der Behandler
             </p>
         </div>
-        <div class="flex gap-2 items-center">
-            <select
-                class="selector"
-                id="doctorSelect"
-                data-current-period="{{ period|default:'week' }}"
-                style="background: var(--color-secondary-500); color: var(--color-neutral-900);"
-            >
+        <div class="prx-flex prx-gap-3">
+            <select class="prx-select" id="doctorSelect" data-current-period="{{ period|default:'week' }}" style="min-width: 180px;">
                 <option value="">Alle Ärzte</option>
                 {% for doc in doctors_list %}
                 <option value="{{ doc.id }}" {% if doc.id == selected_doctor_id %}selected{% endif %}>
@@ -34,63 +39,146 @@
                 </option>
                 {% endfor %}
             </select>
-            <select
-                class="selector"
-                id="periodSelect"
-                data-current-doctor-id="{{ selected_doctor_id|default:'' }}"
-                style="background: var(--color-secondary-500); color: var(--color-neutral-900);"
-            >
+            <select class="prx-select" id="periodSelect" data-current-doctor-id="{{ selected_doctor_id|default:'' }}" style="min-width: 120px;">
                 <option value="week" {% if period == "week" %}selected{% endif %}>Woche</option>
                 <option value="month" {% if period == "month" %}selected{% endif %}>Monat</option>
                 <option value="quarter" {% if period == "quarter" %}selected{% endif %}>Quartal</option>
             </select>
-            <a href="{% url 'dashboard:index' %}" class="prx-btn prx-btn--outline">
-                ← Zurück
+            <a href="{% url 'dashboard:index' %}" class="prx-btn prx-btn--secondary">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+                    </svg>
+                </span>
+                Zurück
             </a>
+            <button class="prx-btn prx-btn--primary" onclick="location.reload()">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/>
+                    </svg>
+                </span>
+                Aktualisieren
+            </button>
         </div>
     </div>
 </section>
 {% endblock %}
 
 {% block kpi_section %}
-<!-- Aggregated Stats (All Doctors) -->
-<section class="prx-kpi-grid" style="margin-bottom: var(--space-6);">
-    <div class="prx-kpi prx-kpi--primary">
+<section class="prx-kpi-grid">
+    <a class="prx-kpi prx-kpi--primary" href="#doctors-overview">
         <div class="prx-kpi__header">
-            <span class="prx-kpi__icon">👨‍⚕️</span>
+            <span class="prx-kpi__icon">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 12a4 4 0 100-8 4 4 0 000 8zm-6 8v-1c0-2.8 3.6-4 6-4s6 1.2 6 4v1H6z"/>
+                    </svg>
+                </span>
+            </span>
+            <div>
+                <div class="prx-kpi__label">
+                    Aktive Ärzte
+                    <span
+                        class="prx-info-btn"
+                        role="button"
+                        tabindex="0"
+                        data-title="Aktive Ärzte"
+                        data-info="Anzahl aktiver Behandler im Zeitraum."
+                        data-detail="Zeigt, wie viele aerztliche Nutzer aktuell als aktiv gefuehrt werden."
+                        aria-label="Info zu Aktive Ärzte"
+                    >i</span>
+                </div>
+                <div class="prx-kpi__value">{{ stats.active_doctors|default:"0" }}</div>
+            </div>
         </div>
-        <div class="prx-kpi__label">Aktive Ärzte</div>
-        <div class="prx-kpi__value">{{ stats.active_doctors|default:"0" }}</div>
-    </div>
-    <div class="prx-kpi prx-kpi--success">
+    </a>
+    <a class="prx-kpi prx-kpi--success" href="{% url 'dashboard:appointments_calendar' %}">
         <div class="prx-kpi__header">
-            <span class="prx-kpi__icon">📅</span>
+            <span class="prx-kpi__icon">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.11 0-1.99.9-1.99 2L3 20c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zm0-12H5V6h14v2zM7 12h5v5H7v-5z"/>
+                    </svg>
+                </span>
+            </span>
+            <div>
+                <div class="prx-kpi__label">
+                    Termine Gesamt
+                    <span
+                        class="prx-info-btn"
+                        role="button"
+                        tabindex="0"
+                        data-title="Termine Gesamt"
+                        data-info="Summe aller Termine im Zeitraum."
+                        data-detail="Alle Termine aller Aerzte innerhalb des gewaehlten Zeitraums."
+                        aria-label="Info zu Termine Gesamt"
+                    >i</span>
+                </div>
+                <div class="prx-kpi__value">{{ stats.total_appointments|default:"0" }}</div>
+            </div>
         </div>
-        <div class="prx-kpi__label">Termine Gesamt</div>
-        <div class="prx-kpi__value">{{ stats.total_appointments|default:"0" }}</div>
-    </div>
-    <div class="prx-kpi prx-kpi--accent">
+    </a>
+    <a class="prx-kpi prx-kpi--mint" href="{% url 'dashboard:operations' %}">
         <div class="prx-kpi__header">
-            <span class="prx-kpi__icon">🩺</span>
+            <span class="prx-kpi__icon">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M2 21l6-6 9-9 2 2-9 9-6 6H2zM20 4l.7-.7 1.4 1.4L21.4 5.4 20 4z"/>
+                    </svg>
+                </span>
+            </span>
+            <div>
+                <div class="prx-kpi__label">
+                    Operationen
+                    <span
+                        class="prx-info-btn"
+                        role="button"
+                        tabindex="0"
+                        data-title="Operationen"
+                        data-info="Anzahl aller Operationen im Zeitraum."
+                        data-detail="Operationen, an denen Aerzte beteiligt sind (Haupt, Assistenz, Anästhesie)."
+                        aria-label="Info zu Operationen"
+                    >i</span>
+                </div>
+                <div class="prx-kpi__value">{{ stats.total_operations|default:"0" }}</div>
+            </div>
         </div>
-        <div class="prx-kpi__label">Operationen</div>
-        <div class="prx-kpi__value">{{ stats.total_operations|default:"0" }}</div>
-    </div>
-    <div class="prx-kpi prx-kpi--info">
+    </a>
+    <a class="prx-kpi prx-kpi--info" href="#utilization-chart">
         <div class="prx-kpi__header">
-            <span class="prx-kpi__icon">⏱️</span>
+            <span class="prx-kpi__icon">
+                <span class="fluent-icon" aria-hidden>
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
+                    </svg>
+                </span>
+            </span>
+            <div>
+                <div class="prx-kpi__label">
+                    Ø Auslastung
+                    <span
+                        class="prx-info-btn"
+                        role="button"
+                        tabindex="0"
+                        data-title="Ø Auslastung"
+                        data-info="Durchschnittliche Auslastung aller Aerzte."
+                        data-detail="Mittelwert der Auslastung ueber alle Aerzte im Zeitraum."
+                        aria-label="Info zu Auslastung"
+                    >i</span>
+                </div>
+                <div class="prx-kpi__value">{{ stats.avg_utilization|default:"0" }}<span class="prx-kpi__unit">%</span></div>
+            </div>
         </div>
-        <div class="prx-kpi__label">Ø Auslastung</div>
-        <div class="prx-kpi__value">{{ stats.avg_utilization|default:"0" }}<span class="prx-kpi__unit">%</span></div>
-    </div>
+    </a>
 </section>
 {% endblock %}
 
 {% block content %}
 {% if doctor %}
-<!-- Doctor Profile -->
+<!-- Doctor Profile (Doppelklick öffnet Bearbeitung im Praxi-Admin) -->
 <section class="prx-section">
-    <div class="prx-card">
+    <div class="prx-card prx-card--interactive" data-doctor-id="{{ doctor.id }}">
         <div class="doctor-card-content">
             <div
                 class="prx-avatar prx-avatar--xl prx-js-bg"
@@ -110,6 +198,9 @@
             <div class="flex flex-col gap-2 items-end">
                 <span class="prx-badge prx-badge--{% if doctor.is_active %}success{% else %}warning{% endif %}">
                     {% if doctor.is_active %}Aktiv{% else %}Inaktiv{% endif %}
+                </span>
+                <span class="text-xs text-secondary" style="margin-top: 0.25rem;">
+                    (Doppelklick, um Arzt, Arbeitszeiten, Pausen & Urlaub zu bearbeiten)
                 </span>
             </div>
         </div>
@@ -152,7 +243,7 @@
 <!-- Main Content -->
 <div class="prx-content-grid--2-cols prx-content-grid">
     <!-- Schedule -->
-    <div class="prx-card">
+    <div class="prx-card" id="appointments-chart">
         <div class="prx-card__header">
             <h3 class="prx-card__title">
                 <span class="prx-card__title-icon">🗓️</span>
@@ -176,7 +267,7 @@
     </div>
 
     <!-- Upcoming Appointments -->
-    <div class="prx-card">
+    <div class="prx-card" id="status-chart">
         <div class="prx-card__header">
             <h3 class="prx-card__title">
                 <span class="prx-card__title-icon">📅</span>
@@ -238,7 +329,7 @@
 <!-- All Doctors Overview -->
 <div class="prx-content-grid">
     <!-- Doctors List -->
-    <div class="prx-card prx-span-2">
+    <div class="prx-card prx-span-2" id="doctors-overview">
         <div class="prx-card__header">
             <h3 class="prx-card__title">
                 <span class="prx-card__title-icon">👨‍⚕️</span>
@@ -296,9 +387,14 @@
                                     {{ doc.no_show_rate }}%
                                 </span>
                             </td>
-                            <td>
-                                <a href="?doctor_id={{ doc.id }}" class="prx-btn prx-btn--ghost prx-btn--xs">
-                                    Details →
+                            <td style="text-align: right;">
+                                <a href="?doctor_id={{ doc.id }}" class="prx-btn prx-btn--ghost prx-btn--sm" title="Details anzeigen">
+                                    <span class="fluent-icon" aria-hidden>
+                                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 16px; height: 16px;">
+                                            <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>
+                                        </svg>
+                                    </span>
+                                    <span>Details</span>
                                 </a>
                             </td>
                         </tr>
@@ -314,7 +410,7 @@
     </div>
 
     <!-- Utilization Chart -->
-    <div class="prx-card">
+    <div class="prx-card" id="utilization-chart">
         <div class="prx-card__header">
             <h3 class="prx-card__title">📊 Auslastung pro Arzt</h3>
         </div>
@@ -377,7 +473,23 @@
             });
         }
 
-        // 2) Apply data-driven styles (keep style="..." free of Django syntax)
+        // 2) Doppelklick auf Arzt-Karte → Bearbeitung im Praxi-Admin öffnen
+        const doctorCard = document.querySelector('.prx-card.prx-card--interactive[data-doctor-id]');
+        if (doctorCard) {
+            doctorCard.style.cursor = 'pointer';
+            doctorCard.addEventListener('dblclick', function () {
+                const doctorId = doctorCard.getAttribute('data-doctor-id');
+                if (!doctorId) {
+                    console.error('[Doctors Dashboard] Kein doctorId-Attribut gefunden.');
+                    return;
+                }
+                // Öffnet die Detail-Seite des Arztes im Praxi-Admin (inkl. Arbeitszeiten, Pausen, Urlaub)
+                const url = `/praxi_backend/core/user/${doctorId}/change/`;
+                window.location.href = url;
+            });
+        }
+
+        // 3) Apply data-driven styles (keep style="..." free of Django syntax)
         for (const el of document.querySelectorAll('.prx-js-bg')) {
             const bg = el.dataset.bg;
             if (bg) el.style.background = bg;

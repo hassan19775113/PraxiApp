@@ -1,0 +1,29 @@
+{% extends 'dashboard/base_dashboard.html' %}
+
+{% block content %}
+<section class="prx-section">
+    <div class="prx-card">
+        <div class="prx-card__header">
+            <h3 class="prx-card__title">🧾 Rezept ansehen</h3>
+        </div>
+        <div class="prx-card__body">
+            {% if error %}
+            <p class="text-muted">{{ error }}</p>
+            {% else %}
+            <div class="text-sm text-muted" style="margin-bottom: var(--space-3);">
+                Patient: {{ patient.full_name|default:"Unbekannt" }} · Pat-Nr: {{ patient.patient_id }}
+            </div>
+            <div style="display: grid; gap: var(--space-2);">
+                <div><strong>Medikament:</strong> {{ prescription.medication }}</div>
+                <div><strong>Ausgestellt:</strong> {{ prescription.issued_at|slice:":10" }}</div>
+                <div><strong>Gueltig bis:</strong> {{ prescription.valid_until|slice:":10" }}</div>
+                <div><strong>Status:</strong> {{ prescription.status|title }}</div>
+            </div>
+            <div style="margin-top: var(--space-4);">
+                <a href="{% url 'dashboard:patient_detail' patient.patient_id %}" class="prx-btn prx-btn--ghost">Zurueck</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+{% endblock %}

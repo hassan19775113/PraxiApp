@@ -1,0 +1,58 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block content %}
+<div class="app-appointments module">
+    <div class="module" style="background: #fff; border-radius: 12px; padding: 16px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <a class="button" href="{{ changelist_url }}">Listenansicht</a>
+                <strong style="font-size: 16px;">{{ month_label }}</strong>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <a class="button" href="{{ prev_url }}">‹ Vorheriger Monat</a>
+                <a class="button" href="{{ next_url }}">Nächster Monat ›</a>
+            </div>
+        </div>
+
+        <div style="overflow: auto; border: 1px solid #E6E8EC; border-radius: 12px;">
+            <table style="border-collapse: collapse; width: 100%; min-width: 900px;">
+                <thead>
+                    <tr style="background: #F7F8FA;">
+                        <th style="position: sticky; left: 0; z-index: 2; background: #F7F8FA; text-align: left; padding: 10px 12px; border-right: 1px solid #E6E8EC; min-width: 220px;">Arzt</th>
+                        {% for day in dates %}
+                            <th style="text-align: center; padding: 8px 6px; border-right: 1px solid #E6E8EC; font-weight: 600; font-size: 12px;">
+                                {{ day|date:"d.m" }}
+                            </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in calendar_rows %}
+                        <tr>
+                            <td style="position: sticky; left: 0; z-index: 1; background: #fff; padding: 10px 12px; border-right: 1px solid #E6E8EC; font-weight: 600;">
+                                {{ row.doctor.get_full_name|default:row.doctor.username }}
+                            </td>
+                            {% for absence in row.entries %}
+                                {% if absence %}
+                                    <td title="{{ absence.reason|default:"Abwesenheit" }}" style="background: #FFE8C2; border-right: 1px solid #E6E8EC; text-align: center; font-size: 11px; padding: 6px; color: #7A4B00;">
+                                        {{ absence.reason|default:"-"|slice:":12" }}
+                                    </td>
+                                {% else %}
+                                    <td style="border-right: 1px solid #E6E8EC; text-align: center; font-size: 11px; padding: 6px; color: #9AA0A6;">—</td>
+                                {% endif %}
+                            {% endfor %}
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="{{ dates|length|add:1 }}" style="padding: 16px; text-align: center; color: #9AA0A6;">
+                                Keine Ärzte gefunden.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
