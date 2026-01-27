@@ -1,8 +1,8 @@
 # PraxiApp Komponenten‑Designsystem (Fluent‑UI Stil)
 
 Status: **Source of truth für Komponenten‑Regeln** (HTML‑Struktur + CSS‑Klassen), basierend auf:
-- Tokens: `praxi_backend/static/css/design-tokens.css`
-- Komponenten: `praxi_backend/static/css/components.css`
+- Tokens: `praxi_backend/static/css/design-tokens-modern.css`
+- Komponenten: `praxi_backend/static/css/components-modern.css`
 
 Ziel: Ruhige, professionelle UI für medizinische Praxissoftware (lange Nutzungsdauer, hohe Lesbarkeit, klare Interaktion).
 
@@ -11,8 +11,8 @@ Ziel: Ruhige, professionelle UI für medizinische Praxissoftware (lange Nutzungs
 ## CSS‑Architektur (empfohlen)
 
 **Layering (von allgemein nach spezifisch):**
-1. **Tokens**: `design-tokens.css` (Farben, Typografie, Spacing, Radius, Shadows, Z‑Index)
-2. **Components**: `components.css` (BEM‑artige Klassen pro Bauteil)
+1. **Tokens**: `design-tokens-modern.css` (Farben, Typografie, Spacing, Radius, Shadows, Z‑Index)
+2. **Components**: `components-modern.css` (BEM‑artige Klassen pro Bauteil)
 3. **Theme/Overrides** (optional): `theme.css` (z. B. Gradients, Glass‑Effekte, semantische Mappings)
 4. **Pages**: `pages/*.css` (nur Layout/Seiten‑Spezifika, keine neuen Tokens)
 

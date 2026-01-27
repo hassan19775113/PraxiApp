@@ -4,8 +4,8 @@ PraxiApp ist ein Backend für Praxis-Workflows (Termine, OP-Planung, Ressourcen,
 
 Dieses Repository enthält:
 - eine **REST API** unter `/api/…` (Django REST Framework)
-- ein **staff-only Dashboard** unter `/praxiadmin/dashboard/…` (server-rendered HTML)
-- einen **(custom) Admin-Bereich** unter `/praxiadmin/…` sowie den Standard-Django-Admin `/admin/`
+- ein **staff-only Dashboard** unter `/praxi_backend/dashboard/…` (server-rendered HTML)
+- einen **(custom) Admin-Bereich** unter `/praxi_backend/…` sowie den Standard-Django-Admin `/admin/`
 
 > Hinweis: Diese Dokumentation basiert ausschließlich auf dem aktuellen Stand dieses Repos (Ordner `praxi_backend/`, `docker-compose.*`, `DEPLOYMENT.md`, etc.).
 

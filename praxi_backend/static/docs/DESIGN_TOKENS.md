@@ -280,7 +280,7 @@ Ein professionelles, vertrauenswürdiges und modernes Design-System für medizin
 
 ```css
 /* Import */
-@import url('design-tokens.css');
+@import url('design-tokens-modern.css');
 
 /* Beispiel: Button */
 .button-primary {
@@ -316,7 +316,7 @@ Ein professionelles, vertrauenswürdiges und modernes Design-System für medizin
 
 ## 📁 Dateien
 
-- **CSS Tokens**: `praxi_backend/static/css/design-tokens.css`
+- **CSS Tokens**: `praxi_backend/static/css/design-tokens-modern.css`
 - **Dokumentation**: `praxi_backend/static/docs/DESIGN_TOKENS.md`
 
 ---

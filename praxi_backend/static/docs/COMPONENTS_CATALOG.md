@@ -9,8 +9,8 @@ Vollständige Dokumentation aller UI-Komponenten mit Beispielen, Varianten und D
 
 | Datei | Beschreibung |
 |-------|-------------|
-| `design-tokens.css` | CSS-Variablen und Tokens |
-| `components.css` | Alle Komponenten-Styles |
+| `design-tokens-modern.css` | CSS-Variablen und Tokens |
+| `components-modern.css` | Alle Komponenten-Styles |
 
 ---
 
@@ -782,8 +782,8 @@ Fokussierte Interaktionen, Bestätigungen, Formulare, Details.
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PraxiApp</title>
-  <link rel="stylesheet" href="/static/css/design-tokens.css">
-  <link rel="stylesheet" href="/static/css/components.css">
+  <link rel="stylesheet" href="/static/css/design-tokens-modern.css">
+  <link rel="stylesheet" href="/static/css/components-modern.css">
 </head>
 <body>
   <!-- App-Struktur -->

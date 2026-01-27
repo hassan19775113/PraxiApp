@@ -18,8 +18,8 @@ PraxiApp ist ein Backend für Praxisprozesse mit folgenden Hauptkomponenten:
 - Root URLs: `praxi_backend/urls.py`
   - `/api/` inkludiert `core`, `appointments`, `patients`
   - `/api/medical/` inkludiert `medical`
-  - `/praxiadmin/dashboard/` (Dashboard)
-  - `/praxiadmin/` (Custom Admin)
+  - `/praxi_backend/dashboard/` (Dashboard)
+  - `/praxi_backend/` (Custom Admin)
 
 ### Apps
 

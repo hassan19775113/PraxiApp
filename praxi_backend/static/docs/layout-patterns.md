@@ -3,11 +3,9 @@
 Diese Blueprints beschreiben wiederverwendbare Seiten‑Layouts für die wichtigsten PraxiApp‑Seitentypen.
 
 **Basis (Shell + Komponenten):**
-- Shell: `.app-header`, `.sidebar`, `.main-content` aus `praxi_backend/static/css/components.css`
-- Komponenten: Buttons, Cards/Panels, Tables, Forms, KPI‑Widgets, Modals, Breadcrumbs (ebenfalls `components.css`)
-- Tokens: `praxi_backend/static/css/design-tokens.css`
-
-> Hinweis: Es existiert zusätzlich ein älteres Dashboard‑System mit `.prx-*` Klassen (`base_dashboard.css`). Die folgenden Patterns sind für das **Fluent‑UI Token/Component‑System** gedacht und können schrittweise migriert werden.
+- Shell: `.app-header`, `.sidebar`, `.main-content` aus `praxi_backend/static/css/components-modern.css`
+- Komponenten: Buttons, Cards/Panels, Tables, Forms, KPI‑Widgets, Modals, Breadcrumbs (ebenfalls `components-modern.css`)
+- Tokens: `praxi_backend/static/css/design-tokens-modern.css`
 
 ---
 
