@@ -1,4 +1,3 @@
-from django.db.models import Q
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -7,6 +6,7 @@ from praxi_backend.core.utils import log_patient_action
 from praxi_backend.patients.models import Patient
 from praxi_backend.patients.permissions import PatientPermission
 from praxi_backend.patients.serializers import PatientReadSerializer, PatientWriteSerializer
+from praxi_backend.patients.services import search_patients
 
 
 class PatientSearchView(APIView):
@@ -22,24 +22,7 @@ class PatientSearchView(APIView):
 
     def get(self, request):
         query = (request.GET.get('q') or '').strip()
-        qs = Patient.objects.using('default').all()
-
-        if query:
-            # If the user typed an ID, allow exact matches.
-            if query.isdigit():
-                qs = qs.filter(id=int(query))
-            else:
-                # Keep it simple + fast: name / phone / email.
-                qs = qs.filter(
-                    Q(first_name__icontains=query)
-                    | Q(last_name__icontains=query)
-                    | Q(phone__icontains=query)
-                    | Q(email__icontains=query)
-                )
-            qs = qs.order_by('last_name', 'first_name', 'id')[:20]
-        else:
-            # Initial load without a query (e.g. focus): return a reasonable cap.
-            qs = qs.order_by('last_name', 'first_name', 'id')[:200]
+        qs = search_patients(query=query)
 
         data = PatientReadSerializer(qs, many=True).data
         return Response(data)

@@ -217,8 +217,16 @@ def _upsert_patients(rows: Iterable[LegacyPatientRow], *, chunk_size: int = 1000
                 to_update.append(obj)
 
         if to_create:
+            # ignore_conflicts=True means we cannot trust len(to_create) as actually created.
+            before_ids = set(
+                Patient.objects.using("default").filter(id__in=[p.id for p in to_create]).values_list("id", flat=True)
+            )
             Patient.objects.using("default").bulk_create(to_create, ignore_conflicts=True)
-            created += len(to_create)
+            after_ids = set(
+                Patient.objects.using("default").filter(id__in=[p.id for p in to_create]).values_list("id", flat=True)
+            )
+            # Count IDs that appeared due to this batch.
+            created += max(0, len(after_ids - before_ids))
 
         if to_update:
             Patient.objects.using("default").bulk_update(
@@ -250,7 +258,7 @@ def _upsert_patients(rows: Iterable[LegacyPatientRow], *, chunk_size: int = 1000
 class Command(BaseCommand):
     help = (
         "Import legacy patients into the unified managed patients table (default DB). "
-        "Keeps IDs stable." 
+        "Keeps IDs stable."
     )
 
     def add_arguments(self, parser):
@@ -333,6 +341,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS(f"[DRY RUN] Parsed {count} legacy patients"))
             return
 
+        self.stdout.write(f"Upserting into default DB (chunk_size={chunk_size})...")
         with transaction.atomic(using="default"):
             stats = _upsert_patients(rows, chunk_size=chunk_size)
 

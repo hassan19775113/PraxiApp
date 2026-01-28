@@ -2,11 +2,13 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 
 
 class PatientPermission(BasePermission):
-    """RBAC for Patient endpoints (system database cache).
+    """RBAC for Patient endpoints.
 
-    - admin: full access (read + write)
-    - assistant: full access (read + write)
-    - doctor: full access (read + write)
+    Current domain model has no explicit patient ownership/assignment relation.
+    Therefore RBAC is role-based only:
+    - admin: full access
+    - assistant: full access
+    - doctor: full access
     - billing: read-only
     """
 
@@ -15,6 +17,8 @@ class PatientPermission(BasePermission):
 
     def _role_name(self, request):
         user = getattr(request, "user", None)
+        if user and (getattr(user, "is_superuser", False) or getattr(user, "is_staff", False)):
+            return "admin"
         role = getattr(user, "role", None)
         return getattr(role, "name", None)
 
@@ -37,7 +41,7 @@ class PatientPermission(BasePermission):
         if not role_name:
             return False
 
-        # Billing can only read
+        # Billing can only read.
         if role_name == "billing" and request.method not in SAFE_METHODS:
             return False
 

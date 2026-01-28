@@ -1,6 +1,13 @@
 from rest_framework import serializers
 
 from praxi_backend.patients.models import Patient
+from praxi_backend.patients.services import create_patient, update_patient
+from praxi_backend.patients.validators import (
+    validate_birth_date_not_future,
+    validate_email_format,
+    validate_patient_pk,
+    validate_phone_format,
+)
 
 
 class PatientReadSerializer(serializers.ModelSerializer):
@@ -39,17 +46,24 @@ class PatientWriteSerializer(serializers.ModelSerializer):
 
     def validate_id(self, value):
         """Ensure the patient primary key (legacy patient_id) is positive."""
-        if value is None or value <= 0:
-            raise serializers.ValidationError('id must be a positive integer.')
-        return value
+        return validate_patient_pk(value)
+
+    def validate_birth_date(self, value):
+        return validate_birth_date_not_future(value)
+
+    def validate_email(self, value):
+        try:
+            return validate_email_format(value)
+        except Exception:
+            raise serializers.ValidationError("Invalid email address.")
+
+    def validate_phone(self, value):
+        return validate_phone_format(value)
 
     def create(self, validated_data):
         """Create patient using the default database."""
-        return Patient.objects.using('default').create(**validated_data)
+        return create_patient(data=validated_data)
 
     def update(self, instance, validated_data):
         """Update patient using the default database."""
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save(using='default')
-        return instance
+        return update_patient(instance=instance, data=validated_data)
