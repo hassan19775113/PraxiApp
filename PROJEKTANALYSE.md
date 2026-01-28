@@ -66,12 +66,11 @@ praxi_backend/
 - **Django** 5.x (modern, aktuelle Version)
 - **Django REST Framework** 3.15+
 - **JWT Authentication** (djangorestframework-simplejwt)
-- **PostgreSQL** (Production), **SQLite** (Development)
+- **PostgreSQL** (Single-DB; `default`)
 
 ### 3.2 Infrastructure
-- **Docker** + Docker Compose (Dev & Prod)
-- **Nginx** (Reverse Proxy, SSL)
-- **Gunicorn** (WSGI Server)
+- Reverse Proxy (optional; z. B. Nginx/IIS)
+- WSGI Server (z. B. Gunicorn)
 - **Celery** + Redis (vorbereitet, aber aktuell keine aktiven Tasks)
 - **WhiteNoise** (Static Files in Production)
 
@@ -79,7 +78,7 @@ praxi_backend/
 - **pytest** + pytest-django (Testing)
 - **python-dotenv** (Environment Variables)
 
-**Bewertung:** ✅ **Modern und Production-ready**
+**Bewertung:** ✅ **Modern und production-ready**
 
 ---
 
@@ -174,10 +173,7 @@ class AppointmentPermission(RBACPermission):
 ├── doctor-absences/     # Abwesenheiten
 ├── doctor-breaks/       # Pausen
 ├── patient-flow/        # Patientenfluss
-└── patients/            # System-DB Cache
-
-/api/medical/
-└── patients/            # Legacy DB (read-only)
+└── patients/            # Patienten-Stammdaten (+ Search)
 ```
 
 ### 6.2 API-Design
@@ -224,14 +220,12 @@ Das Projekt enthält erweiterte Scheduling-Services:
 
 ## 8. Deployment
 
-### 8.1 Docker-Setup ✅
+### 8.1 Windows-native / Bare-Metal ✅
 
-- **Development:** `docker-compose.dev.yml` (SQLite/Postgres, Redis)
-- **Production:** `docker-compose.prod.yml` (Nginx, Gunicorn, Postgres, Redis, Celery)
-- Healthchecks implementiert
-- Volumes für Persistent Data
+- Deployment ohne Container (z. B. Nginx/IIS Reverse Proxy + Gunicorn)
+- Dokumentation in `DEPLOYMENT.md`
 
-**Bewertung:** ✅ **Production-ready**
+**Bewertung:** ✅ **Gut dokumentiert**
 
 ### 8.2 Bare-Metal Deployment
 
@@ -243,9 +237,8 @@ Das Projekt enthält erweiterte Scheduling-Services:
 
 ### 8.3 Settings-Management
 
-- `settings.py` - Base (Postgres)
-- `settings_dev.py` - Development (SQLite)
-- `settings_prod.py` - Production (vermutlich)
+- Modulare Settings (`praxi_backend/settings/*.py`) mit Shims für Kompatibilität
+- Postgres-only Konfiguration über ENV (`SYS_DB_*`)
 
 **Bewertung:** ✅ **Saubere Trennung**
 
@@ -267,7 +260,7 @@ Das Projekt enthält erweiterte Scheduling-Services:
 ### 9.2 Code-Organisation
 
 ✅ **Import-Konventionen:** Vollqualifizierte Imports (`praxi_backend.appointments.models`)  
-✅ **Multi-DB Pattern:** Explizites `.using('default')` / `.using('medical')`  
+✅ **Single-DB Pattern:** `.using('default')` wo explizites Routing gewünscht ist  
 ✅ **Konsistenz:** Einheitliche Patterns (RBAC, Serializers, Views)
 
 **Bewertung:** ✅ **Sehr gut strukturiert**
@@ -304,7 +297,7 @@ Das Projekt enthält **92+ Test-Klassen** in verschiedenen Bereichen:
 - RBAC Tests
 
 **Medical:**
-- Model Tests
+— (Legacy-App entfernt)
 
 **Dashboard:**
 - View Tests
@@ -312,7 +305,7 @@ Das Projekt enthält **92+ Test-Klassen** in verschiedenen Bereichen:
 ### 10.2 Test-Struktur
 
 ✅ **pytest + pytest-django**  
-✅ **Custom Test Runner:** `PraxiAppTestRunner` (behandelt Multi-DB)  
+✅ **Custom Test Runner:** `PraxiAppTestRunner` (Single-DB `default`)  
 ✅ **Test-Mixins:** Wiederverwendbare Test-Utilities  
 ✅ **Integration Tests:** View-Integration Tests vorhanden
 

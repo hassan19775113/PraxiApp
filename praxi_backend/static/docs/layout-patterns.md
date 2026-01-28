@@ -92,9 +92,9 @@ Diese Blueprints beschreiben wiederverwendbare Seiten‑Layouts für die wichtig
   </section>
 
   <section class="sidebar__section">
-    <h2 class="sidebar__section-title">Medical</h2>
+    <h2 class="sidebar__section-title">Patienten</h2>
     <ul class="sidebar__nav">
-      <li><a class="sidebar__link" href="/medical/patients/">Patienten</a></li>
+      <li><a class="sidebar__link" href="/patients/">Patienten</a></li>
     </ul>
   </section>
 </aside>

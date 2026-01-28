@@ -61,7 +61,7 @@ Der moderne Kalender für die Terminplanung ist vollständig implementiert und f
 - **Termin aktualisieren**: `PATCH /api/appointments/<id>/`
 - **Termin löschen**: `DELETE /api/appointments/<id>/` (falls implementiert)
 - **Ärzte-Liste**: `GET /api/appointments/doctors/`
-- **Patienten-Suche**: `GET /api/medical/patients/search/?q=...`
+- **Patienten-Suche**: `GET /api/patients/search/?q=...`
 - **Ressourcen**: `GET /api/resources/`
 
 ### JavaScript-Klassen

@@ -15,7 +15,7 @@ from praxi_backend.core.models import Role, User
 class AppointmentSuggestTodayMiniTest(TestCase):
 	"""Mini-Test: start_date == heute => keine Vorschläge vor now().
 
-	Läuft ausschließlich gegen die system Test-DB (default) und berührt medical nicht.
+	Läuft ausschließlich gegen die system Test-DB (default).
 	"""
 
 	databases = {"default"}

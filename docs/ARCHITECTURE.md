@@ -91,7 +91,7 @@ Scheduling-Engine:
 
 ## Deployment-Architektur
 
-- DEV: `praxi_backend.settings.dev`, PostgreSQL (localhost), optional Docker-Compose dev Stack
-- PROD: `praxi_backend.settings.prod`, PostgreSQL + Redis, Nginx + Gunicorn, WhiteNoise für static
+- DEV: `praxi_backend.settings.dev`, PostgreSQL (localhost)
+- PROD: `praxi_backend.settings.prod`, PostgreSQL (+ optional Redis), Reverse Proxy + App Server
 
 Siehe auch `DEPLOYMENT.md`.

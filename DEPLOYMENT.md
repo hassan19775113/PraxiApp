@@ -1,4 +1,4 @@
-# PraxiApp Deployment Checklist
+# PraxiApp Deployment Checklist (Windows-native / Bare Metal)
 
 ## 📋 Pre-Deployment Checklist
 
@@ -11,64 +11,16 @@
 
 ### 2. SSL/TLS Certificates
 - [ ] SSL certificates obtained (Let's Encrypt or commercial)
-- [ ] Certificates placed in `docker/ssl/` directory
-- [ ] Nginx configured with certificate paths
+- [ ] Reverse proxy (IIS/Nginx/Apache) configured with certificate paths (if applicable)
 
 ### 3. Database Preparation
-- [ ] PostgreSQL databases created:
+- [ ] PostgreSQL database created:
   - `praxiapp_system` (managed by Django)
-  - `praxiapp` (legacy medical, read-only)
 - [ ] Database users created with appropriate permissions
 
 ---
 
-## 🐳 Docker Deployment
-
-### Development Environment
-```bash
-# Build and start
-docker-compose -f docker-compose.dev.yml up --build -d
-
-# View logs
-docker-compose -f docker-compose.dev.yml logs -f web
-
-# Run migrations
-docker-compose -f docker-compose.dev.yml exec web python manage.py migrate --database=default
-
-# Create superuser
-docker-compose -f docker-compose.dev.yml exec web python manage.py createsuperuser
-
-# Stop
-docker-compose -f docker-compose.dev.yml down
-```
-
-### Production Environment
-```bash
-# Build images
-docker-compose -f docker-compose.prod.yml build
-
-# Start services
-docker-compose -f docker-compose.prod.yml up -d
-
-# Run migrations
-docker-compose -f docker-compose.prod.yml exec web python manage.py migrate --database=default
-
-# Collect static files
-docker-compose -f docker-compose.prod.yml exec web python manage.py collectstatic --noinput
-
-# Create superuser
-docker-compose -f docker-compose.prod.yml exec web python manage.py createsuperuser
-
-# View logs
-docker-compose -f docker-compose.prod.yml logs -f
-
-# Stop
-docker-compose -f docker-compose.prod.yml down
-```
-
----
-
-## 🖥️ Bare-Metal Deployment (Systemd)
+## 🖥️ Bare-Metal Deployment (Linux / Systemd)
 
 ### 1. System Preparation
 ```bash
@@ -139,9 +91,6 @@ python scripts/smoke_test.py --base-url https://your-domain.com
 
 ### 3. Log Verification
 ```bash
-# Docker logs
-docker-compose -f docker-compose.prod.yml logs web
-
 # Systemd logs
 journalctl -u praxiapp-gunicorn -f
 tail -f /var/log/praxiapp/gunicorn-error.log
@@ -163,17 +112,11 @@ tail -f /var/log/praxiapp/gunicorn-error.log
 
 ### Useful Commands
 ```bash
-# Check Django settings
-docker-compose exec web python -c "from django.conf import settings; print(settings.DATABASES)"
-
 # Test database connection
-docker-compose exec web python manage.py dbshell --database=default
+python manage.py dbshell --database=default
 
-# Check Celery workers
-docker-compose exec web celery -A praxi_backend inspect active
-
-# Force rebuild
-docker-compose -f docker-compose.prod.yml build --no-cache
+# Check Django settings
+python -c "from django.conf import settings; print(settings.DATABASES)"
 ```
 
 ---
@@ -213,15 +156,15 @@ docker-compose -f docker-compose.prod.yml build --no-cache
 ### Database Backup
 ```bash
 # Manual backup
-docker-compose exec db pg_dump -U postgres praxiapp_system > backup_$(date +%Y%m%d).sql
+pg_dump -U postgres praxiapp_system > backup_$(date +%Y%m%d).sql
 
-# Automated backup (add to crontab)
-0 2 * * * docker-compose -f /opt/praxiapp/docker-compose.prod.yml exec -T db pg_dump -U postgres praxiapp_system | gzip > /opt/praxiapp/backups/backup_$(date +\%Y\%m\%d).sql.gz
+# Automated backup (example crontab)
+0 2 * * * pg_dump -U postgres praxiapp_system | gzip > /opt/praxiapp/backups/backup_$(date +\%Y\%m\%d).sql.gz
 ```
 
 ### Restore
 ```bash
-docker-compose exec -T db psql -U postgres praxiapp_system < backup_20240101.sql
+psql -U postgres praxiapp_system < backup_20240101.sql
 ```
 
 ---

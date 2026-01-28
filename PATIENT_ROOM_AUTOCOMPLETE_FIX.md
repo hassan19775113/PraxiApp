@@ -15,7 +15,7 @@ Der Benutzer meldet:
    - Permission: `IsAuthenticated` ✅
    - Funktioniert ✅
 
-2. **Patient** (`/api/medical/patients/search/`):
+2. **Patient** (`/api/patients/search/`):
    - Permission: `IsAdmin | IsDoctor | IsAssistant | IsBilling` ❌
    - Problem: DRF behandelt mehrere Permission-Klassen als AND, nicht OR
    - Wenn der Benutzer keine Rolle hat oder die Rolle nicht korrekt gesetzt ist, wird der Zugriff verweigert
@@ -29,7 +29,7 @@ Der Benutzer meldet:
 
 ### 1. PatientSearchView Permission angepasst ✅
 
-**Geänderte Datei:** `praxi_backend/medical/views.py`
+**Geänderte Datei:** `praxi_backend/patients/views.py`
 
 **Änderungen:**
 - Import hinzugefügt: `from rest_framework.permissions import IsAuthenticated`
@@ -49,7 +49,7 @@ permission_classes = [IsAuthenticated]  # Simplified: any authenticated user can
 **Begründung:**
 - Die Patient-Liste wird für Autocomplete benötigt
 - Alle authentifizierten Benutzer sollten Patienten suchen können, um Termine zu erstellen/bearbeiten
-- Die Liste zeigt nur Patienten aus der Legacy-Datenbank an (read-only)
+- Die Liste liefert Patienten aus der Django-managed DB (single DB)
 - Keine sensiblen Daten werden preisgegeben (nur Name und Geburtsdatum)
 
 ### 2. ResourceListCreateView Permission angepasst ✅
@@ -140,7 +140,7 @@ def get_permissions(self):
 
 ## Geänderte Dateien
 
-1. **`praxi_backend/medical/views.py`**:
+1. **`praxi_backend/patients/views.py`**:
    - Import hinzugefügt: `from rest_framework.permissions import IsAuthenticated`
    - `PatientSearchView.permission_classes` geändert zu `[IsAuthenticated]`
 

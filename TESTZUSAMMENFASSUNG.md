@@ -113,7 +113,7 @@ python manage.py create_test_data
 ## ⚠️ Bekannte Einschränkungen
 
 1. **Resource.TYPE_STAFF:** Nicht verfügbar im Model → Personal wird als `TYPE_DEVICE` erstellt
-2. **Patienten-IDs:** Termine verwenden Dummy-IDs (1-10), falls keine Patienten in `medical` DB vorhanden
+2. **Patienten-IDs:** Termine verwenden Dummy-IDs (1-10), falls keine Patienten angelegt sind
 3. **Authentifizierung:** `staff_member_required` Decorator auf Views → Superuser-Login erforderlich
 
 ---

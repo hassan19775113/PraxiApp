@@ -11,7 +11,7 @@ Tests cover:
 - Audit logging via log_patient_action
 
 Uses only the default/system test DB.
-Does NOT query medical.Patient - uses patient_id as integer.
+Does NOT use patient ForeignKeys - uses patient_id as integer.
 """
 
 from __future__ import annotations

@@ -21,7 +21,7 @@ class CalendarAvailableDoctorsMiniTest(TestCase):
 	- Dr. D: Hat einen Termin (blockt komplett seine Stunden)
 	- Dr. E: Voll verfügbar
 
-	Wichtig: Nur default/system-DB. medical bleibt unberührt.
+	Wichtig: Nur default/system-DB.
 	"""
 
 	databases = {"default"}

@@ -15,7 +15,7 @@ Der Benutzer meldet:
    - Gibt direkt ein Array zurück
    - Funktioniert ✅
 
-2. **Patient** (`/api/medical/patients/search/`):
+2. **Patient** (`/api/patients/search/`):
    - Möglicherweise andere Response-Struktur
    - Möglicherweise Permissions-Problem
 
@@ -98,7 +98,7 @@ console.log(`[AppointmentDialog] Parsed ${items.length} items for ${inputId}`);
 ```
 [AppointmentDialog] Focus event on appointmentPatient
 [AppointmentDialog] Loading items for appointmentPatient, query: ""
-[AppointmentDialog] Fetching from: /api/medical/patients/search/
+[AppointmentDialog] Fetching from: /api/patients/search/
 [AppointmentDialog] Response status: 200 OK
 [AppointmentDialog] Raw response data for appointmentPatient: [...]
 [AppointmentDialog] Parsed X items for appointmentPatient

@@ -6,7 +6,7 @@ Die Patientenliste unter `/praxi_backend/dashboard/patients/` wurde im Browser l
 ## Root Cause Analysis
 
 ### 1. Backend-Analyse ✅
-- **View funktioniert korrekt**: `PatientOverviewView` lädt 20 Patienten aus der `medical` Datenbank
+- **View funktioniert korrekt**: `PatientOverviewView` lädt Patienten aus der Django DB (`patients.Patient`)
 - **Context ist korrekt**: Die Variable `patients` enthält 20 Patient-Objekte mit allen benötigten Feldern
 - **Template rendert korrekt**: Das HTML enthält 20 Patienten-Zeilen mit `data-patient-id` Attributen
 

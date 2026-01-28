@@ -17,7 +17,7 @@ class DoctorSubstitutionSuggestMiniTest(TestCase):
 	- Dr. B verfügbar
 	- Suggest für Dr. A liefert fallback Slot von Dr. B
 
-	Läuft ausschließlich gegen die system Test-DB (default) und berührt medical nicht.
+	Läuft ausschließlich gegen die system Test-DB (default).
 	"""
 
 	databases = {"default"}

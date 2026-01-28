@@ -21,7 +21,7 @@ class OpDashboardStatusValidationMiniTest(TestCase):
 	3) done nur wenn vorher running (400)
 	4) cancelled von überall (200)
 
-	Nur default/system-DB; medical-DB nicht berühren.
+	Nur default/system-DB.
 	"""
 
 	databases = {"default"}

@@ -1,56 +1,60 @@
 from __future__ import annotations
 
+import json
 import os
-import sqlite3
+from collections import Counter
+
+
+def _find_latest_domain_dump() -> str | None:
+    """Return path to the newest backups/**/sqlite_dump_domain.json if present."""
+    root = os.path.dirname(os.path.dirname(__file__))
+    backups_dir = os.path.join(root, "backups")
+    if not os.path.isdir(backups_dir):
+        return None
+
+    candidates: list[str] = []
+    for name in os.listdir(backups_dir):
+        # Folder naming convention: sqlite_to_postgres_YYYY-MM-DD
+        if not name.startswith("sqlite_to_postgres_"):
+            continue
+        path = os.path.join(backups_dir, name, "sqlite_dump_domain.json")
+        if os.path.isfile(path):
+            candidates.append(path)
+
+    if not candidates:
+        return None
+    # Lexicographic works with YYYY-MM-DD suffix.
+    return sorted(candidates)[-1]
 
 
 def main() -> None:
-    path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "dev.sqlite3")
-    print("sqlite exists:", os.path.exists(path), "size:", os.path.getsize(path) if os.path.exists(path) else None)
-    if not os.path.exists(path):
-        return
+	dump_path = _find_latest_domain_dump()
+	print("domain dump found:", bool(dump_path), "path:", dump_path)
+	if not dump_path:
+		return
 
-    conn = sqlite3.connect(path)
-    cur = conn.cursor()
-    cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name")
-    tables = [r[0] for r in cur.fetchall()]
-    print("tables:", len(tables))
+	with open(dump_path, "r", encoding="utf-8") as f:
+		items = json.load(f)
 
-    priority = [
-        "core_user",
-        "core_role",
-        "core_auditlog",
-        "appointments_appointment",
-        "appointments_operation",
-        "patients",
-        "patient_notes",
-        "patient_documents",
-        "django_migrations",
-        "django_admin_log",
-    ]
+	models = Counter(item.get("model") for item in items if isinstance(item, dict))
+	print("objects:", sum(models.values()))
+	print("models:", len(models))
 
-    seen: set[str] = set()
-    for t in priority:
-        if t in tables:
-            cur.execute(f"SELECT COUNT(*) FROM {t}")
-            print(f"{t}:", cur.fetchone()[0])
-            seen.add(t)
+	# Print a few high-signal model counts.
+	for key in [
+		"core.role",
+		"core.user",
+		"patients.patient",
+		"appointments.appointment",
+		"appointments.operation",
+		"core.auditlog",
+	]:
+		if key in models:
+			print(f"{key}:", models[key])
 
-    print("---")
-
-    shown = 0
-    for t in tables:
-        if t in seen:
-            continue
-        cur.execute(f"SELECT COUNT(*) FROM {t}")
-        c = int(cur.fetchone()[0])
-        if c:
-            print(f"{t}: {c}")
-            shown += 1
-            if shown >= 30:
-                break
-
-    conn.close()
+	print("--- top 30 models ---")
+	for model, count in models.most_common(30):
+		print(f"{model}: {count}")
 
 
 if __name__ == "__main__":

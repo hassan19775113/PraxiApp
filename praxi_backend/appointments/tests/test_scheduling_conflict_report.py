@@ -9,7 +9,7 @@ ARCHITECTURE RULES (from copilot-instructions.md)
 
 - databases = {"default"} on test classes
 - Use .using("default") on all ORM calls
-- patient_id is an integer (NO ForeignKey to medical.Patient)
+- patient_id is an integer (NO patient ForeignKey)
 - Fully qualified imports: praxi_backend.appointments.*
 
 ==============================================================================

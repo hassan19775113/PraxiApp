@@ -36,7 +36,6 @@ Falls die System-DB noch nicht existiert:
 
 Erwartung:
 - Django legt/aktualisiert nur Systemtabellen + `core_*` Tabellen in der System-DB.
-- Auf `medical` darf *nichts* migriert werden.
 
 ## 3) Superuser (nur System-DB)
 

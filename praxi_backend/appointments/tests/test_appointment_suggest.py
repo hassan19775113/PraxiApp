@@ -14,7 +14,7 @@ from praxi_backend.core.models import AuditLog, Role, User
 class AppointmentSuggestMiniTest(TestCase):
 	"""Mini-Test für /api/appointments/suggest/.
 
-	Läuft ausschließlich gegen die system Test-DB (default) und berührt medical nicht.
+	Läuft ausschließlich gegen die system Test-DB (default).
 	"""
 
 	databases = {"default"}

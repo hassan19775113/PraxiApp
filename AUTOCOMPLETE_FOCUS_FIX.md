@@ -42,10 +42,10 @@ input.addEventListener('focus', () => {
 
 ### 2. API-Endpoints angepasst ✅
 
-**Geänderte Datei:** `praxi_backend/medical/views.py`
+**Geänderte Datei:** `praxi_backend/patients/views.py`
 
 **PatientSearchView:**
-- **Alt:** Gibt `Patient.objects.using('medical').none()` zurück, wenn kein `q` Parameter vorhanden ist
+- **Alt:** Gibt eine leere Liste zurück, wenn kein `q` Parameter vorhanden ist
 - **Neu:** Gibt alle Patienten zurück (limit auf 100 für Performance), wenn kein `q` Parameter vorhanden ist
 - Sortierung: `order_by('last_name', 'first_name', 'id')`
 
@@ -56,11 +56,11 @@ def get_queryset(self):
     
     # Wenn keine Suche, alle Patienten zurückgeben (limit auf 100 für Performance)
     if not q:
-        return Patient.objects.using('medical').order_by('last_name', 'first_name', 'id')[:100]
+        return Patient.objects.using('default').order_by('last_name', 'first_name', 'id')[:100]
 
     # Wenn Suche, filtere
     return (
-        Patient.objects.using('medical')
+        Patient.objects.using('default')
         .filter(...)
         .order_by('last_name', 'first_name', 'id')[:50]
     )
@@ -80,7 +80,7 @@ def get_queryset(self):
 ## Funktionsweise
 
 ### Patient-Feld:
-1. **Fokus auf Feld:** Lädt alle Patienten von `/api/medical/patients/search/` (ohne `q` Parameter)
+1. **Fokus auf Feld:** Lädt alle Patienten von `/api/patients/search/` (ohne `q` Parameter)
 2. **Tippen:** Filtert die Liste basierend auf eingegebenem Text
 3. **Klick auf Item:** Füllt das Feld und speichert die ID im Hidden-Feld
 

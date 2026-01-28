@@ -6,7 +6,7 @@ Diese Seite ist für Nachfolge-Entwickler gedacht, die das Projekt **ohne Vorwis
 
 ### 1) Voraussetzungen
 
-- Python (empfohlen analog Docker-Image: 3.12)
+- Python 3.12 (empfohlen)
 - (Optional) VS Code + Python Extension
 
 ### 2) Settings-Modul

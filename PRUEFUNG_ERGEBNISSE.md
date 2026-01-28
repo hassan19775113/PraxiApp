@@ -169,8 +169,8 @@ this.calendar = new FullCalendar.Calendar(calendarEl, {
 ### 2.3 Appointment Dialog JavaScript
 
 **Autocomplete-Endpoints:**
-- ✅ Patienten: `/api/medical/patients/search/?q=...` - Korrekt
-- ❌ Ärzte: `/api/appointments/doctors/` - **Endpoint fehlt** (DoctorListView nicht implementiert)
+- ✅ Patienten: `/api/patients/search/?q=...` - Korrekt
+- ✅ Ärzte: `/api/appointments/doctors/` - Korrekt
 - ✅ Räume: `/api/resources/?type=room` - Korrekt
 - ✅ Ressourcen: `/api/resources/` - Korrekt
 

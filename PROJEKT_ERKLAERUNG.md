@@ -29,8 +29,7 @@
 - **Python 3.12** / **Django 5.x**
 - **Django REST Framework** (DRF) für REST-APIs
 - **JWT-Authentifizierung** (`djangorestframework-simplejwt`)
-- **PostgreSQL** (Produktion) / **SQLite** (Development)
-- **Docker** für Containerisierung
+- **PostgreSQL** (Single-DB; `default`)
 - Optional: **Celery + Redis** (vorbereitet, aktuell nicht aktiv genutzt)
 
 ---
@@ -65,13 +64,12 @@ backend/
 │   │   └── *.py                # Dashboard-Views
 │   │
 │   ├── settings.py             # Basis-Settings
-│   ├── settings_dev.py         # Development (SQLite)
-│   ├── settings_prod.py        # Production (PostgreSQL)
-│   └── db_router.py            # Deprecated stub (single DB)
+│   ├── settings_dev.py         # Development (PostgreSQL; ggf. Shim)
+│   ├── settings_prod.py        # Production (PostgreSQL; ggf. Shim)
+│   └── db_router.py            # Deprecated stub (Single-DB)
 │
 ├── manage.py                   # Django-Management
 ├── requirements.txt            # Python-Dependencies
-├── docker-compose.*.yml        # Docker-Setup
 └── README.md                   # Hauptdokumentation
 ```
 
@@ -95,7 +93,7 @@ backend/
 ┌──────────────▼──────────────────────┐
 │  Data Layer (Models)                 │
 │  - Django ORM                        │
-│  - .using('default') / .using('medical') │
+│  - .using('default')                 │
 └──────────────────────────────────────┘
 ```
 
@@ -181,45 +179,28 @@ log_patient_action(user, 'appointment_create', patient_id, meta={...})
 
 ---
 
-## Datenbankarchitektur (Dual-DB)
+## Datenbankarchitektur (Single-DB)
 
-### Zwei Datenbanken
+PraxiApp nutzt eine **einzige** Datenbank (`default`, PostgreSQL) für:
 
-| Alias | Zweck | Schreibzugriff | Beispiele |
-|-------|-------|----------------|-----------|
-| `default` | System-DB (Django-managed) | ✅ Read/Write | Users, Termine, OPs, AuditLog, Patient-Cache |
-| `medical` | Legacy/medizinische DB | ❌ Read-only | Patientenstamm (`medical.Patient`) |
+- Django-Systemtabellen (auth, sessions, etc.)
+- App-Daten (`core`, `appointments`, `patients`, `dashboard`)
 
 ### Wichtige Regeln
 
-1. **Keine Cross-DB ForeignKeys**
-   - Patient wird überall als `patient_id: int` gespeichert
-   - **NICHT** als `ForeignKey('medical.Patient')`
+1. **Keine Patient-ForeignKeys**
+    - Patient wird in Terminen/OPs als `patient_id: int` gespeichert
+    - Dadurch bleibt das Schema robust und unabhängig (auch ohne Cross-DB-Setup)
 
-2. **Explizite DB-Angabe**
-   ```python
-   # ✅ RICHTIG
-   Appointment.objects.using('default').filter(...)
-   Patient.objects.using('medical').filter(...)
-   
-   # ❌ FALSCH (verwendet default, kann in Prod falsch sein)
-   Appointment.objects.filter(...)
-   ```
-
-3. **Migrationen**
-   - Nur auf `default`: `python manage.py migrate --database=default`
-   - **NIEMALS** auf `medical` migrieren!
-
-4. **Router**
-   - `praxi_backend/db_router.py` steuert in Prod die DB-Zuordnung
-   - In DEV (SQLite) wird alles auf eine DB gemappt
+2. **Migrationen**
+    - Migrationen laufen auf `default`: `python manage.py migrate --database=default`
 
 ### Beispiel: Patient-Referenz
 
 ```python
 # ❌ FALSCH (Cross-DB FK nicht möglich)
 class Appointment(models.Model):
-    patient = models.ForeignKey('medical.Patient', ...)  # GEHT NICHT!
+    patient = models.ForeignKey('patients.Patient', ...)  # nicht vorgesehen
 
 # ✅ RICHTIG
 class Appointment(models.Model):
@@ -452,9 +433,7 @@ except SchedulingConflictError as e:
 ├── op-dashboard/             # OP-Dashboard
 ├── op-timeline/              # OP-Timeline
 ├── op-stats/                 # OP-Statistiken
-├── patients/                 # Patienten-Cache
-└── medical/                  # Legacy-Patienten (read-only)
-    └── patients/
+└── patients/                 # Patienten-Stammdaten
 ```
 
 ### Request/Response-Beispiel
@@ -617,8 +596,7 @@ log_patient_action(
 
 3. **Datenbank migrieren**
    ```bash
-   python manage.py migrate
-   # Nutzt automatisch settings_dev.py (SQLite)
+    python manage.py migrate --database=default
    ```
 
 4. **Server starten**
@@ -661,13 +639,10 @@ python manage.py test
    from appointments.models import Appointment
    ```
 
-2. **DB-Zugriff**: Explizit `.using('default')` oder `.using('medical')`
+2. **DB-Zugriff**: Bei kritischen Querysets explizit `.using('default')`
    ```python
    # ✅ RICHTIG
    Appointment.objects.using('default').filter(...)
-   
-   # ❌ FALSCH (kann in Prod falsch sein)
-   Appointment.objects.filter(...)
    ```
 
 3. **Exceptions**: Custom Exceptions aus `appointments.exceptions`
@@ -755,9 +730,9 @@ def plan_appointment(...):
 - **Ursache**: Keine `PracticeHours`/`DoctorHours` definiert
 - **Lösung**: Arbeitszeiten für Praxis/Arzt anlegen
 
-#### DB-Fehler (Cross-DB)
-- **Ursache**: Versuch, FK zwischen `default` und `medical` zu nutzen
-- **Lösung**: `patient_id: int` statt FK verwenden
+#### DB-Fehler (Patient-Referenzen)
+- **Ursache**: Patient wird als ForeignKey modelliert oder inkonsistent referenziert
+- **Lösung**: `patient_id: int` verwenden (Appointments/Operations speichern nur die ID)
 
 ### 4. Debugging
 
@@ -813,13 +788,13 @@ python manage.py test praxi_backend.appointments.tests.test_scheduling_engine
 
 ## Zusammenfassung: Wichtigste Punkte
 
-1. **Dual-DB**: `default` (R/W) und `medical` (read-only)
-2. **Patient-ID**: Immer `int`, nie FK zu `medical.Patient`
+1. **Single-DB**: PostgreSQL auf `default`
+2. **Patient-ID**: Immer `int` (keine Patient-FKs in Appointments/Operations)
 3. **Scheduling-Engine**: Zentrale Logik in `services/scheduling.py`
 4. **RBAC**: Rollen steuern Zugriff (admin, assistant, doctor, billing)
 5. **Audit**: `log_patient_action()` für patientenbezogene Aktionen
 6. **Imports**: Vollqualifiziert (`praxi_backend.appointments.*`)
-7. **DB-Zugriff**: Explizit `.using('default')` oder `.using('medical')`
+7. **DB-Zugriff**: `.using('default')` wo Routing explizit sein soll
 
 ---
 

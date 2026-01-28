@@ -74,7 +74,7 @@ class AppointmentSerializer(serializers.ModelSerializer):
 **Bestehende Endpoints erweitert:**
 - ✅ `/api/appointments/` - Liefert jetzt `patient_name`, `doctor_name`, `room_name`, `resource_names`
 - ✅ `/api/appointments/calendar/week/` - Liefert erweiterte Daten
-- ✅ `/api/medical/patients/search/` - Bereits vorhanden, liefert Namen
+- ✅ `/api/patients/search/` - Bereits vorhanden, liefert Namen
 - ✅ `/api/resources/` - Bereits vorhanden, liefert Namen
 - ✅ `/api/appointment-types/` - Bereits vorhanden, liefert Namen
 

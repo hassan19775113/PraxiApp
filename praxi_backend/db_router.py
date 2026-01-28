@@ -1,10 +1,10 @@
 """Deprecated database router module.
 
-PraxiApp previously used a dual-database architecture (default + medical).
-The codebase has been migrated to a *single database* setup.
+PraxiApp previously experimented with multi-database routing. The codebase has
+since been migrated to a **single database** setup (`default`).
 
-This file is kept as a small stub for backwards compatibility with older docs
-or deployment scripts. It is no longer referenced by settings.
+This file is kept as a tiny stub for backwards compatibility with older docs or
+deployment scripts. It is not referenced by current settings.
 """
 
 

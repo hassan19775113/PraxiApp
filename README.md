@@ -7,7 +7,7 @@ Dieses Repository enthält:
 - ein **staff-only Dashboard** unter `/praxi_backend/dashboard/…` (server-rendered HTML)
 - einen **(custom) Admin-Bereich** unter `/praxi_backend/…` sowie den Standard-Django-Admin `/admin/`
 
-> Hinweis: Diese Dokumentation basiert ausschließlich auf dem aktuellen Stand dieses Repos (Ordner `praxi_backend/`, `docker-compose.*`, `DEPLOYMENT.md`, etc.).
+> Hinweis: Diese Dokumentation basiert ausschließlich auf dem aktuellen Stand dieses Repos (Ordner `praxi_backend/`, `DEPLOYMENT.md`, etc.).
 
 ## Inhalt
 
@@ -17,7 +17,7 @@ Dieses Repository enthält:
 - [Datenfluss (Textdiagramme)](#datenfluss-textdiagramme)
 - [Datenbankkonzept (Single-DB)](#datenbankkonzept-single-db)
 - [Lokale Installation (Windows/DEV)](#lokale-installation-windowsdev)
-- [Deployment (Docker + Bare Metal)](#deployment-docker--bare-metal)
+- [Deployment (Windows-native / Bare Metal)](#deployment-windows-native--bare-metal)
 - [API-Dokumentation (Kurzreferenz)](#api-dokumentation-kurzreferenz)
 - [Sicherheit, Datenschutz, medizinische Anforderungen](#sicherheit-datenschutz-medizinische-anforderungen)
 - [Coding-Guidelines & Konventionen](#coding-guidelines--konventionen)
@@ -75,7 +75,6 @@ Dieses Repository enthält:
   - `appointments/` – Termine, OPs, Ressourcen, Zeiten, PatientFlow, Scheduling
   - `patients/` – lokaler Patienten-Cache (System-DB)
   - `dashboard/` – staff-only HTML-Dashboard
-- `docker-compose.dev.yml`, `docker-compose.prod.yml`, `Dockerfile*` – Container/Deployment
 - `DEPLOYMENT.md` – Deployment-Checkliste
 
 > Es existieren außerdem Root-Module `core/` und `appointments/` (außerhalb `praxi_backend/`). Diese sind **Kompatibilitäts-Wrapper** und re-exporten nur Symbole. Produktivcode sollte konsequent `praxi_backend.<app>.*` importieren.
@@ -160,10 +159,9 @@ GET /api/appointments/suggest/
 
 ### Voraussetzungen
 
-- Python (Repo nutzt Docker `python:3.12-slim`; lokal entsprechend empfohlen)
-- Optional: Docker Desktop (nur wenn du Container-Deployment nutzen willst)
+- Python 3.12 (empfohlen)
 
-### Setup ohne Docker (PostgreSQL, Windows-native)
+### Setup (PostgreSQL, Windows-native)
 
 1. Virtuelle Umgebung aktivieren (bereits im Repo vorhanden: `.venv/`)
 2. Dependencies installieren aus `praxi_backend/requirements.txt`
@@ -181,17 +179,11 @@ Wichtige DEV-Eigenschaften:
 
 ---
 
-## Deployment (Docker + Bare Metal)
+## Deployment (Windows-native / Bare Metal)
 
-### Docker (empfohlen)
+Siehe `DEPLOYMENT.md`.
 
-Siehe `DEPLOYMENT.md` sowie:
-- `docker-compose.dev.yml` (Dev Stack inkl. Postgres + Redis)
-- `docker-compose.prod.yml` (Prod Stack inkl. Nginx + Gunicorn + Postgres + Redis + Celery)
-
-### Bare Metal / Systemd
-
-Im Ordner `systemd/` liegen Service-Files und `install-services.sh`. Die Checkliste in `DEPLOYMENT.md` beschreibt den Ablauf.
+Im Ordner `systemd/` liegen Service-Files und `install-services.sh` (Linux). Für Windows wird das Projekt typischerweise via `python manage.py runserver` (DEV) oder Gunicorn/Reverse-Proxy (PROD) betrieben.
 
 ---
 

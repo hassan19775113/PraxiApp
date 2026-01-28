@@ -13,7 +13,7 @@ class PraxiAppTestRunner(DiscoverRunner):
 
 	Single-database architecture:
 	- Django creates a test DB only for alias "default".
-	- No multi-DB routing / no "medical" alias.
+	- No multi-DB routing / no secondary DB aliases.
 	"""
 
 	def build_suite(self, test_labels=None, **kwargs):

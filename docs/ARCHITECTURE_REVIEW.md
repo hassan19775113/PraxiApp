@@ -20,7 +20,7 @@
 
 ### 4) Deployment-Story ist realistisch
 
-- Docker DEV/PROD Compose vorhanden.
+- Deployment ohne Container (Windows-native/Bare Metal).
 - Prod-Konfiguration umfasst Security-Defaults (HTTPS/HSTS, Cookie Security, Throttling).
 
 ## Schwächen / Risiken
@@ -72,4 +72,4 @@ Empfehlung:
 ### Langfristig
 
 - Domain-driven Module (z. B. `scheduling`, `ops`, `patient_flow`) mit klaren Interfaces.
-- Hintergrundverarbeitung (z. B. Sync zwischen medical → patients cache) als definierter Prozess (wenn fachlich benötigt).
+- Hintergrundverarbeitung (z. B. Sync zwischen externem System → patients) als definierter Prozess (wenn fachlich benötigt).

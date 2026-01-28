@@ -22,7 +22,7 @@ class PatientFlowMiniTest(TestCase):
 	- doctor sieht nur eigene Flows
 	- Audit-Einträge korrekt
 
-	Nur default/system-DB; medical-DB bleibt unberührt.
+	Nur default/system-DB.
 	"""
 
 	databases = {"default"}

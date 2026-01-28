@@ -19,7 +19,7 @@
 
 **Problem:** Die URL `/api/patienten/` (deutsch) wird aufgerufen, existiert aber nicht.
 
-**Hinweis:** Die korrekte URL ist `/api/patients/` (englisch) oder `/api/medical/patients/search/` für die Suche.
+**Hinweis:** Die korrekte URL ist `/api/patients/` (englisch) und `/api/patients/search/` für Autocomplete.
 
 **Status:** Keine Änderung erforderlich - Frontend sollte die korrekte englische URL verwenden.
 
@@ -36,7 +36,7 @@
 ✅ `/api/appointments/doctors/` - Jetzt funktionsfähig  
 ✅ `/api/doctors/` - Alias funktionsfähig  
 ✅ `/api/patients/` - Funktionsfähig  
-✅ `/api/medical/patients/search/` - Funktionsfähig  
+✅ `/api/patients/search/` - Funktionsfähig  
 
 ## Nächste Schritte:
 

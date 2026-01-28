@@ -9,7 +9,7 @@ Tests cover:
 - Integration tests (View + Service)
 
 All tests use only the default database and patient_id as integer.
-No access to medical.Patient.
+No patient ForeignKey access.
 """
 
 from datetime import date, datetime, time, timedelta

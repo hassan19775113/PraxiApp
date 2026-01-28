@@ -14,7 +14,7 @@ from praxi_backend.core.models import Role, User
 class CalendarViewsMiniTest(TestCase):
 	"""Mini-Test für Calendar Day/Week/Month.
 
-	Läuft ausschließlich gegen die system Test-DB (default) und berührt medical nicht.
+	Läuft ausschließlich gegen die system Test-DB (default).
 	"""
 
 	databases = {"default"}

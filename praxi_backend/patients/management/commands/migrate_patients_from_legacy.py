@@ -1,6 +1,4 @@
 from __future__ import annotations
-
-import sqlite3
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any, Iterable, Iterator
@@ -70,56 +68,6 @@ def _safe_str(value: Any) -> str | None:
         return None
     s = str(value).strip()
     return s or None
-
-
-def _iter_sqlite_patients(sqlite_path: str, *, table: str) -> Iterator[LegacyPatientRow]:
-    conn = sqlite3.connect(sqlite_path)
-    conn.row_factory = sqlite3.Row
-    try:
-        cur = conn.cursor()
-        # Try to select the superset of columns; SQLite will error if columns don't exist.
-        # We therefore introspect available columns first.
-        cols = [r[1] for r in cur.execute(f"PRAGMA table_info({table});").fetchall()]
-        if not cols:
-            raise CommandError(f"SQLite table '{table}' not found or has no columns")
-
-        wanted = [
-            ("id", "id"),
-            ("first_name", "first_name"),
-            ("last_name", "last_name"),
-            ("birth_date", "birth_date"),
-            ("gender", "gender"),
-            ("phone", "phone"),
-            ("email", "email"),
-            ("created_at", "created_at"),
-            ("updated_at", "updated_at"),
-        ]
-        select_cols = [name for name, _ in wanted if name in cols]
-
-        # Minimal compatibility for earlier legacy schema.
-        if "id" not in select_cols:
-            raise CommandError(f"SQLite table '{table}' must have an 'id' column")
-        if "first_name" not in select_cols or "last_name" not in select_cols:
-            raise CommandError(f"SQLite table '{table}' must have 'first_name' and 'last_name' columns")
-
-        sql = f"SELECT {', '.join(select_cols)} FROM {table} ORDER BY id"
-        for row in cur.execute(sql):
-            pid = int(row["id"])
-            yield LegacyPatientRow(
-                id=pid,
-                first_name=str(row.get("first_name") or "").strip(),
-                last_name=str(row.get("last_name") or "").strip(),
-                birth_date=_parse_date(row.get("birth_date")),
-                gender=_safe_str(row.get("gender")),
-                phone=_safe_str(row.get("phone")),
-                email=_safe_str(row.get("email")),
-                created_at=_parse_datetime(row.get("created_at")),
-                updated_at=_parse_datetime(row.get("updated_at")),
-            )
-    finally:
-        conn.close()
-
-
 def _iter_postgres_patients(conninfo: str, *, table: str) -> Iterator[LegacyPatientRow]:
     """Read legacy patients from PostgreSQL via psycopg/psycopg2."""
 
@@ -262,13 +210,9 @@ class Command(BaseCommand):
     )
 
     def add_arguments(self, parser):
-        source = parser.add_mutually_exclusive_group(required=True)
-        source.add_argument(
-            "--sqlite-path",
-            help="Path to a legacy SQLite database file containing a patients table.",
-        )
-        source.add_argument(
+        parser.add_argument(
             "--postgres-conninfo",
+            required=True,
             help=(
                 "PostgreSQL conninfo string for the legacy DB (e.g. 'dbname=... user=... host=...')."
             ),
@@ -276,10 +220,9 @@ class Command(BaseCommand):
 
         parser.add_argument(
             "--table",
-            default=None,
+            default="patients",
             help=(
-                "Legacy table name to read from. "
-                "Defaults to 'legacy_patients' if present in SQLite dev DB, otherwise 'patients'."
+                "Legacy table name to read from (default: 'patients')."
             ),
         )
 
@@ -297,41 +240,16 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        sqlite_path: str | None = options.get("sqlite_path")
-        pg_conninfo: str | None = options.get("postgres_conninfo")
-        table_opt: str | None = options.get("table")
+        pg_conninfo: str = options["postgres_conninfo"]
+        table: str = options.get("table") or "patients"
         chunk_size: int = options.get("chunk_size")
         dry_run: bool = bool(options.get("dry_run"))
 
         if chunk_size <= 0:
             raise CommandError("--chunk-size must be > 0")
 
-        if sqlite_path:
-            table = table_opt
-            if not table:
-                # Prefer the renamed table name produced by the migration, but fall back.
-                conn = sqlite3.connect(sqlite_path)
-                try:
-                    cur = conn.cursor()
-                    tables = {
-                        r[0]
-                        for r in cur.execute(
-                            "SELECT name FROM sqlite_master WHERE type='table'"
-                        ).fetchall()
-                    }
-                finally:
-                    conn.close()
-                table = "legacy_patients" if "legacy_patients" in tables else "patients"
-
-            self.stdout.write(f"Reading legacy patients from SQLite: {sqlite_path} (table={table})")
-            rows = _iter_sqlite_patients(sqlite_path, table=table)
-
-        elif pg_conninfo:
-            table = table_opt or "patients"
-            self.stdout.write(f"Reading legacy patients from PostgreSQL (table={table})")
-            rows = _iter_postgres_patients(pg_conninfo, table=table)
-        else:
-            raise CommandError("One of --sqlite-path or --postgres-conninfo is required")
+        self.stdout.write(f"Reading legacy patients from PostgreSQL (table={table})")
+        rows = _iter_postgres_patients(pg_conninfo, table=table)
 
         if dry_run:
             # Exhaust iterator to validate.

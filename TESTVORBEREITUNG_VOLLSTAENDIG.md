@@ -376,9 +376,8 @@ Dies erstellt automatisch:
    - Jede Ressource sollte einen `color` haben
 
 5. **Patienten:**
-   - Patienten kommen aus der `medical` Datenbank
-   - Sollten bereits vorhanden sein (Legacy-DB)
-   - Falls keine Patienten vorhanden: Verwenden Sie Dummy-IDs (1-10) im Management Command
+   - Patienten werden in `patients.Patient` gespeichert (Single-DB, `default`)
+   - Falls keine Patienten vorhanden: Verwenden Sie Dummy-IDs (1-10) oder legen Sie Test-Patienten an
 
 6. **Termine:**
    - Mindestens 10-20 Termine für verschiedene Tage

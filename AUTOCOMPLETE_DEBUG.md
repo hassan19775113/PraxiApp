@@ -32,7 +32,7 @@ Prüfen Sie die Konsolen-Ausgaben:
 ```
 [AppointmentDialog] Focus event on appointmentPatient
 [AppointmentDialog] Loading items for appointmentPatient, query: ""
-[AppointmentDialog] Fetching from: /api/medical/patients/search/
+[AppointmentDialog] Fetching from: /api/patients/search/
 [AppointmentDialog] Response status: 200 OK
 [AppointmentDialog] Received 50 items for appointmentPatient
 [AppointmentDialog] Dropdown displayed for appointmentPatient
@@ -49,7 +49,7 @@ Prüfen Sie die Konsolen-Ausgaben:
 1. Öffnen Sie den Network-Tab (F12 → Network)
 2. Fokussieren Sie ein Feld (Patient, Arzt, Raum)
 3. Prüfen Sie die API-Requests:
-   - **URL:** Sollte korrekt sein (z.B. `/api/medical/patients/search/`)
+   - **URL:** Sollte korrekt sein (z.B. `/api/patients/search/`)
    - **Status:** Sollte `200 OK` sein
    - **Response:** Sollte JSON mit Patienten/Ärzten/Räumen enthalten
 
@@ -59,12 +59,12 @@ Prüfen Sie die Konsolen-Ausgaben:
 **Ursache:** Keine Berechtigung für den API-Endpoint
 **Lösung:** 
 - Prüfen Sie, ob der Benutzer eingeloggt ist
-- Prüfen Sie die Permissions in `praxi_backend/medical/views.py`
+- Prüfen Sie die Permissions in `praxi_backend/patients/views.py`
 
 #### Problem: 404 Not Found
 **Ursache:** API-Endpoint existiert nicht
 **Lösung:**
-- Prüfen Sie die URL-Struktur in `praxi_backend/medical/urls.py`
+- Prüfen Sie die URL-Struktur in `praxi_backend/patients/urls.py`
 - Prüfen Sie die URL-Mappings in `praxi_backend/urls.py`
 
 #### Problem: Dropdown wird nicht angezeigt

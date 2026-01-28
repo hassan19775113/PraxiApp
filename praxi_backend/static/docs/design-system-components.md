@@ -83,7 +83,7 @@ Gilt für alle Varianten (`.btn`):
 ## 2) Navigation
 
 ### Zweck
-Kontext‑Rahmen der App: schneller Wechsel zwischen Domänen (Dashboards, Termine, Core, Medical) und User‑Kontext.
+Kontext‑Rahmen der App: schneller Wechsel zwischen Domänen (Dashboards, Termine, Core, Patienten) und User‑Kontext.
 
 ### 2.1 Header (App‑Titel + User‑Info)
 
@@ -202,9 +202,9 @@ Empfohlene Sektionen:
   </section>
 
   <section class="sidebar__section">
-    <h2 class="sidebar__section-title">Medical</h2>
+    <h2 class="sidebar__section-title">Patienten</h2>
     <ul class="sidebar__nav">
-      <li><a class="sidebar__link" href="/medical/patients/">Patienten</a></li>
+      <li><a class="sidebar__link" href="/patients/">Patienten</a></li>
     </ul>
   </section>
 </aside>
