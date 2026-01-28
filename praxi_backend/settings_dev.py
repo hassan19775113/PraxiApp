@@ -1,14 +1,9 @@
-"""
-Development Settings für PraxiApp Backend (Windows + SQLite).
+"""Legacy dev settings module (compatibility shim).
 
-Verwendung:
-    $env:DJANGO_SETTINGS_MODULE = "praxi_backend.settings_dev"
-    python manage.py runserver
-
-Oder in manage.py: os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'praxi_backend.settings_dev')
+Prefer ``praxi_backend.settings.dev``.
 """
 
-from .settings import *
+from praxi_backend.settings.dev import *  # noqa
 
 # ---------------------------------------------------------
 # DEVELOPMENT SETTINGS (WINDOWS + SQLITE)

@@ -11,6 +11,7 @@ import os
 
 from django.core.asgi import get_asgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'praxi_backend.settings')
+# Default to modular dev settings. Deployments should set DJANGO_SETTINGS_MODULE.
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'praxi_backend.settings.dev')
 
 application = get_asgi_application()

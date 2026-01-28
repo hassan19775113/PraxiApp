@@ -6,7 +6,8 @@ import sys
 
 def main():
     """Run administrative tasks."""
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'praxi_backend.settings_dev')
+    # Default to modular dev settings. Deployments should set DJANGO_SETTINGS_MODULE.
+    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'praxi_backend.settings.dev')
     try:
         from django.core.management import execute_from_command_line
     except ImportError as exc:
