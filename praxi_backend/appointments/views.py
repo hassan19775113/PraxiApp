@@ -52,6 +52,8 @@ from .services.scheduling import (
 	plan_appointment as scheduling_plan_appointment,
 	plan_operation as scheduling_plan_operation,
 )
+from .services.querying import apply_overlap_date_filters
+from .services.absence_preview import build_absence_preview
 from .permissions import (
 	AppointmentPermission,
 	AppointmentSuggestPermission,
@@ -1272,51 +1274,14 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
 		"""
 		log_patient_action(request.user, 'appointment_list')
 		
-		# Get base queryset
+		# Get base queryset + apply optional overlap filtering.
 		qs = self.get_queryset()
-		
-		# Apply optional date filtering (timezone-aware)
-		date_str = request.query_params.get('date')
-		start_date_str = request.query_params.get('start_date')
-		end_date_str = request.query_params.get('end_date')
-		
-		if date_str:
-			# Filter by single date
-			try:
-				date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
-				tz = timezone.get_current_timezone()
-				range_start = timezone.make_aware(datetime.combine(date_obj, time.min), tz)
-				range_end = timezone.make_aware(datetime.combine(date_obj, time.max), tz)
-				range_end_for_query = range_end + timedelta(microseconds=1)
-				
-				# Filter appointments that overlap with the day
-				qs = qs.filter(
-					start_time__lt=range_end_for_query,
-					end_time__gt=range_start,
-				)
-			except ValueError:
-				# Invalid date format, ignore filter
-				pass
-		elif start_date_str or end_date_str:
-			# Filter by date range
-			tz = timezone.get_current_timezone()
-			
-			if start_date_str:
-				try:
-					start_date_obj = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-					range_start = timezone.make_aware(datetime.combine(start_date_obj, time.min), tz)
-					qs = qs.filter(end_time__gt=range_start)
-				except ValueError:
-					pass
-			
-			if end_date_str:
-				try:
-					end_date_obj = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-					range_end = timezone.make_aware(datetime.combine(end_date_obj, time.max), tz)
-					range_end_for_query = range_end + timedelta(microseconds=1)
-					qs = qs.filter(start_time__lt=range_end_for_query)
-				except ValueError:
-					pass
+		qs = apply_overlap_date_filters(
+			qs,
+			date_str=request.query_params.get('date'),
+			start_date_str=request.query_params.get('start_date'),
+			end_date_str=request.query_params.get('end_date'),
+		)
 
 		# Optional doctor filter (for calendar sidebar)
 		doctor_id = request.query_params.get('doctor_id')
@@ -1412,76 +1377,30 @@ class AppointmentListCreateView(generics.ListCreateAPIView):
 class DoctorAbsencePreviewView(APIView):
 	permission_classes = [IsAuthenticated]
 
-	def _count_workdays(self, start_date, end_date):
-		if start_date is None or end_date is None or end_date < start_date:
-			return 0
-		days = 0
-		cur = start_date
-		while cur <= end_date:
-			if cur.weekday() < 5:
-				days += 1
-			cur += timedelta(days=1)
-		return days
-
-	def _next_workday(self, date_value):
-		if date_value is None:
-			return None
-		cur = date_value + timedelta(days=1)
-		while cur.weekday() >= 5:
-			cur += timedelta(days=1)
-		return cur
-
-	def _calculate_remaining_days(self, *, doctor_id, reason, start_date, end_date, duration_workdays):
-		if not doctor_id or (reason or "").strip().lower() != "urlaub":
-			return None
-		try:
-			doctor = resolve_doctor(int(doctor_id))
-		except Exception:
-			doctor = None
-		if doctor is None:
-			return None
-		year = start_date.year if start_date else None
-		if year is None:
-			return None
-		allocation = getattr(doctor, "vacation_days_per_year", 30) or 0
-		qs = DoctorAbsence.objects.using("default").filter(
-			doctor_id=doctor.id,
-			reason__iexact="Urlaub",
-			active=True,
-		)
-		used = 0
-		for absence in qs:
-			if absence.start_date is None or absence.end_date is None:
-				continue
-			if absence.start_date.year > year or absence.end_date.year < year:
-				continue
-			start = max(absence.start_date, date(year, 1, 1))
-			end = min(absence.end_date, date(year, 12, 31))
-			used += self._count_workdays(start, end)
-		used += duration_workdays or 0
-		return max(0, allocation - used)
-
 	def get(self, request):
 		doctor_id = request.query_params.get("doctor_id")
 		start_date = parse_date(request.query_params.get("start_date", ""))
 		end_date = parse_date(request.query_params.get("end_date", ""))
 		reason = request.query_params.get("reason", "")
 
-		duration = self._count_workdays(start_date, end_date)
-		return_date = self._next_workday(end_date)
-		remaining = self._calculate_remaining_days(
-			doctor_id=doctor_id,
+		doctor = None
+		try:
+			doctor = resolve_doctor(int(doctor_id)) if doctor_id else None
+		except Exception:
+			doctor = None
+
+		preview = build_absence_preview(
+			doctor=doctor,
 			reason=reason,
 			start_date=start_date,
 			end_date=end_date,
-			duration_workdays=duration,
 		)
 
 		return Response(
 			{
-				"duration_workdays": duration or 0,
-				"return_date": return_date.isoformat() if return_date else None,
-				"remaining_days": remaining,
+				"duration_workdays": preview.duration_workdays or 0,
+				"return_date": preview.return_date.isoformat() if preview.return_date else None,
+				"remaining_days": preview.remaining_days,
 			}
 		)
 
@@ -1885,40 +1804,12 @@ class OperationListCreateView(generics.ListCreateAPIView):
 		log_patient_action(request.user, 'operation_list')
 
 		qs = self.get_queryset()
-		date_str = request.query_params.get('date')
-		start_date_str = request.query_params.get('start_date')
-		end_date_str = request.query_params.get('end_date')
-
-		if date_str:
-			try:
-				date_obj = datetime.strptime(date_str, '%Y-%m-%d').date()
-				tz = timezone.get_current_timezone()
-				range_start = timezone.make_aware(datetime.combine(date_obj, time.min), tz)
-				range_end = timezone.make_aware(datetime.combine(date_obj, time.max), tz)
-				range_end_for_query = range_end + timedelta(microseconds=1)
-				qs = qs.filter(
-					start_time__lt=range_end_for_query,
-					end_time__gt=range_start,
-				)
-			except ValueError:
-				pass
-		elif start_date_str or end_date_str:
-			tz = timezone.get_current_timezone()
-			if start_date_str:
-				try:
-					start_date_obj = datetime.strptime(start_date_str, '%Y-%m-%d').date()
-					range_start = timezone.make_aware(datetime.combine(start_date_obj, time.min), tz)
-					qs = qs.filter(end_time__gt=range_start)
-				except ValueError:
-					pass
-			if end_date_str:
-				try:
-					end_date_obj = datetime.strptime(end_date_str, '%Y-%m-%d').date()
-					range_end = timezone.make_aware(datetime.combine(end_date_obj, time.max), tz)
-					range_end_for_query = range_end + timedelta(microseconds=1)
-					qs = qs.filter(start_time__lt=range_end_for_query)
-				except ValueError:
-					pass
+		qs = apply_overlap_date_filters(
+			qs,
+			date_str=request.query_params.get('date'),
+			start_date_str=request.query_params.get('start_date'),
+			end_date_str=request.query_params.get('end_date'),
+		)
 
 		qs = qs.order_by('start_time', 'id')
 		page = self.paginate_queryset(qs)
@@ -1997,6 +1888,8 @@ class OperationListCreateView(generics.ListCreateAPIView):
 		except SchedulingError as e:
 			return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+		# Audit must happen exactly once per API call.
+		log_patient_action(request.user, 'operation_create', operation.patient_id)
 		read_serializer = OperationSerializer(operation, context={'request': request})
 		headers = self.get_success_headers(read_serializer.data)
 		return Response(read_serializer.data, status=status.HTTP_201_CREATED, headers=headers)
@@ -2247,11 +2140,6 @@ class OperationSuggestView(generics.GenericAPIView):
 			},
 			status=status.HTTP_200_OK,
 		)
-
-	def destroy(self, request, *args, **kwargs):
-		response = super().destroy(request, *args, **kwargs)
-		log_patient_action(request.user, 'appointment_type_delete')
-		return response
 
 
 def _iso_z(dt: datetime) -> str:
@@ -2748,6 +2636,20 @@ class DoctorBreakDetailView(generics.RetrieveUpdateDestroyAPIView):
 			return qs.filter(doctor=self.request.user)
 		return qs
 
+	def retrieve(self, request, *args, **kwargs):
+		log_patient_action(request.user, 'doctor_break_view')
+		return super().retrieve(request, *args, **kwargs)
+
+	def update(self, request, *args, **kwargs):
+		r = super().update(request, *args, **kwargs)
+		log_patient_action(request.user, 'doctor_break_update')
+		return r
+
+	def destroy(self, request, *args, **kwargs):
+		r = super().destroy(request, *args, **kwargs)
+		log_patient_action(request.user, 'doctor_break_delete')
+		return r
+
 
 class AvailabilityView(generics.GenericAPIView):
 	"""
@@ -2894,20 +2796,6 @@ class AvailabilityView(generics.GenericAPIView):
 			'available_rooms': rooms_data,
 			'available_patients': patients_data,
 		}, status=status.HTTP_200_OK)
-
-	def retrieve(self, request, *args, **kwargs):
-		log_patient_action(request.user, 'doctor_break_view')
-		return super().retrieve(request, *args, **kwargs)
-
-	def update(self, request, *args, **kwargs):
-		response = super().update(request, *args, **kwargs)
-		log_patient_action(request.user, 'doctor_break_update')
-		return response
-
-	def destroy(self, request, *args, **kwargs):
-		response = super().destroy(request, *args, **kwargs)
-		log_patient_action(request.user, 'doctor_break_delete')
-		return response
 
 
 class DoctorListView(generics.ListAPIView):

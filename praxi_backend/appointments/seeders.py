@@ -2,9 +2,9 @@ import random
 from datetime import datetime, timedelta, time, date
 
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.db import transaction
 
+from praxi_backend.core.models import User
 from praxi_backend.patients.models import Patient
 from .models import (
     AppointmentType,
@@ -18,8 +18,6 @@ from .models import (
     Operation,
     PatientFlow,
 )
-
-User = get_user_model()
 RANDOM_SEED = 42
 
 

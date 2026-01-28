@@ -24,6 +24,19 @@ from .models import (
 	PatientFlow,
 )
 from .scheduling import compute_suggestions_for_doctor, doctor_display_name, get_active_doctors
+from .validators import (
+    dedupe_int_list,
+    resolve_active_devices,
+    resolve_active_resources,
+    validate_doctor_self_only,
+    validate_doctor_user,
+    validate_no_doctor_appointment_overlap_or_unavailable,
+    validate_no_patient_appointment_overlap,
+    validate_no_resource_conflicts,
+    validate_patient_id,
+    validate_time_range,
+    validate_within_working_hours_or_unavailable,
+)
 
 
 ABSENCE_COLOR = "#FF4500"
@@ -306,92 +319,29 @@ class AppointmentCreateUpdateSerializer(serializers.ModelSerializer):
         patient_id is stored as an integer reference (not a FK).
         Existence validation should happen at API/business layer if needed.
         """
-        if value is None:
-            raise serializers.ValidationError('patient_id ist ein Pflichtfeld.')
-        try:
-            value = int(value)
-        except (TypeError, ValueError):
-            raise serializers.ValidationError('patient_id muss eine Ganzzahl sein.')
-        if value <= 0:
-            raise serializers.ValidationError('patient_id muss positiv sein.')
-        return value
+        return validate_patient_id(value)
 
     def validate(self, attrs):
         instance = getattr(self, 'instance', None)
 
         request = self.context.get('request')
 
-        def _duration_minutes(a: datetime, b: datetime) -> int:
-            seconds = (b - a).total_seconds()
-            minutes = int(seconds // 60)
-            if seconds % 60:
-                minutes += 1
-            return max(1, minutes)
-
-        def _alternatives_for(doctor_obj: User, start_day: timezone.datetime, duration_min: int):
-            alts = []
-            for rep in get_active_doctors(exclude_doctor_id=getattr(doctor_obj, 'id', None)):
-                sug = compute_suggestions_for_doctor(
-                    doctor=rep,
-                    start_date=start_day.date(),
-                    duration_minutes=duration_min,
-                    limit=1,
-                    type_obj=None,
-                    max_days=31,
-                )
-                if sug:
-                    alts.append(
-                        {
-                            'doctor': {'id': rep.id, 'name': doctor_display_name(rep)},
-                            'next_available': sug[0]['start_time'],
-                        }
-                    )
-            return alts
-
-        def _raise_doctor_unavailable(doctor_obj: User, local_start_dt: datetime, local_end_dt: datetime):
-            alts = _alternatives_for(doctor_obj, local_start_dt, _duration_minutes(local_start_dt, local_end_dt))
-            raise serializers.ValidationError({'detail': 'Doctor unavailable.', 'alternatives': alts})
-
         start_time = attrs.get('start_time', getattr(instance, 'start_time', None))
         end_time = attrs.get('end_time', getattr(instance, 'end_time', None))
-        if start_time is not None and end_time is not None and start_time >= end_time:
-            raise serializers.ValidationError({'end_time': 'Endzeit muss nach der Startzeit liegen.'})
+        validate_time_range(start_time, end_time)
 
         doctor = attrs.get('doctor', getattr(instance, 'doctor', None))
-        if doctor is not None:
-            role = getattr(doctor, 'role', None)
-            if not role or getattr(role, 'name', None) != 'doctor':
-                raise serializers.ValidationError({'doctor': 'Der Arzt muss die Rolle "doctor" haben.'})
+        validate_doctor_user(doctor, field_name='doctor')
 
         if request is not None:
-            user = getattr(request, 'user', None)
-            user_role = getattr(getattr(user, 'role', None), 'name', None)
-            if user_role == 'doctor' and doctor is not None and getattr(doctor, 'id', None) != getattr(user, 'id', None):
-                raise serializers.ValidationError({'doctor': 'Ärzte dürfen nur eigene Termine anlegen/ändern.'})
+            validate_doctor_self_only(request_user=getattr(request, 'user', None), doctor=doctor)
 
         # Ressourcen validieren
         raw_resource_ids = attrs.get('resource_ids', None)
         resource_objs = None
         if raw_resource_ids is not None:
-            unique_ids = []
-            seen = set()
-            for rid in raw_resource_ids:
-                try:
-                    rid_int = int(rid)
-                except (TypeError, ValueError):
-                    raise serializers.ValidationError({'resource_ids': 'resource_ids muss eine Liste von Ganzzahlen sein.'})
-                if rid_int not in seen:
-                    seen.add(rid_int)
-                    unique_ids.append(rid_int)
-
-            if unique_ids:
-                resource_objs = list(Resource.objects.using('default').filter(id__in=unique_ids, active=True).order_by('id'))
-                found_ids = {r.id for r in resource_objs}
-                missing = [rid for rid in unique_ids if rid not in found_ids]
-                if missing:
-                    raise serializers.ValidationError({'resource_ids': 'resource_ids enthält unbekannte oder inaktive Ressource(n).'})
-            else:
-                resource_objs = []
+            unique_ids = dedupe_int_list(raw_resource_ids, field_name='resource_ids')
+            resource_objs = resolve_active_resources(unique_ids)
 
             # Store resolved objects for create/update.
             attrs['_resource_objs'] = resource_objs
@@ -399,86 +349,17 @@ class AppointmentCreateUpdateSerializer(serializers.ModelSerializer):
         # Arbeitszeiten-Konfliktprüfung
         # Reihenfolge: Erst Praxis, dann Arzt.
         if doctor is not None and start_time is not None and end_time is not None:
-            # Normalize times to local timezone and make them offset-naive for safe comparison
-            local_start = timezone.localtime(start_time) if timezone.is_aware(start_time) else start_time
-            local_end = timezone.localtime(end_time) if timezone.is_aware(end_time) else end_time
-            weekday = local_start.weekday()  # 0=Mon ... 6=Sun
-
-            start_t = local_start.time().replace(tzinfo=None)
-            end_t = local_end.time().replace(tzinfo=None)
-
-            practice_qs = PracticeHours.objects.using('default').filter(weekday=weekday, active=True)
-            if not practice_qs.exists():
-                _raise_doctor_unavailable(doctor, local_start, local_end)
-
-            practice_ok = practice_qs.filter(start_time__lte=start_t, end_time__gte=end_t).exists()
-            if not practice_ok:
-                _raise_doctor_unavailable(doctor, local_start, local_end)
-
-            dh_qs = DoctorHours.objects.using('default').filter(doctor=doctor, weekday=weekday, active=True)
-            if not dh_qs.exists():
-                _raise_doctor_unavailable(doctor, local_start, local_end)
-
-            dh_ok = dh_qs.filter(start_time__lte=start_t, end_time__gte=end_t).exists()
-            if not dh_ok:
-                _raise_doctor_unavailable(doctor, local_start, local_end)
-
-            # Arzt-Abwesenheiten prüfen (Datumsspanne)
-            appt_start_date = local_start.date()
-            appt_end_date = local_end.date()
-            absence_overlap = DoctorAbsence.objects.using('default').filter(
-                doctor=doctor,
-                active=True,
-                start_date__lte=appt_end_date,
-                end_date__gte=appt_start_date,
-            ).exists()
-            if absence_overlap:
-                _raise_doctor_unavailable(doctor, local_start, local_end)
-
-            # Pausen/Blockzeiten prüfen (praxisweit doctor=NULL oder arztbezogen)
-            breaks = DoctorBreak.objects.using('default').filter(
-                active=True,
-                date__gte=appt_start_date,
-                date__lte=appt_end_date,
-            ).filter(
-                Q(doctor__isnull=True) | Q(doctor=doctor)
-            )
-
-            if breaks.exists():
-                tz = timezone.get_current_timezone()
-
-                # Iterate days in range and check actual time overlap within each day.
-                day = appt_start_date
-                while day <= appt_end_date:
-                    day_start_dt = timezone.make_aware(datetime.combine(day, datetime.min.time()), tz)
-                    day_end_dt = timezone.make_aware(datetime.combine(day, datetime.max.time()), tz)
-
-                    seg_start = max(local_start, day_start_dt)
-                    seg_end = min(local_end, day_end_dt)
-
-                    for br in breaks.filter(date=day):
-                        br_start = timezone.make_aware(datetime.combine(day, br.start_time), tz)
-                        br_end = timezone.make_aware(datetime.combine(day, br.end_time), tz)
-
-                        if seg_start < br_end and seg_end > br_start:
-                            _raise_doctor_unavailable(doctor, local_start, local_end)
-
-                    day = day + timedelta(days=1)
+            validate_within_working_hours_or_unavailable(doctor=doctor, start_time=start_time, end_time=end_time)
 
         # Termin-Konfliktprüfung (Overlap Detection)
         # Overlap, wenn: start_time < existing.end_time AND end_time > existing.start_time
         if doctor is not None and start_time is not None and end_time is not None:
-            doctor_conflicts = Appointment.objects.filter(
+            validate_no_doctor_appointment_overlap_or_unavailable(
                 doctor=doctor,
-                start_time__lt=end_time,
-                end_time__gt=start_time,
+                start_time=start_time,
+                end_time=end_time,
+                exclude_appointment_id=getattr(instance, 'id', None) if instance is not None else None,
             )
-            if instance is not None and getattr(instance, 'id', None) is not None:
-                doctor_conflicts = doctor_conflicts.exclude(id=instance.id)
-            if doctor_conflicts.exists():
-                local_start = timezone.localtime(start_time) if timezone.is_aware(start_time) else start_time
-                local_end = timezone.localtime(end_time) if timezone.is_aware(end_time) else end_time
-                _raise_doctor_unavailable(doctor, local_start, local_end)
 
         patient_id = attrs.get('patient_id', getattr(instance, 'patient_id', None))
 
@@ -486,103 +367,26 @@ class AppointmentCreateUpdateSerializer(serializers.ModelSerializer):
         # Nur prüfen, wenn resource_ids im Request gesetzt wurden.
         resource_objs = attrs.get('_resource_objs', None)
         if resource_objs is not None:
-            self._check_resource_conflicts(
+            validate_no_resource_conflicts(
                 start_time=start_time,
                 end_time=end_time,
-                resource_objs=resource_objs,
-                instance=instance,
+                resources=resource_objs,
+                exclude_appointment_id=getattr(instance, 'id', None) if instance is not None else None,
+                request_user=getattr(request, 'user', None) if request is not None else None,
                 patient_id=patient_id,
             )
 
         if patient_id is not None and start_time is not None and end_time is not None:
-            patient_conflicts = Appointment.objects.filter(
-                patient_id=patient_id,
-                start_time__lt=end_time,
-                end_time__gt=start_time,
+            validate_no_patient_appointment_overlap(
+                patient_id=int(patient_id),
+                start_time=start_time,
+                end_time=end_time,
+                exclude_appointment_id=getattr(instance, 'id', None) if instance is not None else None,
             )
-            if instance is not None and getattr(instance, 'id', None) is not None:
-                patient_conflicts = patient_conflicts.exclude(id=instance.id)
-            if patient_conflicts.exists():
-                raise serializers.ValidationError(
-                    {
-                        'detail': 'Appointment conflict: patient already has an appointment in this time range.'
-                    }
-                )
 
         return attrs
 
-    def _check_resource_conflicts(self, *, start_time, end_time, resource_objs, instance, patient_id):
-        if not resource_objs or start_time is None or end_time is None:
-            return
-
-        resource_ids = [r.id for r in resource_objs]
-        qs = AppointmentResource.objects.using('default').filter(
-            resource_id__in=resource_ids,
-            appointment__start_time__lt=end_time,
-            appointment__end_time__gt=start_time,
-        )
-        if instance is not None and getattr(instance, 'id', None) is not None:
-            qs = qs.exclude(appointment_id=instance.id)
-
-        conflict = qs.select_related('appointment', 'resource').order_by('id').first()
-        conflict_meta = None
-        if conflict is not None:
-            conflict_meta = {
-                'resource_id': conflict.resource_id,
-                'appointment_id': conflict.appointment_id,
-            }
-
-        # Also block resources that are booked by operations (room + devices).
-        if conflict_meta is None:
-            room_ids = [r.id for r in resource_objs if getattr(r, 'type', None) == 'room']
-            if room_ids:
-                op = (
-                    Operation.objects.using('default')
-                    .filter(op_room_id__in=room_ids, start_time__lt=end_time, end_time__gt=start_time)
-                    .order_by('start_time', 'id')
-                    .first()
-                )
-                if op is not None:
-                    conflict_meta = {
-                        'resource_id': op.op_room_id,
-                        'operation_id': op.id,
-                        'reason': 'operation_room',
-                    }
-
-        if conflict_meta is None:
-            device_ids = [r.id for r in resource_objs if getattr(r, 'type', None) == 'device']
-            if device_ids:
-                od = (
-                    OperationDevice.objects.using('default')
-                    .filter(resource_id__in=device_ids, operation__start_time__lt=end_time, operation__end_time__gt=start_time)
-                    .select_related('operation')
-                    .order_by('operation__start_time', 'operation_id', 'resource_id', 'id')
-                    .first()
-                )
-                if od is not None:
-                    conflict_meta = {
-                        'resource_id': od.resource_id,
-                        'operation_id': od.operation_id,
-                        'reason': 'operation_device',
-                    }
-
-        if conflict_meta is None:
-            return
-
-        request = self.context.get('request')
-        if request is not None:
-            try:
-                patient_id = int(patient_id) if patient_id is not None else None
-            except Exception:
-                patient_id = None
-            log_patient_action(
-                request.user,
-                'resource_booking_conflict',
-                patient_id,
-                meta=conflict_meta,
-            )
-
-        raise serializers.ValidationError('Resource conflict')
+    # Resource conflicts are validated via praxi_backend.appointments.validators.
 
     def create(self, validated_data):
         resource_ids = validated_data.pop('resource_ids', None)
@@ -1052,15 +856,7 @@ class OperationCreateUpdateSerializer(serializers.ModelSerializer):
         patient_id is stored as an integer reference (not a FK).
         Existence validation should happen at API/business layer if needed.
         """
-        if value is None:
-            raise serializers.ValidationError('patient_id ist ein Pflichtfeld.')
-        try:
-            value = int(value)
-        except (TypeError, ValueError):
-            raise serializers.ValidationError('patient_id muss eine Ganzzahl sein.')
-        if value <= 0:
-            raise serializers.ValidationError('patient_id muss positiv sein.')
-        return value
+        return validate_patient_id(value)
 
     def validate(self, attrs):
         instance = getattr(self, 'instance', None)
@@ -1077,6 +873,7 @@ class OperationCreateUpdateSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'op_type': 'op_type ist inaktiv.'})
 
         def _dur(x):
+            # Kept local for now; larger conflict logic refactor will move this into validators.
             try:
                 return max(0, int(x or 0))
             except Exception:
@@ -1104,29 +901,8 @@ class OperationCreateUpdateSerializer(serializers.ModelSerializer):
         raw_device_ids = attrs.get('op_device_ids', None)
         device_objs = None
         if raw_device_ids is not None:
-            unique = []
-            seen = set()
-            for rid in raw_device_ids:
-                try:
-                    rid = int(rid)
-                except (TypeError, ValueError):
-                    raise serializers.ValidationError({'op_device_ids': 'op_device_ids muss eine Liste von Ganzzahlen sein.'})
-                if rid not in seen:
-                    seen.add(rid)
-                    unique.append(rid)
-
-            if unique:
-                device_objs = list(
-                    Resource.objects.using('default')
-                    .filter(id__in=unique, active=True, type='device')
-                    .order_by('id')
-                )
-                found = {r.id for r in device_objs}
-                missing = [rid for rid in unique if rid not in found]
-                if missing:
-                    raise serializers.ValidationError({'op_device_ids': 'op_device_ids enthält unbekannte/inaktive/nicht-Gerät-Ressource(n).'})
-            else:
-                device_objs = []
+            unique = dedupe_int_list(raw_device_ids, field_name='op_device_ids')
+            device_objs = resolve_active_devices(unique)
             attrs['_device_objs'] = device_objs
 
         # Team validation
@@ -1134,18 +910,16 @@ class OperationCreateUpdateSerializer(serializers.ModelSerializer):
         assistant = attrs.get('assistant', getattr(instance, 'assistant', None))
         anesth = attrs.get('anesthesist', getattr(instance, 'anesthesist', None))
 
-        def _ensure_doctor(user_obj: User | None, field_name: str):
-            if user_obj is None:
-                return
-            role = getattr(user_obj, 'role', None)
-            if not role or getattr(role, 'name', None) != 'doctor':
-                raise serializers.ValidationError({field_name: f'{field_name} muss die Rolle "doctor" haben.'})
-            if not getattr(user_obj, 'is_active', True):
-                raise serializers.ValidationError({field_name: f'{field_name} muss aktiv sein.'})
-
-        _ensure_doctor(primary, 'primary_surgeon')
-        _ensure_doctor(assistant, 'assistant')
-        _ensure_doctor(anesth, 'anesthesist')
+        # Team member validation
+        validate_doctor_user(primary, field_name='primary_surgeon')
+        validate_doctor_user(assistant, field_name='assistant')
+        validate_doctor_user(anesth, field_name='anesthesist')
+        if primary is not None and not getattr(primary, 'is_active', True):
+            raise serializers.ValidationError({'primary_surgeon': 'primary_surgeon muss aktiv sein.'})
+        if assistant is not None and not getattr(assistant, 'is_active', True):
+            raise serializers.ValidationError({'assistant': 'assistant muss aktiv sein.'})
+        if anesth is not None and not getattr(anesth, 'is_active', True):
+            raise serializers.ValidationError({'anesthesist': 'anesthesist muss aktiv sein.'})
 
         # RBAC: doctor cannot create/update others' ops
         if request is not None:

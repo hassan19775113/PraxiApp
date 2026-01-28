@@ -62,7 +62,6 @@ def _seed_roles() -> list[Role]:
         role, _created = Role.objects.get_or_create(name=name, defaults={"label": label})
         roles.append(role)
     return roles
-    return roles
 
 
 def _seed_users(roles: list[Role]) -> list[User]:
@@ -199,7 +198,8 @@ def _seed_audit_logs(users: list[User]) -> int:
 
     for i in range(50):
         user = random.choice(users)
-        role_name = user.role.label if user.role else "Unbekannt"
+        # role_name is used for filtering; prefer the stable role key (Role.name)
+        role_name = user.role.name if user.role else "unknown"
         action = random.choice(actions)
         patient_id = random.randint(1, 50)  # passt ungefähr zu unseren späteren Patienten-Seeds
         timestamp = now - timedelta(minutes=random.randint(0, 60 * 24 * 7))  # letzte 7 Tage
@@ -212,6 +212,7 @@ def _seed_audit_logs(users: list[User]) -> int:
             timestamp=timestamp,
             meta={
                 "source": "seed",
+                "role_label": user.role.label if user.role else None,
                 "info": f"Dummy Audit-Eintrag {i + 1}",
             },
         )

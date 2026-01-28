@@ -1,16 +1,23 @@
-"""
+"""praxi_backend.appointments.services.scheduling
+
 Scheduling Engine for PraxiApp.
 
-This service layer encapsulates all scheduling logic for Appointments and Operations.
-All business logic for conflict detection, working hours validation, and absence checks
-is centralized here. Views should delegate to these functions rather than implementing
-business logic directly.
+This module encapsulates scheduling logic for Appointments and Operations:
+- conflict detection
+- working-hours validation
+- absence/break validation
+- appointment/operation planning
 
 Architecture Rules:
 - All DB access uses .using('default')
 - patient_id is always an integer (not a FK)
 - All exceptions are custom types from appointments.exceptions
-- Views translate exceptions to appropriate DRF responses
+- API views translate exceptions to appropriate DRF responses
+
+Audit logging:
+- This module does NOT write AuditLog entries.
+- Views (or higher-level service wrappers) are responsible for calling
+    praxi_backend.core.utils.log_patient_action exactly once per API action.
 """
 
 from __future__ import annotations
@@ -41,7 +48,6 @@ from praxi_backend.appointments.models import (
     Resource,
 )
 from praxi_backend.core.models import User
-from praxi_backend.core.utils import log_patient_action
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser
@@ -781,9 +787,6 @@ def plan_appointment(
                 resource=resource,
             )
     
-    # Audit log (API semantics: creation via /appointments/)
-    log_patient_action(user, 'appointment_create', patient_id)
-    
     return appointment
 
 
@@ -980,9 +983,6 @@ def plan_operation(
             operation=operation,
             resource=device,
         )
-    
-    # Audit log (API semantics: creation via /operations/)
-    log_patient_action(user, 'operation_create', patient_id)
     
     return operation
 

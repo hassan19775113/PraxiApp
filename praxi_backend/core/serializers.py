@@ -7,6 +7,11 @@ Follows the Read/Write serializer pattern per architecture rules.
 from rest_framework import serializers
 
 from praxi_backend.core.models import AuditLog, Role, User
+from praxi_backend.core.validators import (
+    validate_old_password,
+    validate_role_name,
+    validate_unique_user_email,
+)
 
 
 # -----------------------------------------------------------------------------
@@ -32,11 +37,7 @@ class RoleCreateUpdateSerializer(serializers.ModelSerializer):
 
     def validate_name(self, value):
         """Ensure name is lowercase and alphanumeric with underscores."""
-        if not value:
-            raise serializers.ValidationError('name is required.')
-        if not value.replace('_', '').isalnum():
-            raise serializers.ValidationError('name must be alphanumeric with underscores only.')
-        return value.lower()
+        return validate_role_name(value)
 
 
 # -----------------------------------------------------------------------------
@@ -101,9 +102,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         """Ensure email is unique."""
-        if User.objects.using('default').filter(email=value).exists():
-            raise serializers.ValidationError('A user with this email already exists.')
-        return value
+        return validate_unique_user_email(value)
 
     def create(self, validated_data):
         """Create user with hashed password."""
@@ -137,13 +136,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
 
     def validate_email(self, value):
         """Ensure email is unique (excluding current user)."""
-        instance = self.instance
-        qs = User.objects.using('default').filter(email=value)
-        if instance is not None:
-            qs = qs.exclude(pk=instance.pk)
-        if qs.exists():
-            raise serializers.ValidationError('A user with this email already exists.')
-        return value
+        return validate_unique_user_email(value, instance=self.instance)
 
 
 class UserPasswordChangeSerializer(serializers.Serializer):
@@ -155,9 +148,7 @@ class UserPasswordChangeSerializer(serializers.Serializer):
     def validate_old_password(self, value):
         """Verify old password is correct."""
         user = self.context.get('user')
-        if user is None or not user.check_password(value):
-            raise serializers.ValidationError('Current password is incorrect.')
-        return value
+        return validate_old_password(value, user=user)
 
 
 # -----------------------------------------------------------------------------
