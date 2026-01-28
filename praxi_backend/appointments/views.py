@@ -2855,15 +2855,11 @@ class AvailabilityView(generics.GenericAPIView):
 		]
 		
 		# Get available patients
-		# NOTE: We need to get patients from the medical API first
-		# For now, we'll return an empty list and let the frontend handle it
-		# OR we can import the medical view to get patients
 		try:
-			from praxi_backend.medical.views import PatientSearchView
-			# Create a mock request to get all patients
-			# This is a workaround - ideally we'd have a service function
-			from praxi_backend.medical.models import Patient
-			all_patients = list(Patient.objects.using('medical').order_by('last_name', 'first_name', 'id')[:100])
+			from praxi_backend.patients.models import Patient
+			all_patients = list(
+				Patient.objects.using('default').order_by('last_name', 'first_name', 'id')[:100]
+			)
 			all_patient_ids = [p.id for p in all_patients]
 			
 			# Filter available patients
@@ -2875,7 +2871,7 @@ class AvailabilityView(generics.GenericAPIView):
 			)
 			
 			# Get patient details for available IDs
-			available_patients = Patient.objects.using('medical').filter(id__in=available_patient_ids)
+			available_patients = Patient.objects.using('default').filter(id__in=available_patient_ids)
 			
 			# Serialize patients
 			from praxi_backend.dashboard.utils import get_patient_display_name
@@ -2889,7 +2885,7 @@ class AvailabilityView(generics.GenericAPIView):
 				for p in available_patients
 			]
 		except Exception as e:
-			# If medical DB access fails, return empty list
+			# If patient lookup fails, return empty list
 			print(f'[AvailabilityView] Error loading patients: {e}')
 			patients_data = []
 		

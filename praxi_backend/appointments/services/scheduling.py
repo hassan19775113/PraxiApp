@@ -7,8 +7,8 @@ is centralized here. Views should delegate to these functions rather than implem
 business logic directly.
 
 Architecture Rules:
-- All DB access uses .using('default') - NO access to medical DB
-- patient_id is always an integer, never a FK to medical.Patient
+- All DB access uses .using('default')
+- patient_id is always an integer (not a FK)
 - All exceptions are custom types from appointments.exceptions
 - Views translate exceptions to appropriate DRF responses
 """
@@ -1206,8 +1206,8 @@ def filter_available_patients(
     """
     Filter a list of patient IDs to return only those that are available.
     
-    NOTE: This function cannot query the medical DB per architecture rules.
-    It must be called with a pre-filtered list of patient IDs from the medical API.
+    NOTE: This function does not query patient master data.
+    It expects a candidate list of patient IDs (e.g. from the patients endpoint/UI).
     
     Args:
         patient_ids: List of patient IDs to check

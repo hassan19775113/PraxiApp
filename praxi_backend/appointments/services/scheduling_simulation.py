@@ -48,7 +48,7 @@ CONFLICT TYPES SIMULATED
 ARCHITECTURE RULES
 ==============================================================================
 
-- All DB access uses .using('default') - NO access to medical DB
+- All DB access uses .using('default')
 - patient_id is always an integer dummy (99999, 99998, etc.)
 - All exceptions are custom types from appointments.exceptions
 - Deterministic via random.seed() for reproducibility

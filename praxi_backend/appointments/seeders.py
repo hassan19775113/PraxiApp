@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from praxi_backend.medical.models import Patient
+from praxi_backend.patients.models import Patient
 from .models import (
     AppointmentType,
     PracticeHours,
@@ -233,7 +233,7 @@ def _seed_appointments(
     if not doctors or not appointment_types:
         return result
 
-    patients = list(Patient.objects.all())
+    patients = list(Patient.objects.using('default').all())
     if not patients:
         return result
 

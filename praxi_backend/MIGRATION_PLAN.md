@@ -1,9 +1,7 @@
-# Migrationsplan (noch NICHT ausführen)
+# Migrationsplan (DEPRECATED)
 
-Ziel: Django nutzt **zwei PostgreSQL-Datenbanken**
-
-- `default` = System-DB (Django Auth/Rollen/Admin/Sessions + `core`)
-- `medical` = bestehende medizinische Bestands-DB (PraxiApp-Schema), **keine Django-Migrationen**
+Dieses Dokument beschreibt einen alten Plan für eine Dual-DB-Architektur.
+Die Codebase nutzt inzwischen **eine** Datenbank (`default`).
 
 ## 0) Voraussetzungen
 
@@ -19,19 +17,15 @@ Empfohlene ENV Vars (Beispiele):
   - `SYS_DB_HOST=localhost`
   - `SYS_DB_PORT=5432`
 
-- Medical-DB:
-  - `MED_DB_NAME=praxiapp`
-  - `MED_DB_USER=postgres`
-  - `MED_DB_PASSWORD=`
-  - `MED_DB_HOST=localhost`
-  - `MED_DB_PORT=5432`
+
+Hinweis: `MED_DB_*` Variablen werden nicht mehr verwendet.
 
 ## 1) Vorab-Check (read-only)
 
 - `python manage.py check`
 - Optional: `python manage.py shell -c "from django.db import connections; connections['default'].cursor().execute('SELECT 1'); print('ok')"`
 
-## 2) Migrationen (nur System-DB)
+## 2) Migrationen
 
 WICHTIG: Migrationen werden **nur** auf `default` angewendet.
 
@@ -52,8 +46,7 @@ Erwartung:
 
 - Minimal: Roles `doctor`, `assistant`, `admin`, `billing` in `core_role` anlegen.
 
-## 5) Medical-Models (später)
+## 5) Legacy-Patienten (Import)
 
-- Medical Tabellen per `managed = False` anbinden.
-- Router erweitern: Reads/Writes für medical Apps auf `medical` routen.
-- Keine Migrationen für diese Modelle.
+- Patient-Stammdaten werden über `praxi_backend.patients` verwaltet.
+- Import aus Alt-Systemen erfolgt über Management Commands im `patients` App.

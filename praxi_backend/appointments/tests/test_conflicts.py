@@ -15,13 +15,13 @@ class AppointmentConflictIntegrationTests(TestCase):
     """Integrationstest für Overlap-Detection.
 
     Verwendet nur die default/system Test-DB.
-    patient_id wird als Integer verwendet (keine FK zur medical DB).
+    patient_id wird als Integer verwendet (keine FK).
     """
 
     databases = {"default"}
 
     def test_conflict_flow(self):
-        # patient_id ist ein Integer, keine FK zur medical DB
+        # patient_id ist ein Integer, keine FK
         patient_id = 99999
 
         role_admin, _ = Role.objects.using("default").get_or_create(

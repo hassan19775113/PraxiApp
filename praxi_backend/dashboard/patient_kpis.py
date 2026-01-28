@@ -15,7 +15,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 
 from praxi_backend.appointments.models import Appointment
-from praxi_backend.medical.models import Patient
+from praxi_backend.patients.models import Patient
 
 
 # ============================================================================
@@ -815,46 +815,14 @@ def get_patient_profile(patient_id: int) -> dict[str, Any] | None:
     """
     patient = None
     try:
-        patient = Patient.objects.using('medical').get(id=patient_id)
+        patient = Patient.objects.using('default').get(id=patient_id)
     except Patient.DoesNotExist:
         patient = None
     except Exception:
-        # medical DB/table not available (e.g. dev SQLite without legacy table)
         patient = None
 
-    # Fallback: local patient cache (managed, default DB)
+    # Last resort: deterministic demo profile for dev data seeded only via appointments.
     if patient is None:
-        try:
-            from praxi_backend.patients.models import Patient as PatientCache
-
-            cached = PatientCache.objects.using('default').filter(patient_id=patient_id).first()
-            if cached is not None:
-                initials = (f"{(cached.first_name or '')[:1]}{(cached.last_name or '')[:1]}").upper()
-                today = date.today()
-                age = (today - cached.birth_date).days // 365
-
-                allergies = _generate_demo_allergies(patient_id)
-                return {
-                    'id': patient_id,
-                    'patient_id': patient_id,
-                    'first_name': cached.first_name,
-                    'last_name': cached.last_name,
-                    'display_name': f"{cached.last_name}, {cached.first_name}",
-                    'full_name': f"{cached.first_name} {cached.last_name}",
-                    'initials': initials,
-                    'birth_date': cached.birth_date.isoformat(),
-                    'age': age,
-                    'gender': 'Unbekannt',
-                    'gender_icon': '○',
-                    'phone': None,
-                    'email': None,
-                    'allergies': allergies,
-                    'has_allergies': len(allergies) > 0,
-                }
-        except Exception:
-            pass
-
-        # Last resort: deterministic demo profile for dev data seeded only via appointments.
         random.seed(patient_id + 9000)
         first_names = [
             'Alex', 'Sam', 'Taylor', 'Jordan', 'Robin', 'Casey', 'Jamie', 'Morgan', 'Chris', 'Kai'
@@ -946,7 +914,7 @@ def get_patient_overview_stats() -> dict[str, Any]:
     Berechnet Übersichtsstatistiken für alle Patienten.
     """
     try:
-        total_patients = Patient.objects.using('medical').count()
+        total_patients = int(Patient.objects.using('default').count())
     except Exception:
         total_patients = 0
     

@@ -10,10 +10,12 @@ class PatientReadSerializer(serializers.ModelSerializer):
         model = Patient
         fields = [
             'id',
-            'patient_id',
             'first_name',
             'last_name',
             'birth_date',
+            'gender',
+            'phone',
+            'email',
             'created_at',
             'updated_at',
         ]
@@ -26,16 +28,19 @@ class PatientWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Patient
         fields = [
-            'patient_id',
+            'id',
             'first_name',
             'last_name',
             'birth_date',
+            'gender',
+            'phone',
+            'email',
         ]
 
-    def validate_patient_id(self, value):
-        """Ensure patient_id is positive."""
+    def validate_id(self, value):
+        """Ensure the patient primary key (legacy patient_id) is positive."""
         if value is None or value <= 0:
-            raise serializers.ValidationError('patient_id must be a positive integer.')
+            raise serializers.ValidationError('id must be a positive integer.')
         return value
 
     def create(self, validated_data):

@@ -19,7 +19,7 @@ class DoctorAbsenceAppointmentCalendarMiniTests(TestCase):
     - Kalender-Week-View für 13.–19. Januar enthält die Abwesenheit
 
     Verwendet nur die default/system Test-DB.
-    patient_id wird als Integer verwendet (keine FK zur medical DB).
+    patient_id wird als Integer verwendet (keine FK).
     """
 
     databases = {"default"}
@@ -80,7 +80,7 @@ class DoctorAbsenceAppointmentCalendarMiniTests(TestCase):
         self.client = self._client_for(self.admin)
 
     def test_absence_blocks_appointments_and_calendar_includes_absence(self):
-        # patient_id ist ein Integer, keine FK zur medical DB
+        # patient_id ist ein Integer, keine FK
         patient_id = 99999
 
         # Use a fixed January window (year explicit)

@@ -5,8 +5,7 @@ API-Routen:
     /api/health/       - Health check (core)
     /api/appointments/ - Termine (appointments)
     /api/operations/   - OPs (appointments)
-    /api/patients/     - Patienten-Cache (patients)
-    /api/medical/      - Legacy-Patienten-DB (medical)
+    /api/patients/     - Patienten (patients)
 """
 
 import os
@@ -121,7 +120,6 @@ urlpatterns = [
     path("api/", include("praxi_backend.core.urls")),
     path("api/", include("praxi_backend.appointments.urls")),
     path("api/", include("praxi_backend.patients.urls")),
-    path("api/medical/", include("praxi_backend.medical.urls")),
 ]
 
 # Static Files für Development

@@ -68,7 +68,7 @@ class PatientAPITest(TestCase):
 
         # Create test patient
         self.patient = Patient.objects.using("default").create(
-            patient_id=1001,
+            id=1001,
             first_name="Max",
             last_name="Mustermann",
             birth_date=date(1990, 5, 15),
@@ -104,7 +104,7 @@ class PatientAPITest(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         rows = self._rows(response.data)
         self.assertEqual(len(rows), 1)
-        self.assertEqual(rows[0]["patient_id"], 1001)
+        self.assertEqual(rows[0]["id"], 1001)
 
     def test_list_as_doctor_returns_patients(self):
         """Doctor can list all patients."""
@@ -146,7 +146,7 @@ class PatientAPITest(TestCase):
         """Admin can create a patient."""
         client = self._client_for(self.admin)
         data = {
-            "patient_id": 2001,
+            "id": 2001,
             "first_name": "Erika",
             "last_name": "Musterfrau",
             "birth_date": "1985-03-20",
@@ -157,7 +157,7 @@ class PatientAPITest(TestCase):
         self.assertEqual(response.status_code, 201)
         self.assertEqual(Patient.objects.using("default").count(), 2)
 
-        created = Patient.objects.using("default").get(patient_id=2001)
+        created = Patient.objects.using("default").get(id=2001)
         self.assertEqual(created.first_name, "Erika")
         self.assertEqual(created.last_name, "Musterfrau")
 
@@ -173,7 +173,7 @@ class PatientAPITest(TestCase):
         """Doctor can create a patient."""
         client = self._client_for(self.doctor)
         data = {
-            "patient_id": 2002,
+            "id": 2002,
             "first_name": "Hans",
             "last_name": "Schmidt",
             "birth_date": "1975-07-10",
@@ -189,7 +189,7 @@ class PatientAPITest(TestCase):
         """Assistant can create a patient."""
         client = self._client_for(self.assistant)
         data = {
-            "patient_id": 2003,
+            "id": 2003,
             "first_name": "Test",
             "last_name": "User",
             "birth_date": "2000-01-01",
@@ -204,7 +204,7 @@ class PatientAPITest(TestCase):
         """Billing cannot create patients (read-only)."""
         client = self._client_for(self.billing)
         data = {
-            "patient_id": 2004,
+            "id": 2004,
             "first_name": "Test",
             "last_name": "User",
             "birth_date": "2000-01-01",
@@ -214,11 +214,11 @@ class PatientAPITest(TestCase):
 
         self.assertEqual(response.status_code, 403)
 
-    def test_create_invalid_patient_id(self):
-        """Invalid patient_id returns validation error."""
+    def test_create_invalid_id(self):
+        """Invalid id returns validation error."""
         client = self._client_for(self.admin)
         data = {
-            "patient_id": -1,
+            "id": -1,
             "first_name": "Invalid",
             "last_name": "Patient",
             "birth_date": "2000-01-01",
@@ -227,7 +227,7 @@ class PatientAPITest(TestCase):
         response = client.post("/api/patients/", data, format="json")
 
         self.assertEqual(response.status_code, 400)
-        self.assertIn("patient_id", response.data)
+        self.assertIn("id", response.data)
 
     # ========== RETRIEVE TESTS ==========
 
@@ -237,7 +237,7 @@ class PatientAPITest(TestCase):
         response = client.get(f"/api/patients/{self.patient.pk}/")
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data["patient_id"], 1001)
+        self.assertEqual(response.data["id"], 1001)
         self.assertEqual(response.data["first_name"], "Max")
 
     def test_retrieve_as_billing_success(self):
@@ -261,7 +261,7 @@ class PatientAPITest(TestCase):
         """Admin can update a patient."""
         client = self._client_for(self.admin)
         data = {
-            "patient_id": 1001,
+            "id": 1001,
             "first_name": "Maximilian",
             "last_name": "Mustermann",
             "birth_date": "1990-05-15",
@@ -319,7 +319,7 @@ class PatientAPITest(TestCase):
     def test_rbac_write_roles(self):
         """Verify write access for admin, assistant, doctor; denied for billing."""
         data = {
-            "patient_id": 9999,
+            "id": 9999,
             "first_name": "RBAC",
             "last_name": "Test",
             "birth_date": "2000-01-01",
@@ -331,19 +331,19 @@ class PatientAPITest(TestCase):
         self.assertEqual(response.status_code, 201)
 
         # Assistant can write
-        data["patient_id"] = 9998
+        data["id"] = 9998
         client = self._client_for(self.assistant)
         response = client.post("/api/patients/", data, format="json")
         self.assertEqual(response.status_code, 201)
 
         # Doctor can write
-        data["patient_id"] = 9997
+        data["id"] = 9997
         client = self._client_for(self.doctor)
         response = client.post("/api/patients/", data, format="json")
         self.assertEqual(response.status_code, 201)
 
         # Billing cannot write (read-only)
-        data["patient_id"] = 9996
+        data["id"] = 9996
         client = self._client_for(self.billing)
         response = client.post("/api/patients/", data, format="json")
         self.assertEqual(response.status_code, 403)

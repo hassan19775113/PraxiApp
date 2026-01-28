@@ -106,12 +106,8 @@ Dieses Repository enthält:
   - Scheduler: `scheduling.py` scannt Tage/Zeitslots, prüft Konflikte (Termine, Pausen, Abwesenheiten, Ressourcen, OP-Belegung)
   - API: umfangreich (Termine, OPs, Kalender-Views, Vorschläge, Patient Flow, Dashboard/Stats)
 
-- `praxi_backend.medical`
-  - Unmanaged Model: `Patient` (`managed=False`) auf DB-Alias `medical`
-  - Views: read-only List/Detail/Search mit Audit
-
 - `praxi_backend.patients`
-  - System-DB Cache: `patients_cache` (eigene Tabelle!)
+  - Managed Patient master: `patients` (Tabelle)
   - CRUD (rollenbasiert; billing read-only)
 
 - `praxi_backend.dashboard`
@@ -149,20 +145,16 @@ GET /api/appointments/suggest/
 
 ---
 
-## Datenbankkonzept (Dual-DB)
-
-### Zwei DB-Aliase
+## Datenbankkonzept (Single-DB)
 
 | Alias | Zweck | Schreibzugriff | Beispiele |
 |------:|------|----------------|----------|
-| `default` | System-DB (Django-managed) | Read/Write | Users/Roles, Termine, OPs, PatientFlow, Patient-Cache, AuditLog |
-| `medical` | Legacy/medizinische DB | **Read-only (fachlich)** | Patientenstamm (`medical.Patient`) |
+| `default` | System-DB (Django-managed) | Read/Write | Users/Roles, Termine, OPs, PatientFlow, Patients, AuditLog |
 
 ### Wichtige Regeln
 
-- **Keine Cross-DB ForeignKeys**: Patient wird überall als `patient_id: int` referenziert.
-- **Migrationen nur auf `default`**: In Prod steuert `PraxiAppRouter` (`praxi_backend/db_router.py`) das.
-- In DEV (`settings_dev.py`) wird bewusst alles auf SQLite gefahren, ohne Router.
+- Patient wird in Terminen/OPs als `patient_id: int` referenziert.
+- Migrationen laufen nur auf `default`.
 
 ---
 
@@ -180,14 +172,14 @@ GET /api/appointments/suggest/
 3. Starten via `manage.py` (setzt standardmäßig `praxi_backend.settings_dev`)
 
 Wichtige DEV-Eigenschaften:
-- `settings_dev.py` nutzt SQLite (`dev.sqlite3`) für **default und medical** (vereinfachtes DEV)
+- `settings_dev.py` nutzt SQLite (`dev.sqlite3`) für `default`
 - DRF ist paginiert (`PAGE_SIZE=50`)
 - JWT + SessionAuthentication aktiv (Browsable API; CSRF beachten)
 
 ### Datenbank/Migrationen
 
 - DEV: `python manage.py migrate` (SQLite)
-- Prod: `python manage.py migrate --database=default` (**niemals** `--database=medical`)
+- Prod: `python manage.py migrate --database=default`
 
 ---
 
@@ -326,7 +318,6 @@ Aus `praxi_backend/appointments/urls.py` (Auszug):
 ### DB/Migrations
 
 - Prod: Migrationen ausschließlich `--database=default`
-- medical DB niemals migrieren
 
 ---
 

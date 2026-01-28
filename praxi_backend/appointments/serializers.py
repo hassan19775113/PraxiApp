@@ -302,8 +302,8 @@ class AppointmentCreateUpdateSerializer(serializers.ModelSerializer):
     def validate_patient_id(self, value):
         """Validate patient_id is a positive integer.
         
-        NOTE: We do NOT query medical DB here per architecture rules.
-        patient_id is stored as an integer reference, not a FK.
+        NOTE: We do NOT validate patient existence here.
+        patient_id is stored as an integer reference (not a FK).
         Existence validation should happen at API/business layer if needed.
         """
         if value is None:
@@ -1048,8 +1048,8 @@ class OperationCreateUpdateSerializer(serializers.ModelSerializer):
     def validate_patient_id(self, value):
         """Validate patient_id is a positive integer.
         
-        NOTE: We do NOT query medical DB here per architecture rules.
-        patient_id is stored as an integer reference, not a FK.
+        NOTE: We do NOT validate patient existence here.
+        patient_id is stored as an integer reference (not a FK).
         Existence validation should happen at API/business layer if needed.
         """
         if value is None:

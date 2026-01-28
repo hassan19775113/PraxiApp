@@ -174,7 +174,7 @@ class AppointmentDialog {
     setupAutocompletes() {
         // Patient Autocomplete
         this.setupAutocomplete('appointmentPatient', 'appointmentPatientId', 'appointmentPatientDropdown', 
-            '/api/medical/patients/search/', (item) => {
+            '/api/patients/search/', (item) => {
                 const birthStr = item.birth_date ? new Date(item.birth_date).toLocaleDateString('de-DE') : '';
                 return `${item.last_name}, ${item.first_name}${birthStr ? ` (${birthStr})` : ''}`;
             }, (item) => item.id);

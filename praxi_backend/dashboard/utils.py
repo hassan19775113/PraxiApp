@@ -2,17 +2,16 @@
 Utility functions for dashboard views.
 """
 
-from typing import Dict, Optional
+from typing import Dict
 
-from praxi_backend.medical.models import Patient as MedicalPatient
-from praxi_backend.patients.models import Patient as PatientCache
+from praxi_backend.patients.models import Patient
 
 
 def get_patient_display_name(patient_id: int) -> str:
     """
     Holt den Anzeigenamen eines Patienten (Name, Geburtsdatum).
     
-    Versucht zuerst die Legacy-DB (medical), dann den Cache (patients_cache).
+    Nutzt die managed Patienten-Tabelle (default DB).
     Falls nicht gefunden, gibt "Patient #ID" zurück.
     
     Args:
@@ -21,29 +20,15 @@ def get_patient_display_name(patient_id: int) -> str:
     Returns:
         Anzeigename im Format "Nachname, Vorname (Geburtsdatum)" oder "Patient #ID"
     """
-    # Versuche Legacy-DB
     try:
-        patient = MedicalPatient.objects.using('medical').get(id=patient_id)
+        patient = Patient.objects.using('default').get(id=patient_id)
         birth_str = patient.birth_date.strftime('%d.%m.%Y') if patient.birth_date else ''
         name = f"{patient.last_name}, {patient.first_name}"
         if birth_str:
             name += f" ({birth_str})"
         return name
-    except MedicalPatient.DoesNotExist:
+    except Patient.DoesNotExist:
         pass
-    except Exception:
-        # DB nicht verfügbar (z.B. DEV ohne Legacy-DB)
-        pass
-    
-    # Versuche Cache
-    try:
-        cached = PatientCache.objects.using('default').filter(patient_id=patient_id).first()
-        if cached:
-            birth_str = cached.birth_date.strftime('%d.%m.%Y') if cached.birth_date else ''
-            name = f"{cached.last_name}, {cached.first_name}"
-            if birth_str:
-                name += f" ({birth_str})"
-            return name
     except Exception:
         pass
     
@@ -66,9 +51,8 @@ def get_patient_names_batch(patient_ids: list[int]) -> Dict[int, str]:
     if not patient_ids:
         return result
     
-    # Versuche Legacy-DB
     try:
-        patients = MedicalPatient.objects.using('medical').filter(id__in=patient_ids)
+        patients = Patient.objects.using('default').filter(id__in=patient_ids)
         for patient in patients:
             birth_str = patient.birth_date.strftime('%d.%m.%Y') if patient.birth_date else ''
             name = f"{patient.last_name}, {patient.first_name}"
@@ -77,20 +61,6 @@ def get_patient_names_batch(patient_ids: list[int]) -> Dict[int, str]:
             result[patient.id] = name
     except Exception:
         pass
-    
-    # Fehlende aus Cache holen
-    missing_ids = [pid for pid in patient_ids if pid not in result]
-    if missing_ids:
-        try:
-            cached = PatientCache.objects.using('default').filter(patient_id__in=missing_ids)
-            for patient in cached:
-                birth_str = patient.birth_date.strftime('%d.%m.%Y') if patient.birth_date else ''
-                name = f"{patient.last_name}, {patient.first_name}"
-                if birth_str:
-                    name += f" ({birth_str})"
-                result[patient.patient_id] = name
-        except Exception:
-            pass
     
     # Fallbacks für nicht gefundene
     for pid in patient_ids:

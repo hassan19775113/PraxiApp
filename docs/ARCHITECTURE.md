@@ -51,15 +51,10 @@ Scheduling-Engine:
     - Pausen/Abwesenheiten
     - Ressourcenbelegung (auch OP-Raum/OP-Geräte)
 
-#### `praxi_backend.patients` (System-DB Cache)
+#### `praxi_backend.patients` (Managed)
 
-- Tabelle: `patients_cache` (nicht die Legacy Tabelle)
-- Zweck: lokale Spiegelung/Ablage ausgewählter Patientendaten
-
-#### `praxi_backend.medical` (Legacy)
-
-- Modell: `Patient` (`managed=False`, DB `medical`)
-- Views sind read-only (List/Detail/Search) und auditiert.
+- Tabelle: `patients`
+- Zweck: Patient-Stammdaten als managed Model (`Patient`) im Default-DB
 
 #### `praxi_backend.dashboard`
 
@@ -71,7 +66,7 @@ Scheduling-Engine:
 ### Patientenreferenz
 
 - `patient_id: int` ist die **kanonische** Referenz auf den Patienten.
-- Keine Cross-DB ForeignKeys.
+- Keine ForeignKey-Kopplung in Appointments/Operations (Kompatibilität).
 
 ### Ressourcen
 

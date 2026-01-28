@@ -582,7 +582,7 @@ export class AppointmentModal {
      */
     async loadPatients() {
         try {
-            const response = await fetch('/api/medical/patients/search/', {
+            const response = await fetch('/api/patients/search/', {
                 headers: {
                     'Accept': 'application/json',
                 },

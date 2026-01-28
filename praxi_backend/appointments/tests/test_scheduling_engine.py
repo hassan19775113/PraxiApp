@@ -52,7 +52,7 @@ from praxi_backend.appointments.services.scheduling import (
 )
 
 
-# Dummy patient_id for tests (no access to medical DB)
+# Dummy patient_id for tests
 DUMMY_PATIENT_ID = 99999
 
 

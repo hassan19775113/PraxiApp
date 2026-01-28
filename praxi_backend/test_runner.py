@@ -32,6 +32,30 @@ class PraxiAppTestRunner(DiscoverRunner):
 		discovery. Each `<app>.tests` module/package provides `load_tests()` to load
 		its `test_*.py` submodules.
 		"""
+		# On Python 3.14+, `unittest` discovery from a filesystem directory can raise
+		# ImportError in repos that have `tests/` directories under app packages.
+		#
+		# Users often run `manage.py test praxi_backend` which passes a package label
+		# and triggers filesystem discovery. Normalize that to dotted module labels.
+		if test_labels:
+			# Treat `praxi_backend` as "run all app tests".
+			if any(label == "praxi_backend" for label in test_labels):
+				test_labels = None
+			else:
+				normalized: list[str] = []
+				for label in test_labels:
+					if label.startswith("praxi_backend.") and not label.endswith(".tests"):
+						candidate = f"{label}.tests"
+						try:
+							importlib.import_module(candidate)
+						except Exception:
+							normalized.append(label)
+						else:
+							normalized.append(candidate)
+					else:
+						normalized.append(label)
+				test_labels = normalized
+
 		if not test_labels:
 			labels: list[str] = []
 			for app in settings.INSTALLED_APPS:

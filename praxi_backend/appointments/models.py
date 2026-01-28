@@ -4,14 +4,14 @@ This module contains the core *managed* domain entities of PraxiApp.
 
 Medical-domain note (critical):
 
-- Patient master data lives in the legacy database (app ``praxi_backend.medical``).
-- Therefore, managed models must not use a ForeignKey to a medical-db model.
-- Instead, models store an integer ``patient_id`` that references the legacy patient.
+- Patient master data lives in the managed ``praxi_backend.patients`` app.
+- Appointments/operations still store an integer ``patient_id`` for simplicity and to
+  avoid wide-ranging changes across the scheduling domain.
 
 Architectural note:
 
 - All ORM access for these models should use the ``default`` database alias.
-	In production, routing is enforced by ``praxi_backend.db_router.PraxiAppRouter``.
+	In production, the app runs on a single database.
 """
 
 from datetime import date, timedelta
@@ -230,7 +230,9 @@ class Appointment(models.Model):
 	- Can optionally consume resources (room/device) and has a responsible doctor.
 
 	Technical notes:
-	- ``patient_id`` references legacy patient data (medical DB) and is not a FK.
+	- ``patient_id`` stores the patient identifier (int). Patient master data lives
+	  in the managed `patients` table (same DB), but appointments keep an integer
+	  reference for compatibility.
 	- ``resources`` is a M2M through ``AppointmentResource`` to support efficient
 	  constraints and unique pairing.
 	"""
@@ -386,7 +388,8 @@ class Operation(models.Model):
 	- Has participating clinicians: primary surgeon, assistant, anesthesist.
 
 	Technical notes:
-	- ``patient_id`` references the legacy patient (medical DB).
+	- ``patient_id`` stores the patient identifier (int). Patient master data lives
+	  in the managed `patients` table (same DB).
 	- Device usage is represented via M2M through ``OperationDevice``.
 	"""
 	STATUS_PLANNED = "planned"
@@ -403,7 +406,7 @@ class Operation(models.Model):
 		(STATUS_CANCELLED, STATUS_CANCELLED),
 	)
 
-	# NOTE: Patient lives in the read-only medical DB, so we store patient_id.
+	# NOTE: We store the patient identifier as integer for compatibility.
 	patient_id = models.IntegerField(verbose_name="Patient-ID")
 
 	primary_surgeon = models.ForeignKey(

@@ -1,17 +1,13 @@
-"""
-Tests for Medical App (Legacy Patient Database)
+"""Deprecated tests for the removed legacy medical app.
+
+Kept to avoid breaking older references; intentionally skipped.
 """
 
 from django.test import TestCase
 
 
 class MedicalModelTestCase(TestCase):
-    """Basic tests for medical app models."""
-    
-    databases = {"default", "medical"}
-    
-    def test_patient_model_is_unmanaged(self):
-        """Verify Patient model is unmanaged (read-only legacy DB)."""
-        from praxi_backend.medical.models import Patient
-        self.assertFalse(Patient._meta.managed)
-        self.assertEqual(Patient._meta.db_table, 'patients')
+	databases = {"default"}
+
+	def test_deprecated(self):
+		self.skipTest("praxi_backend.medical is deprecated (single DB).")

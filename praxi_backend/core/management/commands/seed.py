@@ -6,7 +6,7 @@ Verwendung:
     python manage.py seed --flush   # Testdaten in managed-Tabellen löschen und neu aufbauen
 
 WICHTIG:
-- Die Patienten-Tabelle (medical.Patient, managed=False) wird NIE gelöscht.
+- Die Patienten-Tabelle (patients.Patient, managed=True) wird standardmäßig NICHT gelöscht.
 - Patienten werden nur erzeugt, wenn die Tabelle leer ist.
 """
 
@@ -15,7 +15,7 @@ from django.db import transaction
 
 from praxi_backend.core.seeders import seed_core
 from praxi_backend.appointments.seeders import seed_appointments
-from praxi_backend.medical.seeders import seed_medical
+from praxi_backend.patients.seeders import seed_patients
 
 
 class Command(BaseCommand):
@@ -45,11 +45,11 @@ class Command(BaseCommand):
                 stats.update(core_stats)
                 self._print_stats("Core", core_stats)
 
-                # 2. Medical (Patienten) – unmanaged, wird nie gelöscht
-                self.stdout.write("\n[2/3] Seeding Medical (Patients)...")
-                medical_stats = seed_medical()
-                stats.update(medical_stats)
-                self._print_stats("Medical", medical_stats)
+                # 2. Patients (managed master data) – wird nur erzeugt, wenn leer
+                self.stdout.write("\n[2/3] Seeding Patients...")
+                patient_stats = seed_patients()
+                stats.update(patient_stats)
+                self._print_stats("Patients", patient_stats)
 
                 # 3. Appointments (Termine, Ressourcen, OPs, PatientFlow)
                 self.stdout.write("\n[3/3] Seeding Appointments (Appointments, Resources, Operations, Flows)...")

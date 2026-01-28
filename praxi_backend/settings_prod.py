@@ -43,21 +43,7 @@ DATABASES = {
             'connect_timeout': 10,
         },
     },
-    'medical': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ['MED_DB_NAME'],
-        'USER': os.environ['MED_DB_USER'],
-        'PASSWORD': os.environ['MED_DB_PASSWORD'],
-        'HOST': os.getenv('MED_DB_HOST', 'localhost'),
-        'PORT': os.getenv('MED_DB_PORT', '5432'),
-        'CONN_MAX_AGE': int(os.getenv('MED_DB_CONN_MAX_AGE', '60')),
-        'OPTIONS': {
-            'connect_timeout': 10,
-        },
-    },
 }
-
-DATABASE_ROUTERS = ['praxi_backend.db_router.PraxiAppRouter']
 
 # ---------------------------------------------------------
 # SECURITY SETTINGS

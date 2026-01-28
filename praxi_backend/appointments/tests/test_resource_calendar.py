@@ -26,7 +26,7 @@ class ResourceCalendarMiniTest(TestCase):
 	- doctor sieht nur eigene Buchungen (B leer)
 	- Audit wird geschrieben (resource_calendar_view)
 
-	Nur default/system-DB; medical DB bleibt unberührt.
+	Nur default/system-DB (single-DB Architektur).
 	"""
 
 	databases = {"default"}

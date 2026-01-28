@@ -25,7 +25,7 @@ class OpTimelineMiniTest(TestCase):
 	- Live liefert nur running/confirmed mit start_time >= now-30min
 	- RBAC: doctor sieht nur eigene OPs
 
-	Nur default/system-DB; medical DB bleibt unberührt.
+	Nur default/system-DB (single-DB Architektur).
 	"""
 
 	databases = {"default"}

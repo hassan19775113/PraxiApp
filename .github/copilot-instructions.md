@@ -2,18 +2,17 @@
 
 ## Architecture Overview
 
-PraxiApp is a **Django REST API** for medical practice management with a **dual-database architecture**:
+PraxiApp is a **Django REST API** for medical practice management using a **single database** (`default`).
 
-- **`default`** (PostgreSQL: `praxiapp_system`) – Django system data (auth, sessions) + managed app data (`core`, `appointments`)
-- **`medical`** (PostgreSQL: `praxiapp`) – Read-only legacy medical database (patients). **Never migrated by Django**.
+- **`default`** (PostgreSQL: `praxiapp_system`) – Django system data (auth, sessions) + managed app data (`core`, `appointments`, `patients`, `dashboard`)
 
-The `PraxiAppRouter` in [db_router.py](../praxi_backend/db_router.py) enforces this split. Models in `medical` app use `managed = False`.
+The former dual-DB setup (including a `medical` alias/router) has been removed; `praxi_backend/db_router.py` remains only as a deprecated stub.
 
 ### App Structure
 Apps live under `praxi_backend/` (not project root):
 - **`core`** – Custom `User` model, `Role`, `AuditLog`, JWT auth endpoints
 - **`appointments`** – Appointments, Operations, Resources, Scheduling, Patient Flow
-- **`medical`** – Unmanaged models (`Patient`) for legacy DB
+- **`patients`** – Managed patient master data (`Patient`) + notes/documents
 
 ## Key Patterns
 
@@ -35,8 +34,9 @@ from praxi_backend.core.utils import log_patient_action
 log_patient_action(request.user, 'appointment_create', patient_id=obj.patient_id)
 ```
 
-### Cross-DB Patient References
-Patient data lives in the medical DB. Store only `patient_id` (integer) in managed models:
+### Patient References
+Appointments/operations store only `patient_id` (integer). Patient master data is stored
+in the managed `patients.Patient` table.
 ```python
 patient_id = models.IntegerField()  # NOT a ForeignKey
 ```
@@ -60,7 +60,7 @@ python manage.py createsuperuser
 
 ## Testing
 
-Uses custom `PraxiAppTestRunner` – creates test DB only for `default`, leaves `medical` untouched.
+Uses custom `PraxiAppTestRunner` – creates test DB only for `default`.
 
 ```powershell
 # Run all tests
@@ -120,19 +120,12 @@ Seeders use `random.seed(42)` for deterministic test data.
 Create a `.env` file in the project root with the following structure:
 
 ```env
-# System-DB (Django-managed, read/write)
+# DB (Django-managed, read/write)
 SYS_DB_NAME=praxiapp_system
 SYS_DB_USER=postgres
 SYS_DB_PASSWORD=your_password
 SYS_DB_HOST=localhost
 SYS_DB_PORT=5432
-
-# Medical-DB (Legacy, read-only – NEVER migrated)
-MED_DB_NAME=praxiapp
-MED_DB_USER=postgres
-MED_DB_PASSWORD=your_password
-MED_DB_HOST=localhost
-MED_DB_PORT=5432
 
 # Optional
 DJANGO_SECRET_KEY=your-secret-key
@@ -140,13 +133,7 @@ JWT_SIGNING_KEY=your-jwt-key
 REDIS_HOST=localhost
 ```
 
-**Critical distinction:**
-| Variable Prefix | Database Alias | Purpose | Access |
-|-----------------|----------------|---------|--------|
-| `SYS_DB_*` | `default` | Django system + managed models | Read/Write |
-| `MED_DB_*` | `medical` | Legacy patient data | **Read-only** |
-
-⚠️ **Migrations run ONLY on `default` database.** Never run `migrate --database=medical`.
+⚠️ **Migrations run ONLY on `default` database.**
 
 ---
 
@@ -156,7 +143,7 @@ REDIS_HOST=localhost
 ```python
 from praxi_backend.core.models import User, Role, AuditLog
 from praxi_backend.appointments.models import Appointment, Operation
-from praxi_backend.medical.models import Patient
+from praxi_backend.patients.models import Patient
 ```
 
 **Test code** uses short imports (Django test discovery adds apps to path):

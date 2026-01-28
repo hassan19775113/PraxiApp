@@ -65,8 +65,11 @@ USER appuser
 ENV DJANGO_SETTINGS_MODULE=praxi_backend.settings_prod \
     PORT=8000
 
-# Collect static files
-RUN python manage.py collectstatic --noinput --clear
+# NOTE:
+# Do not run collectstatic at image build time.
+# settings_prod requires runtime environment variables (e.g., DJANGO_SECRET_KEY,
+# SYS_DB_NAME/MED_DB_NAME). Collect static files after the container starts
+# (or in CI/CD) using: python manage.py collectstatic --noinput
 
 # Expose port
 EXPOSE 8000

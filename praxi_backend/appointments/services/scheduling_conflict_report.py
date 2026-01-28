@@ -60,7 +60,7 @@ CONFLICT CATEGORIES
 ARCHITECTURE RULES
 ==============================================================================
 
-- All DB access uses .using('default') - NO access to medical DB
+- All DB access uses .using('default')
 - patient_id is always an integer dummy (99999, 99998, etc.)
 - Report output is structured dict/JSON for machine processing
 - Human-readable text report also available

@@ -20,7 +20,7 @@ class OpDashboardMiniTest(TestCase):
 	- GET /api/op-dashboard/ -> OPs sortiert nach start_time
 	- GET /api/op-dashboard/live/ -> nur laufende OPs
 
-	Nur default/system-DB; medical DB bleibt unberührt.
+	Nur default/system-DB (single-DB Architektur).
 	"""
 
 	databases = {"default"}

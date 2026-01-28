@@ -20,8 +20,7 @@ from django.views.generic import TemplateView
 from datetime import date
 
 from praxi_backend.appointments.models import Appointment
-from praxi_backend.medical.models import Patient
-from praxi_backend.patients.models import Patient as PatientCache
+from praxi_backend.patients.models import Patient
 from praxi_backend.patients.models import PatientDocument, PatientNote
 
 from .patient_kpis import (
@@ -55,155 +54,83 @@ class PatientOverviewView(TemplateView):
         patient_list = []
         error_messages = []
         
-        # Versuche zuerst: Medical DB
+        # Single-DB: use managed patients on default.
         try:
-            patients = Patient.objects.using('medical').all().order_by('last_name', 'first_name')[:100]
+            patients = Patient.objects.using('default').all().order_by('last_name', 'first_name')[:100]
             patient_count = patients.count()
-            print(f"[DEBUG] PatientOverviewView: Gefunden {patient_count} Patienten in Medical DB")
-            logger.debug(f"PatientOverviewView: Gefunden {patient_count} Patienten in Medical DB")
-            
-            if patient_count > 0:
-                for patient in patients:
+            logger.debug(f"PatientOverviewView: Gefunden {patient_count} Patienten in default DB")
+
+            for patient in patients:
+                try:
+                    display_name = f"{patient.last_name}, {patient.first_name}"
+                    if patient.birth_date:
+                        display_name += f" ({patient.birth_date.strftime('%d.%m.%Y')})"
+
+                    age = None
+                    if patient.birth_date:
+                        today = date.today()
+                        age = today.year - patient.birth_date.year - (
+                            (today.month, today.day) < (patient.birth_date.month, patient.birth_date.day)
+                        )
+
                     try:
-                        # Basis-Informationen (immer verfügbar)
-                        display_name = f"{patient.last_name}, {patient.first_name}"
-                        if patient.birth_date:
-                            display_name += f" ({patient.birth_date.strftime('%d.%m.%Y')})"
-                        
-                        # Berechne Alter aus Geburtsdatum
-                        age = None
-                        if patient.birth_date:
-                            today = date.today()
-                            age = today.year - patient.birth_date.year - ((today.month, today.day) < (patient.birth_date.month, patient.birth_date.day))
-                        
-                        # Status und Risk mit Fallbacks
-                        try:
-                            status = calculate_patient_status(patient.id)
-                            status_dict = {
-                                'label': status.label,
-                                'color': status.color,
-                                'icon': status.icon,
-                            }
-                        except Exception:
-                            status_dict = {
-                                'label': 'Unbekannt',
-                                'color': '#7A8A99',
-                                'icon': '○',
-                            }
-                        
-                        try:
-                            risk = calculate_patient_risk_score(patient.id)
-                            risk_dict = {
-                                'score': risk['score'],
-                                'level': risk['level'],
-                                'color': risk['level_color'],
-                            }
-                        except Exception:
-                            risk_dict = {
-                                'score': 0,
-                                'level': 'low',
-                                'color': '#6FCF97',
-                            }
-                        
-                        # Profile (optional)
-                        try:
-                            profile = get_patient_profile(patient.id)
-                            if profile and profile.get('age') and not age:
-                                age = profile['age']
-                        except Exception:
-                            profile = None
-                        
-                        # Normalisiere Gender-Werte (female -> W, male -> M)
-                        gender_normalized = patient.gender
-                        if gender_normalized:
-                            gender_normalized = gender_normalized.lower()
-                            if gender_normalized in ['female', 'w', 'weiblich']:
-                                gender_normalized = 'W'
-                            elif gender_normalized in ['male', 'm', 'männlich']:
-                                gender_normalized = 'M'
-                            else:
-                                gender_normalized = 'D'  # Divers/Other
-                        
-                        patient_list.append({
-                            'id': patient.id,
-                            'name': display_name,
-                            'birth_date': patient.birth_date,
-                            'age': age,
-                            'gender': gender_normalized or 'Unbekannt',
-                            'status': status_dict,
-                            'risk': risk_dict,
-                        })
-                    except Exception as e:
-                        # Selbst wenn alles fehlschlägt, zeige mindestens den Namen
-                        try:
-                            # Normalisiere Gender auch im Fallback
-                            gender_normalized = patient.gender
-                            if gender_normalized:
-                                gender_normalized = gender_normalized.lower()
-                                if gender_normalized in ['female', 'w', 'weiblich']:
-                                    gender_normalized = 'W'
-                                elif gender_normalized in ['male', 'm', 'männlich']:
-                                    gender_normalized = 'M'
-                                else:
-                                    gender_normalized = 'D'
-                            
-                            patient_list.append({
-                                'id': patient.id,
-                                'name': f"{patient.last_name}, {patient.first_name}",
-                                'birth_date': patient.birth_date,
-                                'age': None,
-                                'gender': gender_normalized or 'Unbekannt',
-                                'status': {'label': 'Fehler', 'color': '#EB5757', 'icon': '⚠'},
-                                'risk': {'score': 0, 'level': 'unknown', 'color': '#7A8A99'},
-                            })
-                        except Exception:
-                            error_messages.append(f"Patient {patient.id}: Vollständiger Fehler - {str(e)}")
-                            continue
-            else:
-                error_messages.append("Medical DB: Keine Patienten gefunden")
-        except Exception as e:
-            error_messages.append(f"Medical DB Fehler: {str(e)}")
-            import traceback
-            error_messages.append(traceback.format_exc())
-        
-        # Fallback: PatientCache (wenn medical DB leer ist)
-        if not patient_list:
-            try:
-                cached_patients = PatientCache.objects.all().order_by('last_name', 'first_name')[:100]
-                for patient in cached_patients:
-                    try:
-                        status = calculate_patient_status(patient.patient_id)
-                        risk = calculate_patient_risk_score(patient.patient_id)
-                        profile = get_patient_profile(patient.patient_id)
-                        
-                        age = None
-                        if patient.birth_date:
-                            today = date.today()
-                            age = today.year - patient.birth_date.year - ((today.month, today.day) < (patient.birth_date.month, patient.birth_date.day))
-                        
-                        display_name = f"{patient.last_name}, {patient.first_name}"
-                        
-                        patient_list.append({
-                            'id': patient.patient_id,
-                            'name': display_name,
-                            'birth_date': patient.birth_date,
-                            'age': age if age else (profile['age'] if profile and profile.get('age') else None),
-                            'gender': None,  # Nicht im Cache verfügbar
-                            'status': {
-                                'label': status.label,
-                                'color': status.color,
-                                'icon': status.icon,
-                            },
-                            'risk': {
-                                'score': risk['score'],
-                                'level': risk['level'],
-                                'color': risk['level_color'],
-                            },
-                        })
+                        status = calculate_patient_status(patient.id)
+                        status_dict = {
+                            'label': status.label,
+                            'color': status.color,
+                            'icon': status.icon,
+                        }
                     except Exception:
-                        continue
-            except Exception:
-                pass
+                        status_dict = {
+                            'label': 'Unbekannt',
+                            'color': '#7A8A99',
+                            'icon': '○',
+                        }
+
+                    try:
+                        risk = calculate_patient_risk_score(patient.id)
+                        risk_dict = {
+                            'score': risk['score'],
+                            'level': risk['level'],
+                            'color': risk['level_color'],
+                        }
+                    except Exception:
+                        risk_dict = {
+                            'score': 0,
+                            'level': 'low',
+                            'color': '#6FCF97',
+                        }
+
+                    try:
+                        profile = get_patient_profile(patient.id)
+                        if profile and profile.get('age') and not age:
+                            age = profile['age']
+                    except Exception:
+                        profile = None
+
+                    gender_normalized = patient.gender
+                    if gender_normalized:
+                        gender_normalized = gender_normalized.lower()
+                        if gender_normalized in ['female', 'w', 'weiblich']:
+                            gender_normalized = 'W'
+                        elif gender_normalized in ['male', 'm', 'männlich']:
+                            gender_normalized = 'M'
+                        else:
+                            gender_normalized = 'D'
+
+                    patient_list.append({
+                        'id': patient.id,
+                        'name': display_name,
+                        'birth_date': patient.birth_date,
+                        'age': age,
+                        'gender': gender_normalized or 'Unbekannt',
+                        'status': status_dict,
+                        'risk': risk_dict,
+                    })
+                except Exception as e:
+                    error_messages.append(f"Patient {patient.id}: Fehler - {str(e)}")
+        except Exception as e:
+            error_messages.append(f"Patient DB Fehler: {str(e)}")
         
         # Zweiter Fallback: Patienten aus Appointments
         if not patient_list:
@@ -377,7 +304,7 @@ class PatientDashboardView(TemplateView):
             context['show_redirect_hint'] = True
             # Fallback: Zeige ersten Patienten oder Demo
             try:
-                first_patient = Patient.objects.using('medical').first()
+                first_patient = Patient.objects.using('default').first()
                 if first_patient:
                     patient_id = first_patient.id
                     kpis = get_all_patient_kpis(patient_id)
@@ -468,7 +395,7 @@ class PatientDashboardView(TemplateView):
         patients_payload: list[dict] = []
         try:
             patients = (
-                Patient.objects.using('medical')
+                Patient.objects.using('default')
                 .all()
                 .order_by('last_name', 'first_name', 'id')
             )[:50]
@@ -492,12 +419,6 @@ class PatientDashboardView(TemplateView):
 
             if ids:
                 name_by_id: dict[int, str] = {}
-                try:
-                    cached = PatientCache.objects.using('default').filter(patient_id__in=ids)
-                    name_by_id = {p.patient_id: f"{p.last_name}, {p.first_name}" for p in cached}
-                except Exception:
-                    name_by_id = {}
-
                 patients_payload = [
                     {
                         'patient_id': pid,
@@ -506,19 +427,7 @@ class PatientDashboardView(TemplateView):
                     for pid in ids
                 ]
             else:
-                # As a last resort, show whatever is in the cache table.
-                try:
-                    cached = (
-                        PatientCache.objects.using('default')
-                        .all()
-                        .order_by('last_name', 'first_name', 'id')
-                    )[:50]
-                    patients_payload = [
-                        {'patient_id': p.patient_id, 'display_name': f"{p.last_name}, {p.first_name}"}
-                        for p in cached
-                    ]
-                except Exception:
-                    patients_payload = []
+                patients_payload = []
 
         context['patients'] = patients_payload
         context['patient_list'] = [
@@ -716,7 +625,7 @@ class PatientSearchView(View):
             return JsonResponse({'results': []})
         
         try:
-            patients = Patient.objects.using('medical').filter(
+            patients = Patient.objects.using('default').filter(
                 Q(first_name__icontains=query) |
                 Q(last_name__icontains=query)
             )[:10]

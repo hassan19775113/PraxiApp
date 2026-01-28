@@ -131,7 +131,7 @@ class AppointmentCRUDTest(TestCase):
 
         # Create test appointment
         self.appointment = Appointment.objects.using("default").create(
-            patient_id=99999,  # Integer dummy, no medical DB query
+            patient_id=99999,  # Integer dummy
             doctor=self.doctor,
             type=self.appt_type,
             start_time=self.start_time,

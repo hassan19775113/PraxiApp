@@ -32,11 +32,6 @@ services:
       - SYS_DB_PASSWORD=devpassword
       - SYS_DB_HOST=db
       - SYS_DB_PORT=5432
-      - MED_DB_NAME=praxiapp_medical
-      - MED_DB_USER=postgres
-      - MED_DB_PASSWORD=devpassword
-      - MED_DB_HOST=db
-      - MED_DB_PORT=5432
       - REDIS_HOST=redis
       - CELERY_BROKER_URL=redis://redis:6379/0
     depends_on:
@@ -63,7 +58,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: devpassword
-      POSTGRES_MULTIPLE_DATABASES: praxiapp_system,praxiapp_medical
+      POSTGRES_MULTIPLE_DATABASES: praxiapp_system
     volumes:
       - postgres_dev:/var/lib/postgresql/data
       - ./docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
@@ -107,7 +102,6 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=praxi_backend.settings_dev
       - SYS_DB_HOST=db
-      - MED_DB_HOST=db
       - REDIS_HOST=redis
       - CELERY_BROKER_URL=redis://redis:6379/0
     depends_on:
@@ -130,7 +124,6 @@ services:
     environment:
       - DJANGO_SETTINGS_MODULE=praxi_backend.settings_dev
       - SYS_DB_HOST=db
-      - MED_DB_HOST=db
       - REDIS_HOST=redis
       - CELERY_BROKER_URL=redis://redis:6379/0
     depends_on:

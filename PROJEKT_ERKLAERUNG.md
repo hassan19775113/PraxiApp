@@ -57,11 +57,8 @@ backend/
 │   │   │   └── scheduling.py   # ⭐ KERN: Scheduling-Engine
 │   │   └── exceptions.py       # Custom Exceptions
 │   │
-│   ├── medical/                # Legacy-Patienten-DB (read-only)
-│   │   └── models.py           # Unmanaged Patient-Model
-│   │
-│   ├── patients/               # Patienten-Cache (System-DB)
-│   │   └── models.py           # patients_cache Tabelle
+│   ├── patients/               # Patienten (managed, System-DB)
+│   │   └── models.py           # Patient master + notes/documents
 │   │
 │   ├── dashboard/              # Staff-only HTML-Dashboard
 │   │   ├── templates/          # Django-Templates
@@ -70,7 +67,7 @@ backend/
 │   ├── settings.py             # Basis-Settings
 │   ├── settings_dev.py         # Development (SQLite)
 │   ├── settings_prod.py        # Production (PostgreSQL)
-│   └── db_router.py            # Multi-DB-Router
+│   └── db_router.py            # Deprecated stub (single DB)
 │
 ├── manage.py                   # Django-Management
 ├── requirements.txt            # Python-Dependencies
@@ -161,25 +158,11 @@ log_patient_action(user, 'appointment_create', patient_id, meta={...})
 - `GET /api/op-timeline/` - OP-Timeline
 - `GET /api/op-stats/*` - OP-Statistiken
 
-### 3. `praxi_backend.medical`
+### 3. `praxi_backend.patients`
 
-**Zweck**: Read-only Zugriff auf Legacy-Patienten-DB
+**Zweck**: Patient-Stammdaten (managed) in der System-DB
 
-**Wichtig**:
-- Modelle sind `managed=False` (keine Django-Migrationen)
-- Nur Lesezugriff (fachliche Regel)
-- Patient wird überall als `patient_id: int` referenziert (kein FK!)
-
-**Endpunkte**:
-- `GET /api/medical/patients/` - Patientenliste
-- `GET /api/medical/patients/search/?q=...` - Suche
-- `GET /api/medical/patients/<id>/` - Detail
-
-### 4. `praxi_backend.patients`
-
-**Zweck**: Lokaler Patienten-Cache in System-DB
-
-- Schnellere Zugriffe als Legacy-DB
+- Tabelle `patients`
 - CRUD möglich (rollenbasiert)
 - `billing`-Rolle: read-only
 
@@ -187,7 +170,7 @@ log_patient_action(user, 'appointment_create', patient_id, meta={...})
 - `GET/POST /api/patients/`
 - `GET/PUT/PATCH /api/patients/<id>/`
 
-### 5. `praxi_backend.dashboard`
+### 4. `praxi_backend.dashboard`
 
 **Zweck**: Staff-only HTML-Dashboard (server-rendered)
 
@@ -262,8 +245,8 @@ Zentrale Logik für:
 
 ```
 Architecture Rules:
-- All DB access uses .using('default') - NO access to medical DB
-- patient_id is always an integer, never a FK to medical.Patient
+- All DB access uses .using('default')
+- patient_id is always an integer (not a FK)
 - All exceptions are custom types from appointments.exceptions
 - Views translate exceptions to appropriate DRF responses
 ```

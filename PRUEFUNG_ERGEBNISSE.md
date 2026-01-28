@@ -95,7 +95,7 @@ class DoctorListSerializer(serializers.ModelSerializer):
 
 1. ✅ `/api/appointments/` - Verwendet `AppointmentSerializer` → Liefert `patient_name`, `doctor_name`, etc.
 2. ❌ `/api/appointments/doctors/` - **FEHLT** (DoctorListView fehlt)
-3. ✅ `/api/medical/patients/search/` - Bestehend (medical app)
+3. ✅ `/api/patients/` - Patientenliste (managed, single DB)
 4. ✅ `/api/resources/` - Bestehend (`ResourceSerializer`)
 5. ✅ `/api/appointments/calendar/week/` - Bestehend (`CalendarWeekView`)
 

@@ -23,13 +23,13 @@ class OperationPlanningMiniTest(TestCase):
     - Suggest liefert 10:50-11:40
 
     Verwendet nur die default/system Test-DB.
-    patient_id wird als Integer verwendet (keine FK zur medical DB).
+    patient_id wird als Integer verwendet (keine FK).
     """
 
     databases = {"default"}
 
     def setUp(self):
-        # patient_id ist ein Integer, keine FK zur medical DB
+        # patient_id ist ein Integer, keine FK
         self.patient_id = 99999
 
         role_admin, _ = Role.objects.using("default").get_or_create(

@@ -43,7 +43,6 @@ INSTALLED_APPS = [
     # KORRIGIERT: Apps liegen unter praxi_backend/
     'praxi_backend.core',
     'praxi_backend.appointments',
-    'praxi_backend.medical',
     'praxi_backend.patients',
     'praxi_backend.dashboard',
 ]
@@ -94,29 +93,11 @@ DATABASES = {
         'PORT': os.getenv('SYS_DB_PORT', '5432'),
         'CONN_MAX_AGE': int(os.getenv('SYS_DB_CONN_MAX_AGE', '0')),
     },
-
-    # Medizinische Bestands-DB (bleibt schema-seitig unverändert; später unmanaged Models)
-    'medical': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('MED_DB_NAME', 'praxiapp'),
-        'USER': os.getenv('MED_DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('MED_DB_PASSWORD') or os.getenv('PGPASSWORD', ''),
-        'HOST': os.getenv('MED_DB_HOST', 'localhost'),
-        'PORT': os.getenv('MED_DB_PORT', '5432'),
-        'CONN_MAX_AGE': int(os.getenv('MED_DB_CONN_MAX_AGE', '0')),
-    },
 }
-
-
-# Database routing:
-# - Django-System-Apps + core migrieren nur in "default"
-# - Auf "medical" werden nie Migrationen ausgeführt
-DATABASE_ROUTERS = ['praxi_backend.db_router.PraxiAppRouter']
 
 
 # Tests:
 # - Nur "default" bekommt eine Test-DB.
-# - "medical" bleibt mit der echten praxiapp verbunden (read-only in Tests).
 TEST_RUNNER = 'praxi_backend.test_runner.PraxiAppTestRunner'
 
 

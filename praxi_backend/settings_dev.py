@@ -33,15 +33,6 @@ DATABASES = {
             'timeout': 20,
         },
     },
-    # Medical-DB (read-only) - SQLite für lokale Entwicklung
-    # In DEV: Gleiche DB wie default, da keine echte Legacy-DB vorhanden
-    'medical': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'dev.sqlite3',
-        'OPTIONS': {
-            'timeout': 20,
-        },
-    },
 }
 
 # Kein Multi-DB-Routing in DEV (alles läuft auf default)
@@ -67,7 +58,6 @@ INSTALLED_APPS = [
     # PraxiApp-Module
     'praxi_backend.core',
     'praxi_backend.appointments',
-    'praxi_backend.medical',
     'praxi_backend.patients',
     'praxi_backend.dashboard',
 ]

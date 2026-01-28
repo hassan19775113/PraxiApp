@@ -27,7 +27,7 @@ class OpStatsMiniTest(TestCase):
 	- doctor: nur overview + surgeons 200, rooms/devices/types 403
 	- billing: read-only, alle Endpoints 200
 
-	Nur default/system-DB; medical DB bleibt unberührt.
+	Nur default/system-DB (single-DB Architektur).
 	"""
 
 	databases = {"default"}

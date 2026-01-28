@@ -19,7 +19,7 @@ class OperationRBACMiniTest(TestCase):
 	- doctor: read-only nur eigene OPs (Teammitglied)
 	- billing: read-only
 
-	Anforderung: Nur default/system-DB; medical DB bleibt unberührt.
+	Anforderung: Nur default/system-DB (single-DB Architektur).
 	"""
 
 	databases = {"default"}

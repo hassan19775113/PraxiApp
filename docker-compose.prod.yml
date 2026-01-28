@@ -54,6 +54,7 @@ services:
       - static_prod:/app/staticfiles
       - media_prod:/app/media
       - logs_prod:/app/logs
+      - ./docker/backups:/backups
     depends_on:
       db:
         condition: service_healthy
@@ -82,7 +83,7 @@ services:
     environment:
       POSTGRES_USER: ${SYS_DB_USER:-postgres}
       POSTGRES_PASSWORD: ${SYS_DB_PASSWORD}
-      POSTGRES_MULTIPLE_DATABASES: ${SYS_DB_NAME},${MED_DB_NAME}
+      POSTGRES_MULTIPLE_DATABASES: ${SYS_DB_NAME}
     volumes:
       - postgres_prod:/var/lib/postgresql/data
       - ./docker/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro

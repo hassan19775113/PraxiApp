@@ -26,21 +26,15 @@ PraxiApp ist ein **Django REST Framework Backend** für die Verwaltung von Praxi
 
 ## 2. Architektur
 
-### 2.1 Dual-Datenbank-Architektur ✅
+### 2.1 Single-Datenbank-Architektur ✅
 
-Das System verwendet eine **saubere Trennung** zwischen System-DB und Legacy-DB:
-
-| Datenbank | Alias | Zweck | Schreibzugriff |
-|-----------|-------|-------|----------------|
-| System-DB | `default` | Django-managed Daten (Users, Roles, Termine, OPs, AuditLog) | Read/Write |
-| Legacy-DB | `medical` | Legacy Patientenstammdaten | **Read-only** |
+Das System nutzt eine **einzige** Datenbank (`default`). Patient-Stammdaten werden
+managed in `praxi_backend.patients` gespeichert.
 
 **Implementierung:**
-- `PraxiAppRouter` (`praxi_backend/db_router.py`) steuert das Routing
-- Keine Cross-DB ForeignKeys (Patienten werden als `patient_id: int` referenziert)
-- Migrationen nur auf `default`, niemals auf `medical`
-
-**Bewertung:** ✅ **Ausgezeichnet** - Klare Trennung, gute Dokumentation, sichere Implementierung
+- Keine Dual-DB Aliase / kein Router mehr in Verwendung
+- Patient wird in Terminen/OPs als `patient_id: int` referenziert
+- Migrationen laufen auf `default`
 
 ### 2.2 Django-App-Struktur
 
@@ -48,8 +42,7 @@ Das System verwendet eine **saubere Trennung** zwischen System-DB und Legacy-DB:
 praxi_backend/
 ├── core/           # User, Role, AuditLog, Auth
 ├── appointments/   # Termine, OPs, Ressourcen, Scheduling
-├── patients/       # System-DB Cache (patients_cache Tabelle)
-├── medical/        # Legacy-DB (unmanaged models)
+├── patients/       # Managed Patient master (patients Tabelle)
 └── dashboard/      # Staff-only HTML Dashboard
 ```
 
@@ -108,8 +101,7 @@ praxi_backend/
 - `PatientFlow` (Status-Tracking)
 
 **Patients:**
-- `patients_cache` (System-DB Cache)
-- `medical.Patient` (Legacy, read-only)
+- `patients.Patient` (Managed Patient master)
 
 **Bewertung:** ✅ **Umfangreich und gut durchdacht**
 

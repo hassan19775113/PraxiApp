@@ -89,26 +89,21 @@ def get_user_kpis() -> dict[str, Any]:
 
 
 def get_patient_count() -> int:
-    """Patienten-Anzahl aus medical DB (falls verfügbar)."""
-    try:
-        from praxi_backend.medical.models import Patient
-        count = Patient.objects.using('medical').count()
-        if count:
-            return count
-    except Exception:
-        pass
+    """Patient count (single-DB).
 
-    # Fallback: use the best available signal from managed data.
-    cache_count = 0
+    Prefer the managed `patients.Patient` table, then fall back to distinct
+    patient_ids referenced by appointments.
+    """
+    patient_count = 0
     appt_count = 0
 
-    # local cache table (default DB)
+    # managed patients table (default DB)
     try:
-        from praxi_backend.patients.models import Patient as PatientCache
+        from praxi_backend.patients.models import Patient
 
-        cache_count = int(PatientCache.objects.using('default').count())
+        patient_count = int(Patient.objects.using('default').count())
     except Exception:
-        cache_count = 0
+        patient_count = 0
 
     # unique patient_ids from appointments (default DB)
     try:
@@ -116,7 +111,7 @@ def get_patient_count() -> int:
     except Exception:
         appt_count = 0
 
-    return max(cache_count, appt_count)
+    return max(patient_count, appt_count)
 
 
 def get_appointment_kpis() -> dict[str, Any]:

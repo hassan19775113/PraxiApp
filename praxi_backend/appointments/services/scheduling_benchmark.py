@@ -47,7 +47,7 @@ METRICS COLLECTED
 ARCHITECTURE RULES
 ==============================================================================
 
-- All DB access uses .using('default') - NO access to medical DB
+- All DB access uses .using('default')
 - patient_id is always an integer dummy (99999, 99998, etc.)
 - Results are structured dicts for easy JSON serialization
 - Deterministic via random.seed() for reproducibility

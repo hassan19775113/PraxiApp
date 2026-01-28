@@ -20,7 +20,7 @@ class AppointmentWorkingHoursMiniTests(TestCase):
     - Termin Mo 13:00–14:00 -> 400 (outside doctor hours)
 
     Verwendet nur die default/system Test-DB.
-    patient_id wird als Integer verwendet (keine FK zur medical DB).
+    patient_id wird als Integer verwendet (keine FK).
     """
 
     databases = {"default"}
@@ -36,7 +36,7 @@ class AppointmentWorkingHoursMiniTests(TestCase):
         return timezone.make_aware(naive, timezone.get_current_timezone())
 
     def test_working_hours_validation(self):
-        # patient_id ist ein Integer, keine FK zur medical DB
+        # patient_id ist ein Integer, keine FK
         patient_id = 99999
 
         role_doctor, _ = Role.objects.using("default").get_or_create(

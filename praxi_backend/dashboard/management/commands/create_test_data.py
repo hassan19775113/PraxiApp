@@ -176,8 +176,8 @@ class Command(BaseCommand):
             Appointment.STATUS_CANCELLED,
         ]
 
-        # Patienten-IDs (angenommen, es gibt Patienten in der medical DB)
-        # Falls keine Patienten vorhanden sind, verwenden wir Dummy-IDs
+        # Patienten-IDs (wir verwenden hier Dummy-IDs für Termine/OPs)
+        # Hinweis: Patient-Stammdaten liegen in der managed `patients` Tabelle.
         patient_ids = list(range(1, 11))  # IDs 1-10
 
         # Erstelle Termine für die nächsten 14 Tage
