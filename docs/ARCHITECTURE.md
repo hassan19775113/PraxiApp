@@ -6,9 +6,8 @@ PraxiApp ist ein Backend für Praxisprozesse mit folgenden Hauptkomponenten:
 
 - **REST API** (DRF) für Termin-/OP-/Ressourcen-/PatientFlow-Operationen
 - **Dashboard UI** (server-rendered Django Templates) für Staff
-- **Dual-Datenbank-Architektur**:
-  - `default`: Django-managed Systemdaten + fachliche Planungsdaten
-  - `medical`: Legacy Patient DB (read-only, unmanaged models)
+- **Single-Datenbank-Architektur**:
+  - `default`: Django-managed Systemdaten + fachliche Planungsdaten (PostgreSQL)
 - **RBAC** (rollenbasiert) und **Audit Logging**
 
 ## Komponentenübersicht
@@ -17,7 +16,6 @@ PraxiApp ist ein Backend für Praxisprozesse mit folgenden Hauptkomponenten:
 
 - Root URLs: `praxi_backend/urls.py`
   - `/api/` inkludiert `core`, `appointments`, `patients`
-  - `/api/medical/` inkludiert `medical`
   - `/praxi_backend/dashboard/` (Dashboard)
   - `/praxi_backend/` (Custom Admin)
 
@@ -93,7 +91,7 @@ Scheduling-Engine:
 
 ## Deployment-Architektur
 
-- DEV: `settings_dev.py`, SQLite, optional Docker-Compose dev Stack
-- PROD: `settings_prod.py`, Postgres + Redis, Nginx + Gunicorn, WhiteNoise für static
+- DEV: `praxi_backend.settings.dev`, PostgreSQL (localhost), optional Docker-Compose dev Stack
+- PROD: `praxi_backend.settings.prod`, PostgreSQL + Redis, Nginx + Gunicorn, WhiteNoise für static
 
 Siehe auch `DEPLOYMENT.md`.

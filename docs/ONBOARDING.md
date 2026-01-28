@@ -2,7 +2,7 @@
 
 Diese Seite ist für Nachfolge-Entwickler gedacht, die das Projekt **ohne Vorwissen** starten, debuggen und erweitern sollen.
 
-## Schnellstart (lokal, Windows, SQLite)
+## Schnellstart (lokal, Windows, PostgreSQL)
 
 ### 1) Voraussetzungen
 
@@ -13,14 +13,14 @@ Diese Seite ist für Nachfolge-Entwickler gedacht, die das Projekt **ohne Vorwis
 
 `manage.py` setzt standardmäßig:
 
-- `DJANGO_SETTINGS_MODULE = praxi_backend.settings_dev`
+- `DJANGO_SETTINGS_MODULE = praxi_backend.settings.dev`
 
-`settings_dev.py` nutzt SQLite (`dev.sqlite3`) und deaktiviert Multi-DB-Routing (alles läuft auf derselben DB-Datei).
+Die DB-Konfiguration kommt aus `.env` (Variablen `SYS_DB_*`) und nutzt eine einzelne PostgreSQL DB unter Alias `default`.
 
 ### 3) Start
 
 - Migrationen:
-  - DEV: `python manage.py migrate`
+  - DEV: `python manage.py migrate --database=default`
 - Server:
   - `python manage.py runserver`
 
@@ -31,7 +31,7 @@ Diese Seite ist für Nachfolge-Entwickler gedacht, die das Projekt **ohne Vorwis
 
 ## Tests ausführen
 
-Das Projekt nutzt einen eigenen Test Runner (`praxi_backend.test_runner.PraxiAppTestRunner`) für die Dual-DB-Architektur.
+Das Projekt nutzt einen eigenen Test Runner (`praxi_backend.test_runner.PraxiAppTestRunner`) für die Single-DB-Architektur (nur `default`).
 
 Empfehlung:
 - `python manage.py test praxi_backend`
@@ -89,7 +89,6 @@ Muster:
 ### Neue medizinische Workflows integrieren
 
 - Patient wird systemweit als `patient_id: int` referenziert.
-- Keine ForeignKeys in Richtung `medical` DB.
 - Wenn Workflow patientenbezogen ist: AuditLog-Aktion definieren und schreiben.
 
 ## Struktur-Hinweis: Kompatibilitäts-Wrapper

@@ -106,22 +106,6 @@
     </section>
 
     <section class="prx-admin-section">
-        <h2 class="prx-admin-section__title">Medical (Medizinische Daten)</h2>
-        <div class="prx-tile-grid">
-            {% for app in app_list %}
-                {% if app.app_label == "medical" %}
-                    {% for model in app.models %}
-                        <a class="prx-tile" href="{{ model.admin_url }}">
-                            <div class="prx-tile__title">{{ model.name }}</div>
-                            <div class="prx-tile__hint">Verwalten</div>
-                        </a>
-                    {% endfor %}
-                {% endif %}
-            {% endfor %}
-        </div>
-    </section>
-
-    <section class="prx-admin-section">
         <h2 class="prx-admin-section__title">Patients</h2>
         <div class="prx-tile-grid">
             {% for app in app_list %}

@@ -4,12 +4,10 @@ djangorestframework>=3.15,<4.0
 djangorestframework-simplejwt>=5.3,<6.0
 
 # Database
-# NOTE:
-# - PraxiApp dev mode uses SQLite (settings_dev.py), so Postgres driver is not required.
-# - On Windows (especially newer Python/ARM64), psycopg2-binary may not have wheels and will
-#   try to compile from source, requiring MSVC build tools.
-# - Production (Docker/Linux) still installs this dependency.
-psycopg2-binary>=2.9,<3.0; platform_system != "Windows"
+# PostgreSQL driver (Windows-native friendly)
+# - Django uses `django.db.backends.postgresql`
+# - psycopg v3 provides prebuilt wheels via the `[binary]` extra on Windows.
+psycopg[binary]>=3.1,<4.0
 
 # CORS (für Frontend-Integration)
 django-cors-headers>=4.3,<5.0

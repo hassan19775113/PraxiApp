@@ -2,7 +2,7 @@
 """OP-KPIs (Teil 2/5) - Operationen-Analyse"""
 import os
 import django
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'praxi_backend.settings_dev')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'praxi_backend.settings.dev')
 django.setup()
 
 from datetime import datetime, timedelta

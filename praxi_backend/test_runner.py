@@ -9,15 +9,11 @@ from django.test.utils import setup_databases, teardown_databases
 
 
 class PraxiAppTestRunner(DiscoverRunner):
-	"""Test-Runner mit Multi-DB-Sonderregel.
+	"""PraxiApp test runner.
 
-	Ziel:
-	- Django erstellt eine Test-DB nur für alias "default".
-	- alias "medical" bleibt auf der echten Bestands-DB (read-only im Test).
-
-	Wichtig:
-	- Tests, die "medical" verwenden, dürfen NICHT schreiben.
-	- Keine Flush/Migrations auf "medical".
+	Single-database architecture:
+	- Django creates a test DB only for alias "default".
+	- No multi-DB routing / no "medical" alias.
 	"""
 
 	def build_suite(self, test_labels=None, **kwargs):

@@ -19,7 +19,7 @@ sys.path.insert(0, str(BASE_DIR))
 
 def main():
     # Settings-Modul aus Argumenten oder Default
-    settings_module = 'praxi_backend.settings_dev'
+    settings_module = 'praxi_backend.settings.dev'
     for arg in sys.argv[1:]:
         if arg.startswith('--settings='):
             settings_module = arg.split('=')[1]
@@ -84,7 +84,7 @@ def main():
     
     # 5. INSTALLED_APPS
     print("[5/8] Installed Apps...")
-    required_apps = ['praxi_backend.core', 'praxi_backend.appointments', 'praxi_backend.medical', 'praxi_backend.patients']
+    required_apps = ['praxi_backend.core', 'praxi_backend.appointments', 'praxi_backend.patients', 'praxi_backend.dashboard']
     missing = [app for app in required_apps if app not in settings.INSTALLED_APPS]
     if missing:
         results.append(("Installed Apps", "FAIL", f"Missing: {missing}"))
@@ -103,7 +103,7 @@ def main():
     
     # 7. Security Settings (nur Prod)
     print("[7/8] Security Settings...")
-    if 'settings_dev' in settings_module:
+    if settings_module.endswith('.dev'):
         results.append(("Security", "SKIP", "DEV mode"))
     else:
         issues = []

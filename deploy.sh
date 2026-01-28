@@ -30,7 +30,7 @@ echo "[1/6] Dependencies installieren..."
 pip install -r praxi_backend/requirements.txt --quiet
 
 if [ "$MODE" = "prod" ]; then
-    export DJANGO_SETTINGS_MODULE=praxi_backend.settings_prod
+    export DJANGO_SETTINGS_MODULE=praxi_backend.settings.prod
     
     echo "[2/6] Migrations prüfen..."
     python manage.py migrate --database=default --check
@@ -53,7 +53,7 @@ if [ "$MODE" = "prod" ]; then
         --error-logfile logs/error.log \
         --capture-output
 else
-    export DJANGO_SETTINGS_MODULE=praxi_backend.settings_dev
+    export DJANGO_SETTINGS_MODULE=praxi_backend.settings.dev
     
     echo "[2/6] Migrations anwenden..."
     python manage.py migrate --database=default

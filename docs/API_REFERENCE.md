@@ -122,7 +122,7 @@ Quelle: `praxi_backend/appointments/urls.py`
 - `GET /api/op-stats/surgeons/`
 - `GET /api/op-stats/types/`
 
-## Patients Cache (`/api/patients/…`)
+## Patients (`/api/patients/…`)
 
 Quelle: `praxi_backend/patients/urls.py`
 
@@ -132,16 +132,3 @@ Quelle: `praxi_backend/patients/urls.py`
 Audit:
 - Create: `patient_created`
 - Update: `patient_updated`
-
-## Medical (Legacy, read-only) (`/api/medical/…`)
-
-Quelle: `praxi_backend/medical/urls.py`
-
-- `GET /api/medical/patients/`
-- `GET /api/medical/patients/search/?q=…`
-- `GET /api/medical/patients/<id>/`
-
-Audit:
-- List: `patient_list`
-- Detail: `patient_view`
-- Search: `patient_search` (Meta enthält Query)

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
 import os
 from datetime import timedelta
 from pathlib import Path
@@ -120,50 +119,24 @@ ASGI_APPLICATION = "praxi_backend.asgi.application"
 
 
 # ------------------------------------------------------------
-# Database
+# Database (PostgreSQL only)
 # ------------------------------------------------------------
 
 
-def _postgres_driver_available() -> bool:
-    # Avoid importing the driver at settings import time; just check availability.
-    return importlib.util.find_spec("psycopg2") is not None
-
-
-def _build_database_config() -> dict:
-    """Return DATABASES['default'].
-
-    - Prefer Postgres if SYS_DB_NAME is provided AND the postgres driver is available.
-    - Otherwise fall back to SQLite (dev.sqlite3).
-
-    This keeps settings importable on Windows without psycopg2 installed.
-    """
-
-    sys_db_name = _env("SYS_DB_NAME")
-    wants_sqlite = _env_bool("DJANGO_USE_SQLITE", default=False)
-
-    if (not wants_sqlite) and sys_db_name and _postgres_driver_available():
-        return {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": sys_db_name,
-            "USER": _env("SYS_DB_USER", "postgres"),
-            "PASSWORD": _env("SYS_DB_PASSWORD") or _env("PGPASSWORD", ""),
-            "HOST": _env("SYS_DB_HOST", "localhost"),
-            "PORT": _env("SYS_DB_PORT", "5432"),
-            "CONN_MAX_AGE": _env_int("SYS_DB_CONN_MAX_AGE", 60),
-            "OPTIONS": {
-                "connect_timeout": _env_int("SYS_DB_CONNECT_TIMEOUT", 10),
-            },
-        }
-
-    sqlite_path = _env("SQLITE_PATH")
-    return {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": Path(sqlite_path) if sqlite_path else (BASE_DIR / "dev.sqlite3"),
-        "OPTIONS": {"timeout": _env_int("SQLITE_TIMEOUT", 20)},
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": _env("SYS_DB_NAME", "praxiapp_system"),
+        "USER": _env("SYS_DB_USER", "postgres"),
+        "PASSWORD": _env("SYS_DB_PASSWORD") or _env("PGPASSWORD", ""),
+        "HOST": _env("SYS_DB_HOST", "localhost"),
+        "PORT": _env("SYS_DB_PORT", "5432"),
+        "CONN_MAX_AGE": _env_int("SYS_DB_CONN_MAX_AGE", 60),
+        "OPTIONS": {
+            "connect_timeout": _env_int("SYS_DB_CONNECT_TIMEOUT", 10),
+        },
     }
-
-
-DATABASES = {"default": _build_database_config()}
+}
 
 # Single-DB architecture; no routers.
 DATABASE_ROUTERS: list[str] = []

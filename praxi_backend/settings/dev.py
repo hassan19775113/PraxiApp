@@ -9,14 +9,7 @@ from .base import *  # noqa
 DEBUG = True
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]", "*"]
 
-# SQLite by default in dev
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "dev.sqlite3",
-        "OPTIONS": {"timeout": 20},
-    }
-}
+# Single-DB architecture: Postgres only (inherited from base)
 DATABASE_ROUTERS = []
 
 REST_FRAMEWORK = {

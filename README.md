@@ -1,6 +1,6 @@
 # PraxiApp Backend (Django / DRF)
 
-PraxiApp ist ein Backend für Praxis-Workflows (Termine, OP-Planung, Ressourcen, Patientenfluss) mit einem klaren Fokus auf **RBAC**, **Audit Logging** und einer **Dual-Datenbank-Architektur** (System-DB + Legacy/Medical-DB).
+PraxiApp ist ein Backend für Praxis-Workflows (Termine, OP-Planung, Ressourcen, Patientenfluss) mit einem klaren Fokus auf **RBAC**, **Audit Logging** und einer **Single-Datenbank-Architektur** (eine Django-managed PostgreSQL DB unter Alias `default`).
 
 Dieses Repository enthält:
 - eine **REST API** unter `/api/…` (Django REST Framework)
@@ -15,7 +15,7 @@ Dieses Repository enthält:
 - [Technischer Überblick](#technischer-überblick)
 - [Architektur & Module](#architektur--module)
 - [Datenfluss (Textdiagramme)](#datenfluss-textdiagramme)
-- [Datenbankkonzept (Dual-DB)](#datenbankkonzept-dual-db)
+- [Datenbankkonzept (Single-DB)](#datenbankkonzept-single-db)
 - [Lokale Installation (Windows/DEV)](#lokale-installation-windowsdev)
 - [Deployment (Docker + Bare Metal)](#deployment-docker--bare-metal)
 - [API-Dokumentation (Kurzreferenz)](#api-dokumentation-kurzreferenz)
@@ -52,9 +52,8 @@ Dieses Repository enthält:
   - Statuskette (z. B. `registered → waiting → preparing → in_treatment → post_treatment → done`)
   - Verknüpft mit Termin **oder** OP (`PatientFlow.appointment` / `PatientFlow.operation`)
 
-- **Patientendaten (Legacy)**
-  - Patientenstammdaten liegen in einer Legacy-DB (App `medical`, read-only)
-  - Zusätzlich existiert ein **lokaler Cache** in der System-DB (App `patients`) für schnellere/vereinheitlichte Zugriffe
+- **Patientendaten**
+  - Patientenstammdaten liegen als managed Daten in der App `patients` (System-DB / `default`).
 
 ---
 
@@ -75,7 +74,6 @@ Dieses Repository enthält:
   - `core/` – User/Role/AuditLog, Auth-Endpunkte
   - `appointments/` – Termine, OPs, Ressourcen, Zeiten, PatientFlow, Scheduling
   - `patients/` – lokaler Patienten-Cache (System-DB)
-  - `medical/` – Legacy-Patientenmodelle (unmanaged, read-only)
   - `dashboard/` – staff-only HTML-Dashboard
 - `docker-compose.dev.yml`, `docker-compose.prod.yml`, `Dockerfile*` – Container/Deployment
 - `DEPLOYMENT.md` – Deployment-Checkliste
@@ -126,7 +124,7 @@ Client
             ├─ Authentication (JWT; in DEV zusätzlich SessionAuth möglich)
             ├─ Permission Check (RBAC + ggf. object-level)
             ├─ Serializer.validate()  ← Geschäftsregeln (z.B. Sprechzeiten, Ressourcen)
-            ├─ ORM .using('default'|'medical')
+            ├─ ORM .using('default')
             ├─ Audit: log_patient_action(user, action, patient_id, meta)
             └─ HTTP Response (JSON; Listen meist paginiert)
 ```
@@ -163,23 +161,23 @@ GET /api/appointments/suggest/
 ### Voraussetzungen
 
 - Python (Repo nutzt Docker `python:3.12-slim`; lokal entsprechend empfohlen)
-- Optional: Docker Desktop (wenn du dev/prod compose nutzen willst)
+- Optional: Docker Desktop (nur wenn du Container-Deployment nutzen willst)
 
-### Setup ohne Docker (SQLite, schnellster Start)
+### Setup ohne Docker (PostgreSQL, Windows-native)
 
 1. Virtuelle Umgebung aktivieren (bereits im Repo vorhanden: `.venv/`)
 2. Dependencies installieren aus `praxi_backend/requirements.txt`
-3. Starten via `manage.py` (setzt standardmäßig `praxi_backend.settings_dev`)
+3. `.env` konfigurieren (siehe `.env.example`) und PostgreSQL lokal starten
+4. Starten via `manage.py` (setzt standardmäßig `praxi_backend.settings.dev`)
 
 Wichtige DEV-Eigenschaften:
-- `settings_dev.py` nutzt SQLite (`dev.sqlite3`) für `default`
+- DEV nutzt PostgreSQL (`default`)
 - DRF ist paginiert (`PAGE_SIZE=50`)
 - JWT + SessionAuthentication aktiv (Browsable API; CSRF beachten)
 
 ### Datenbank/Migrationen
 
-- DEV: `python manage.py migrate` (SQLite)
-- Prod: `python manage.py migrate --database=default`
+- DEV/Prod: `python manage.py migrate --database=default`
 
 ---
 
@@ -251,14 +249,6 @@ Aus `praxi_backend/appointments/urls.py` (Auszug):
 | GET/POST | `/api/patients/` | Cache-Patienten listen/erstellen |
 | GET/PUT/PATCH | `/api/patients/<id>/` | Cache-Patient ändern |
 
-### Medical (Legacy DB, read-only)
-
-| Methode | Pfad | Zweck |
-|---|---|---|
-| GET | `/api/medical/patients/` | Legacy Patientenliste |
-| GET | `/api/medical/patients/search/?q=…` | Suche |
-| GET | `/api/medical/patients/<id>/` | Detail |
-
 ### Beispiel: Login + Auth Header
 
 - Login: `POST /api/auth/login/` mit `{"username": "…", "password": "…"}`
@@ -269,7 +259,6 @@ Aus `praxi_backend/appointments/urls.py` (Auszug):
 ## Sicherheit, Datenschutz, medizinische Anforderungen
 
 - **Datenschutz/PHI-Minimierung**: Patient wird API-intern als `patient_id` referenziert; AuditLog speichert `patient_id`, Action, Timestamp und optional `meta`.
-- **Legacy DB Schutz**: `medical`-Modelle sind `managed=False`; Migrationen sind für `medical` blockiert.
 - **RBAC**: Rollen steuern Read/Write (z. B. billing meist read-only). Teilweise zusätzliche object-level Regeln (z. B. Arzt nur eigene Termine/OPs).
 - **CSRF**: In DEV ist SessionAuthentication aktiv (Browsable API) → unsafe requests können CSRF benötigen. In Prod wird JWT-only genutzt.
 
@@ -283,10 +272,10 @@ Aus `praxi_backend/appointments/urls.py` (Auszug):
   - ✅ `from praxi_backend.appointments.models import Appointment`
 - Tests dürfen (historisch) kürzere Imports nutzen, sollen aber bevorzugt ebenfalls vollqualifiziert sein.
 
-### Multi-DB Regeln
+### DB-Regeln
 
-- In produktiven QuerySets/Serializer-QuerySets: `...objects.using('default')` bzw. `.using('medical')`
-- Keine Cross-DB ForeignKeys.
+- QuerySets/Serializer-QuerySets verwenden explizit `...objects.using('default')`.
+- Patientenreferenzen in Terminen/OPs sind `patient_id: int` (kein ForeignKey).
 
 ### RBAC Pattern
 

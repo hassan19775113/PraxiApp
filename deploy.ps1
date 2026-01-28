@@ -46,7 +46,7 @@ if ($LASTEXITCODE -ne $null -and $LASTEXITCODE -ne 0) {
 }
 
 if ($Mode -eq "prod") {
-    $env:DJANGO_SETTINGS_MODULE = "praxi_backend.settings_prod"
+    $env:DJANGO_SETTINGS_MODULE = "praxi_backend.settings.prod"
     
     Write-Host "[2/6] Migrations prüfen..."
     python manage.py migrate --database=default --check
@@ -73,7 +73,7 @@ if ($Mode -eq "prod") {
         --workers $workers `
         --timeout 120
 } else {
-    $env:DJANGO_SETTINGS_MODULE = "praxi_backend.settings_dev"
+    $env:DJANGO_SETTINGS_MODULE = "praxi_backend.settings.dev"
     
     Write-Host "[2/6] Migrations anwenden..."
     python manage.py migrate --database=default
