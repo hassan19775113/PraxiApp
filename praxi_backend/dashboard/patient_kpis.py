@@ -868,9 +868,11 @@ def get_patient_profile(patient_id: int) -> dict[str, Any] | None:
             'allergies': allergies,
             'has_allergies': len(allergies) > 0,
         }
-    
     today = date.today()
-    age = (today - patient.birth_date).days // 365
+	
+    today = date.today()
+    birth_date = getattr(patient, "birth_date", None)
+    age = (today - birth_date).days // 365 if birth_date else None
 
     initials = (f"{(patient.first_name or '')[:1]}{(patient.last_name or '')[:1]}").upper()
 
@@ -894,7 +896,7 @@ def get_patient_profile(patient_id: int) -> dict[str, Any] | None:
         'display_name': f"{patient.last_name}, {patient.first_name}",
         'full_name': f"{patient.first_name} {patient.last_name}",
         'initials': initials,
-        'birth_date': patient.birth_date.isoformat(),
+        'birth_date': birth_date.isoformat() if birth_date else None,
         'age': age,
         'gender': patient.gender or 'Unbekannt',
         'gender_icon': gender_icon,

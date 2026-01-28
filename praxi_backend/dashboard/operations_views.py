@@ -7,14 +7,15 @@ Enthält:
 """
 from __future__ import annotations
 
-import json
-
 from django.http import JsonResponse
 from django.views import View
 from django.views.generic import TemplateView
 
-from .operations_kpis import get_all_operations_kpis, get_realtime_operations_kpis
-from .operations_charts import get_all_operations_charts
+from .services import (
+    build_operations_api_payload,
+    build_operations_dashboard_context,
+    parse_operations_request,
+)
 
 
 class OperationsDashboardView(TemplateView):
@@ -32,49 +33,14 @@ class OperationsDashboardView(TemplateView):
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
         # Zeitraum aus Query-Parameter
-        days = int(self.request.GET.get('days', 30))
-        view_mode = self.request.GET.get('mode', 'overview')  # overview, realtime, resources
-        
-        # KPIs berechnen
-        if view_mode == 'realtime':
-            kpis = get_realtime_operations_kpis()
-        else:
-            kpis = get_all_operations_kpis(days=days)
-        
-        # Charts generieren
-        charts = get_all_operations_charts(days=days, kpis=kpis)
-        
-        # Context aufbauen
-        context['title'] = 'Operations-Dashboard'
-        context['period'] = kpis['period']
-        context['selected_days'] = days
-        context['view_mode'] = view_mode
-        
-        # KPIs
-        context['utilization'] = kpis['utilization']
-        context['throughput'] = kpis['throughput']
-        context['no_show'] = kpis['no_show']
-        context['cancellation'] = kpis['cancellation']
-        context['resources'] = kpis['resources']
-        context['bottleneck'] = kpis['bottleneck']
-        context['hourly'] = kpis['hourly']
-        context['status_distribution'] = kpis['status_distribution']
-        context['patient_flow'] = kpis['patient_flow']
-        context['flow_times'] = kpis['flow_times']
-        context['punctuality'] = kpis['punctuality']
-        context['documentation'] = kpis['documentation']
-        context['services'] = kpis['services']
-        
-        # Charts als JSON
-        context['charts'] = charts
-        context['charts_json'] = json.dumps(charts)
-        
-        # Ressourcen-Listen für Filter
-        context['rooms'] = kpis['resources']['rooms']
-        context['devices'] = kpis['resources']['devices']
-        
+        days, view_mode, _include_charts = parse_operations_request(self.request.GET)
+        # UI uses overview/realtime/resources; API uses standard/realtime.
+        if view_mode == "standard":
+            view_mode = "overview"
+
+        payload, _charts = build_operations_dashboard_context(days=days, view_mode=view_mode)
+        context.update(payload)
         return context
 
 
@@ -88,28 +54,8 @@ class OperationsAPIView(View):
     """
     
     def get(self, request):
-        days = int(request.GET.get('days', 30))
-        mode = request.GET.get('mode', 'standard')
-        include_charts = request.GET.get('charts', 'true').lower() == 'true'
-        
-        # KPIs berechnen
-        if mode == 'realtime':
-            kpis = get_realtime_operations_kpis()
-        else:
-            kpis = get_all_operations_kpis(days=days)
-        
-        response_data = {
-            'success': True,
-            'mode': mode,
-            'kpis': kpis,
-        }
-        
-        # Charts optional
-        if include_charts:
-            charts = get_all_operations_charts(days=days, kpis=kpis)
-            response_data['charts'] = charts
-        
-        return JsonResponse(response_data)
+        days, mode, include_charts = parse_operations_request(request.GET)
+        return JsonResponse(build_operations_api_payload(days=days, mode=mode, include_charts=include_charts))
 
 
 class OperationsResourceView(TemplateView):

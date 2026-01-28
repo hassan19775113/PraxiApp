@@ -1,5 +1,4 @@
-"""
-Management Command: create_test_data
+"""Management Command: create_test_data
 
 Erstellt Testdaten für Browser-Tests:
 - Ärzte (Users mit Rolle 'doctor')
@@ -9,12 +8,17 @@ Erstellt Testdaten für Browser-Tests:
 
 Verwendung:
     python manage.py create_test_data
+
+Hinweis: Single-DB Architektur – alle ORM-Operationen laufen über `default`.
 """
+
+from __future__ import annotations
+
+import random
+from datetime import datetime, timedelta
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-from datetime import datetime, timedelta
-import random
 
 from praxi_backend.core.models import User, Role
 from praxi_backend.appointments.models import (
@@ -36,6 +40,9 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
+        # Deterministic output (useful for repeatable browser demos/tests).
+        random.seed(42)
+
         if options['clear']:
             self.stdout.write(self.style.WARNING('Lösche Testdaten...'))
             self._clear_test_data()
@@ -65,13 +72,24 @@ class Command(BaseCommand):
 
     def _create_roles(self):
         """Erstellt Rollen, falls nicht vorhanden."""
-        role_names = ['admin', 'doctor', 'assistant', 'billing']
-        for role_name in role_names:
-            Role.objects.using('default').get_or_create(name=role_name)
+        roles = {
+            "admin": "Administrator",
+            "assistant": "MFA",
+            "doctor": "Arzt",
+            "billing": "Abrechnung",
+        }
+        for role_name, label in roles.items():
+            Role.objects.using("default").get_or_create(
+                name=role_name,
+                defaults={"label": label},
+            )
 
     def _create_doctors(self):
         """Erstellt Test-Ärzte."""
-        doctor_role, _ = Role.objects.using('default').get_or_create(name='doctor')
+        doctor_role, _ = Role.objects.using('default').get_or_create(
+            name='doctor',
+            defaults={"label": "Arzt"},
+        )
 
         doctors_data = [
             {'first_name': 'Dr. Anna', 'last_name': 'Müller', 'username': 'dr_mueller', 'email': 'a.mueller@praxis.de', 'color': '#4A90E2'},
@@ -83,7 +101,7 @@ class Command(BaseCommand):
 
         doctors = []
         for data in doctors_data:
-            user, created = User.objects.using('default').get_or_create(
+            user, created = User.objects.db_manager('default').get_or_create(
                 username=data['username'],
                 defaults={
                     'first_name': data['first_name'],
@@ -240,9 +258,12 @@ class Command(BaseCommand):
 
     def _clear_test_data(self):
         """Löscht Testdaten (optional)."""
-        # Vorsicht: Löscht nur Testdaten, die mit diesem Command erstellt wurden
-        # Identifikation über Username-Pattern oder andere Marker
+        # Vorsicht: Löscht nur Testdaten, die mit diesem Command erstellt wurden.
+        # Identifikation über Marker (notes / username pattern).
+        appt_qs = Appointment.objects.using('default').filter(notes__startswith='Test-Termin')
+        AppointmentResource.objects.using('default').filter(appointment__in=appt_qs).delete()
+        appt_qs.delete()
+
         User.objects.using('default').filter(username__startswith='dr_').delete()
-        Appointment.objects.using('default').filter(notes__startswith='Test-Termin').delete()
         # Ressourcen und Terminarten werden nicht gelöscht (könnten auch manuell erstellt sein)
 
