@@ -14,6 +14,7 @@ from typing import Any
 @dataclass
 class Conflict:
     """Represents a single scheduling conflict."""
+
     type: str  # 'doctor_conflict', 'room_conflict', 'device_conflict', 'patient_conflict'
     model: str  # 'Appointment' or 'Operation'
     id: int | None = None
@@ -23,31 +24,33 @@ class Conflict:
 
     def to_dict(self) -> dict[str, Any]:
         result = {
-            'type': self.type,
-            'model': self.model,
+            "type": self.type,
+            "model": self.model,
         }
         if self.id is not None:
-            result['id'] = self.id
+            result["id"] = self.id
         if self.resource_id is not None:
-            result['resource_id'] = self.resource_id
+            result["resource_id"] = self.resource_id
         if self.message:
-            result['message'] = self.message
+            result["message"] = self.message
         if self.meta:
-            result['meta'] = self.meta
+            result["meta"] = self.meta
         return result
 
 
 class SchedulingError(Exception):
     """Base exception for all scheduling-related errors."""
+
     pass
 
 
 class SchedulingConflictError(SchedulingError):
     """
     Raised when scheduling conflicts are detected.
-    
+
     Contains a list of Conflict objects describing each conflict found.
     """
+
     def __init__(self, conflicts: list[Conflict], message: str = "Scheduling conflicts detected"):
         self.conflicts = conflicts
         self.message = message
@@ -55,15 +58,15 @@ class SchedulingConflictError(SchedulingError):
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            'detail': self.message,
-            'conflicts': [c.to_dict() for c in self.conflicts],
+            "detail": self.message,
+            "conflicts": [c.to_dict() for c in self.conflicts],
         }
 
 
 class WorkingHoursViolation(SchedulingError):
     """
     Raised when a scheduling request falls outside working hours.
-    
+
     Attributes:
         doctor_id: The ID of the doctor
         date: The date in question
@@ -72,6 +75,7 @@ class WorkingHoursViolation(SchedulingError):
         reason: Specific reason ('no_practice_hours', 'no_doctor_hours', 'outside_practice', 'outside_doctor')
         alternatives: Optional list of alternative suggestions
     """
+
     def __init__(
         self,
         *,
@@ -93,22 +97,22 @@ class WorkingHoursViolation(SchedulingError):
 
     def to_dict(self) -> dict[str, Any]:
         result = {
-            'detail': str(self),
-            'reason': self.reason,
-            'doctor_id': self.doctor_id,
-            'date': self.date,
-            'start_time': self.start_time,
-            'end_time': self.end_time,
+            "detail": str(self),
+            "reason": self.reason,
+            "doctor_id": self.doctor_id,
+            "date": self.date,
+            "start_time": self.start_time,
+            "end_time": self.end_time,
         }
         if self.alternatives:
-            result['alternatives'] = self.alternatives
+            result["alternatives"] = self.alternatives
         return result
 
 
 class DoctorAbsentError(SchedulingError):
     """
     Raised when a doctor is absent on the requested date.
-    
+
     Attributes:
         doctor_id: The ID of the doctor
         date: The date when the doctor is absent
@@ -116,6 +120,7 @@ class DoctorAbsentError(SchedulingError):
         reason: The reason for the absence (if provided)
         alternatives: Optional list of alternative suggestions
     """
+
     def __init__(
         self,
         *,
@@ -135,23 +140,23 @@ class DoctorAbsentError(SchedulingError):
 
     def to_dict(self) -> dict[str, Any]:
         result = {
-            'detail': str(self),
-            'doctor_id': self.doctor_id,
-            'date': self.date,
+            "detail": str(self),
+            "doctor_id": self.doctor_id,
+            "date": self.date,
         }
         if self.absence_id is not None:
-            result['absence_id'] = self.absence_id
+            result["absence_id"] = self.absence_id
         if self.reason:
-            result['reason'] = self.reason
+            result["reason"] = self.reason
         if self.alternatives:
-            result['alternatives'] = self.alternatives
+            result["alternatives"] = self.alternatives
         return result
 
 
 class DoctorBreakConflict(SchedulingError):
     """
     Raised when a scheduling request overlaps with a doctor break.
-    
+
     Attributes:
         doctor_id: The ID of the doctor (None if practice-wide break)
         date: The date of the break
@@ -159,6 +164,7 @@ class DoctorBreakConflict(SchedulingError):
         break_start: Start time of the break
         break_end: End time of the break
     """
+
     def __init__(
         self,
         *,
@@ -178,12 +184,12 @@ class DoctorBreakConflict(SchedulingError):
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            'detail': str(self),
-            'doctor_id': self.doctor_id,
-            'date': self.date,
-            'break_id': self.break_id,
-            'break_start': self.break_start,
-            'break_end': self.break_end,
+            "detail": str(self),
+            "doctor_id": self.doctor_id,
+            "date": self.date,
+            "break_id": self.break_id,
+            "break_start": self.break_start,
+            "break_end": self.break_end,
         }
 
 
@@ -191,12 +197,13 @@ class InvalidSchedulingData(SchedulingError):
     """
     Raised when scheduling data is invalid (e.g., end_time before start_time).
     """
+
     def __init__(self, message: str, field: str | None = None):
         self.field = field
         super().__init__(message)
 
     def to_dict(self) -> dict[str, Any]:
-        result = {'detail': str(self)}
+        result = {"detail": str(self)}
         if self.field:
-            result['field'] = self.field
+            result["field"] = self.field
         return result

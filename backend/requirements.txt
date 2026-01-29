@@ -26,3 +26,8 @@ redis>=5.0,<6.0
 # Development
 pytest>=7.4,<9.0
 pytest-django>=4.7,<5.0
+
+# Formatting / Linting
+black>=24.0,<26.0
+isort>=5.13,<6.0
+ruff>=0.6,<1.0

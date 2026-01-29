@@ -1,9 +1,10 @@
 import os
+import socket
 import subprocess
 import sys
-from dotenv import load_dotenv
+
 import psycopg
-import socket
+from dotenv import load_dotenv
 
 print("\n🚀 Starte One‑Click‑Deployment...\n")
 
@@ -31,7 +32,7 @@ try:
         password=os.environ.get("POSTGRES_PASSWORD"),
         host=os.environ.get("POSTGRES_HOST"),
         port=os.environ.get("POSTGRES_PORT"),
-        connect_timeout=3
+        connect_timeout=3,
     )
     print("✅ Verbindung erfolgreich!")
     conn.close()

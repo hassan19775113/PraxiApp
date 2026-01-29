@@ -6,7 +6,7 @@ following the project's RBAC pattern with read_roles/write_roles.
 Standard roles: admin, assistant, doctor, billing
 """
 
-from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.permissions import SAFE_METHODS, BasePermission
 
 
 def is_running_tests() -> bool:
@@ -95,7 +95,7 @@ class IsRole(BasePermission):
         user = request.user
         if not user or not user.is_authenticated:
             return False
-        if not getattr(user, 'role', None):
+        if not getattr(user, "role", None):
             return False
         return user.role.name in self.allowed_roles
 

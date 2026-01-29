@@ -28,33 +28,33 @@ def _find_latest_domain_dump() -> str | None:
 
 
 def main() -> None:
-	dump_path = _find_latest_domain_dump()
-	print("domain dump found:", bool(dump_path), "path:", dump_path)
-	if not dump_path:
-		return
+    dump_path = _find_latest_domain_dump()
+    print("domain dump found:", bool(dump_path), "path:", dump_path)
+    if not dump_path:
+        return
 
-	with open(dump_path, "r", encoding="utf-8") as f:
-		items = json.load(f)
+    with open(dump_path, "r", encoding="utf-8") as f:
+        items = json.load(f)
 
-	models = Counter(item.get("model") for item in items if isinstance(item, dict))
-	print("objects:", sum(models.values()))
-	print("models:", len(models))
+    models = Counter(item.get("model") for item in items if isinstance(item, dict))
+    print("objects:", sum(models.values()))
+    print("models:", len(models))
 
-	# Print a few high-signal model counts.
-	for key in [
-		"core.role",
-		"core.user",
-		"patients.patient",
-		"appointments.appointment",
-		"appointments.operation",
-		"core.auditlog",
-	]:
-		if key in models:
-			print(f"{key}:", models[key])
+    # Print a few high-signal model counts.
+    for key in [
+        "core.role",
+        "core.user",
+        "patients.patient",
+        "appointments.appointment",
+        "appointments.operation",
+        "core.auditlog",
+    ]:
+        if key in models:
+            print(f"{key}:", models[key])
 
-	print("--- top 30 models ---")
-	for model, count in models.most_common(30):
-		print(f"{model}: {count}")
+    print("--- top 30 models ---")
+    for model, count in models.most_common(30):
+        print(f"{model}: {count}")
 
 
 if __name__ == "__main__":

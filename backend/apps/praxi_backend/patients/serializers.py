@@ -1,5 +1,3 @@
-from rest_framework import serializers
-
 from praxi_backend.patients.models import Patient
 from praxi_backend.patients.services import create_patient, update_patient
 from praxi_backend.patients.validators import (
@@ -8,6 +6,7 @@ from praxi_backend.patients.validators import (
     validate_patient_pk,
     validate_phone_format,
 )
+from rest_framework import serializers
 
 
 class PatientReadSerializer(serializers.ModelSerializer):
@@ -16,15 +15,15 @@ class PatientReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Patient
         fields = [
-            'id',
-            'first_name',
-            'last_name',
-            'birth_date',
-            'gender',
-            'phone',
-            'email',
-            'created_at',
-            'updated_at',
+            "id",
+            "first_name",
+            "last_name",
+            "birth_date",
+            "gender",
+            "phone",
+            "email",
+            "created_at",
+            "updated_at",
         ]
         read_only_fields = fields
 
@@ -35,13 +34,13 @@ class PatientWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Patient
         fields = [
-            'id',
-            'first_name',
-            'last_name',
-            'birth_date',
-            'gender',
-            'phone',
-            'email',
+            "id",
+            "first_name",
+            "last_name",
+            "birth_date",
+            "gender",
+            "phone",
+            "email",
         ]
 
     def validate_id(self, value):

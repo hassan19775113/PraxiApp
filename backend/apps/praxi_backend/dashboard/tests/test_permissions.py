@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from django.http import HttpResponse
 from django.test import TestCase
-
 from praxi_backend.dashboard.permissions import dashboard_access_required
 
 

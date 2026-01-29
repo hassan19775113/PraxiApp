@@ -12,9 +12,8 @@ WICHTIG:
 
 from django.core.management.base import BaseCommand
 from django.db import transaction
-
-from praxi_backend.core.seeders import seed_core
 from praxi_backend.appointments.seeders import seed_appointments
+from praxi_backend.core.seeders import seed_core
 from praxi_backend.patients.seeders import seed_patients
 
 
@@ -52,7 +51,9 @@ class Command(BaseCommand):
                 self._print_stats("Patients", patient_stats)
 
                 # 3. Appointments (Termine, Ressourcen, OPs, PatientFlow)
-                self.stdout.write("\n[3/3] Seeding Appointments (Appointments, Resources, Operations, Flows)...")
+                self.stdout.write(
+                    "\n[3/3] Seeding Appointments (Appointments, Resources, Operations, Flows)..."
+                )
                 appointments_stats = seed_appointments(flush=flush)
                 stats.update(appointments_stats)
                 self._print_stats("Appointments", appointments_stats)

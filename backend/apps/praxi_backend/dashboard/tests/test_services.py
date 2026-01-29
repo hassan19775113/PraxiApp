@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from django.test import TestCase
-
 from praxi_backend.appointments.models import Resource
 from praxi_backend.dashboard.services import (
     build_resources_dashboard_context,

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from .models import Role, AuditLog
+from .models import AuditLog, Role
 
 User = get_user_model()
 

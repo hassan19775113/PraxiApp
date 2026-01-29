@@ -1,6 +1,5 @@
-from rest_framework.permissions import SAFE_METHODS
-
 from praxi_backend.core.permissions import RBACPermission
+from rest_framework.permissions import SAFE_METHODS
 
 
 class AppointmentPermission(RBACPermission):
@@ -340,8 +339,8 @@ class OpStatsPermission(RBACPermission):
         if role_name not in self.read_roles:
             return False
 
-        scope = getattr(view, 'stats_scope', None)
-        if role_name == 'doctor':
+        scope = getattr(view, "stats_scope", None)
+        if role_name == "doctor":
             return scope in self.doctor_scopes
 
         return True

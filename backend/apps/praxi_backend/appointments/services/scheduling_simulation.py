@@ -61,16 +61,14 @@ from __future__ import annotations
 import random
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
-from typing import Any, Callable
+from typing import Any
 
 from django.utils import timezone
-
 from praxi_backend.appointments.exceptions import (
     Conflict,
     DoctorAbsentError,
     DoctorBreakConflict,
     InvalidSchedulingData,
-    SchedulingConflictError,
     WorkingHoursViolation,
 )
 from praxi_backend.appointments.models import (
@@ -81,7 +79,6 @@ from praxi_backend.appointments.models import (
     DoctorBreak,
     DoctorHours,
     Operation,
-    OperationDevice,
     OperationType,
     PracticeHours,
     Resource,
@@ -91,13 +88,11 @@ from praxi_backend.appointments.services.scheduling import (
     check_operation_conflicts,
     check_patient_conflicts,
     plan_appointment,
-    plan_operation,
     validate_doctor_absences,
     validate_doctor_breaks,
     validate_working_hours,
 )
 from praxi_backend.core.models import Role, User
-
 
 # ==============================================================================
 # Constants
@@ -111,9 +106,11 @@ DEFAULT_SEED = 42
 # Data Classes for Simulation Results
 # ==============================================================================
 
+
 @dataclass
 class SimulationResult:
     """Result of a single simulation scenario."""
+
     scenario: str
     success: bool
     expected_exception: str | None = None
@@ -125,20 +122,21 @@ class SimulationResult:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            'scenario': self.scenario,
-            'success': self.success,
-            'expected_exception': self.expected_exception,
-            'actual_exception': self.actual_exception,
-            'conflicts': [c.to_dict() for c in self.conflicts],
-            'message': self.message,
-            'duration_ms': self.duration_ms,
-            'metadata': self.metadata,
+            "scenario": self.scenario,
+            "success": self.success,
+            "expected_exception": self.expected_exception,
+            "actual_exception": self.actual_exception,
+            "conflicts": [c.to_dict() for c in self.conflicts],
+            "message": self.message,
+            "duration_ms": self.duration_ms,
+            "metadata": self.metadata,
         }
 
 
 @dataclass
 class SimulationSummary:
     """Summary of all simulation results."""
+
     total: int = 0
     passed: int = 0
     failed: int = 0
@@ -154,10 +152,10 @@ class SimulationSummary:
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            'total': self.total,
-            'passed': self.passed,
-            'failed': self.failed,
-            'results': [r.to_dict() for r in self.results],
+            "total": self.total,
+            "passed": self.passed,
+            "failed": self.failed,
+            "results": [r.to_dict() for r in self.results],
         }
 
 
@@ -165,10 +163,11 @@ class SimulationSummary:
 # Simulation Context
 # ==============================================================================
 
+
 class SimulationContext:
     """
     Context manager for scheduling simulations.
-    
+
     Creates and manages test data (doctors, rooms, devices, hours) in the
     default database. All data is created fresh for each simulation.
     """
@@ -177,7 +176,7 @@ class SimulationContext:
         self.seed = seed
         self.tz = timezone.get_current_timezone()
         self.today = timezone.localdate()
-        
+
         # Will be populated by setup()
         self.role_admin: Role | None = None
         self.role_doctor: Role | None = None
@@ -192,7 +191,7 @@ class SimulationContext:
     def setup(self):
         """Create all necessary test data."""
         random.seed(self.seed)
-        
+
         # Create roles
         self.role_admin, _ = Role.objects.using("default").get_or_create(
             name="admin", defaults={"label": "Administrator"}
@@ -216,7 +215,7 @@ class SimulationContext:
                 password="simpass123",
                 email=f"sim_doctor_{self.seed}_{i}@test.local",
                 role=self.role_doctor,
-                first_name=f"Dr",
+                first_name="Dr",
                 last_name=f"Simulation{i}",
             )
             self.doctors.append(doctor)
@@ -264,7 +263,9 @@ class SimulationContext:
         # Create practice hours (Mon-Fri, 08:00-18:00)
         for weekday in range(5):
             # Check if any practice hours exist for this weekday
-            existing = PracticeHours.objects.using("default").filter(weekday=weekday, active=True).first()
+            existing = (
+                PracticeHours.objects.using("default").filter(weekday=weekday, active=True).first()
+            )
             if not existing:
                 PracticeHours.objects.using("default").create(
                     weekday=weekday,
@@ -277,9 +278,11 @@ class SimulationContext:
         for doctor in self.doctors:
             for weekday in range(5):
                 # Check if doctor hours exist for this doctor and weekday
-                existing = DoctorHours.objects.using("default").filter(
-                    doctor=doctor, weekday=weekday, active=True
-                ).first()
+                existing = (
+                    DoctorHours.objects.using("default")
+                    .filter(doctor=doctor, weekday=weekday, active=True)
+                    .first()
+                )
                 if not existing:
                     DoctorHours.objects.using("default").create(
                         doctor=doctor,
@@ -315,10 +318,11 @@ class SimulationContext:
 # Simulation Functions
 # ==============================================================================
 
+
 def simulate_doctor_conflict(ctx: SimulationContext) -> SimulationResult:
     """
     Simulate a doctor conflict scenario.
-    
+
     Creates two appointments/operations with overlapping times for the same doctor.
     Expected: SchedulingConflictError with doctor_conflict type.
     """
@@ -347,7 +351,7 @@ def simulate_doctor_conflict(ctx: SimulationContext) -> SimulationResult:
         doctor_id=doctor.id,
     )
 
-    if conflicts and any(c.type == 'doctor_conflict' for c in conflicts):
+    if conflicts and any(c.type == "doctor_conflict" for c in conflicts):
         return SimulationResult(
             scenario="doctor_conflict",
             success=True,
@@ -369,7 +373,7 @@ def simulate_doctor_conflict(ctx: SimulationContext) -> SimulationResult:
 def simulate_room_conflict(ctx: SimulationContext) -> SimulationResult:
     """
     Simulate a room conflict scenario.
-    
+
     Creates two operations in the same OP room at the same time.
     Expected: SchedulingConflictError with room_conflict type.
     """
@@ -400,7 +404,7 @@ def simulate_room_conflict(ctx: SimulationContext) -> SimulationResult:
         room_id=room.id,
     )
 
-    if conflicts and any(c.type == 'room_conflict' for c in conflicts):
+    if conflicts and any(c.type == "room_conflict" for c in conflicts):
         return SimulationResult(
             scenario="room_conflict",
             success=True,
@@ -422,7 +426,7 @@ def simulate_room_conflict(ctx: SimulationContext) -> SimulationResult:
 def simulate_device_conflict(ctx: SimulationContext) -> SimulationResult:
     """
     Simulate a device conflict scenario.
-    
+
     Creates two appointments using the same device at overlapping times.
     Expected: SchedulingConflictError with device_conflict type.
     """
@@ -456,7 +460,7 @@ def simulate_device_conflict(ctx: SimulationContext) -> SimulationResult:
         resource_ids=[device.id],
     )
 
-    if conflicts and any(c.type == 'device_conflict' for c in conflicts):
+    if conflicts and any(c.type == "device_conflict" for c in conflicts):
         return SimulationResult(
             scenario="device_conflict",
             success=True,
@@ -478,23 +482,23 @@ def simulate_device_conflict(ctx: SimulationContext) -> SimulationResult:
 def simulate_appointment_overlap(ctx: SimulationContext) -> SimulationResult:
     """
     Simulate overlapping appointments for the same doctor.
-    
+
     Creates a partial overlap scenario where end of appointment 1 overlaps
     with start of appointment 2.
     Expected: SchedulingConflictError with doctor_conflict type.
     """
     monday = ctx.get_next_weekday(0)
     doctor = ctx.doctors[0]
-    
+
     # First appointment: 10:00-10:30
     start1 = ctx.make_datetime(monday, time(10, 0))
     end1 = ctx.make_datetime(monday, time(10, 30))
-    
+
     # Second appointment: 10:20-10:50 (10 min overlap)
     start2 = ctx.make_datetime(monday, time(10, 20))
     end2 = ctx.make_datetime(monday, time(10, 50))
 
-    appt1 = Appointment.objects.using("default").create(
+    Appointment.objects.using("default").create(
         patient_id=ctx.next_patient_id(),
         doctor=doctor,
         type=ctx.appt_types[0],
@@ -531,7 +535,7 @@ def simulate_appointment_overlap(ctx: SimulationContext) -> SimulationResult:
 def simulate_operation_overlap(ctx: SimulationContext) -> SimulationResult:
     """
     Simulate overlapping operations (same surgeon).
-    
+
     Creates two operations where the surgeon is double-booked.
     Expected: SchedulingConflictError with doctor_conflict type.
     """
@@ -539,7 +543,7 @@ def simulate_operation_overlap(ctx: SimulationContext) -> SimulationResult:
     surgeon = ctx.doctors[0]
     room1 = ctx.rooms[0]
     room2 = ctx.rooms[1]
-    
+
     start1 = ctx.make_datetime(monday, time(10, 0))
     end1 = ctx.make_datetime(monday, time(11, 30))
     start2 = ctx.make_datetime(monday, time(11, 0))
@@ -563,7 +567,7 @@ def simulate_operation_overlap(ctx: SimulationContext) -> SimulationResult:
         room_id=room2.id,
     )
 
-    if conflicts and any(c.type == 'doctor_conflict' for c in conflicts):
+    if conflicts and any(c.type == "doctor_conflict" for c in conflicts):
         return SimulationResult(
             scenario="operation_overlap",
             success=True,
@@ -584,7 +588,7 @@ def simulate_operation_overlap(ctx: SimulationContext) -> SimulationResult:
 def simulate_working_hours_violation(ctx: SimulationContext) -> SimulationResult:
     """
     Simulate a working hours violation.
-    
+
     Creates an appointment request outside of practice hours (Sunday).
     Expected: WorkingHoursViolation exception.
     """
@@ -628,7 +632,7 @@ def simulate_working_hours_violation(ctx: SimulationContext) -> SimulationResult
 def simulate_doctor_absence(ctx: SimulationContext) -> SimulationResult:
     """
     Simulate a doctor absence conflict.
-    
+
     Creates an absence record and tries to schedule an appointment during that period.
     Expected: DoctorAbsentError exception.
     """
@@ -663,13 +667,13 @@ def simulate_doctor_absence(ctx: SimulationContext) -> SimulationResult:
             expected_exception="DoctorAbsentError",
             message="Should have raised DoctorAbsentError but did not",
         )
-    except DoctorAbsentError as e:
+    except DoctorAbsentError:
         return SimulationResult(
             scenario="doctor_absence",
             success=True,
             expected_exception="DoctorAbsentError",
             actual_exception="DoctorAbsentError",
-            message=f"Correctly raised DoctorAbsentError",
+            message="Correctly raised DoctorAbsentError",
             metadata={"absence_id": absence.id, "date": str(tuesday)},
         )
     except Exception as e:
@@ -685,7 +689,7 @@ def simulate_doctor_absence(ctx: SimulationContext) -> SimulationResult:
 def simulate_doctor_break(ctx: SimulationContext) -> SimulationResult:
     """
     Simulate a doctor break conflict.
-    
+
     Creates a break record and tries to schedule an appointment during the break.
     Expected: DoctorBreakConflict exception.
     """
@@ -719,13 +723,13 @@ def simulate_doctor_break(ctx: SimulationContext) -> SimulationResult:
             expected_exception="DoctorBreakConflict",
             message="Should have raised DoctorBreakConflict but did not",
         )
-    except DoctorBreakConflict as e:
+    except DoctorBreakConflict:
         return SimulationResult(
             scenario="doctor_break",
             success=True,
             expected_exception="DoctorBreakConflict",
             actual_exception="DoctorBreakConflict",
-            message=f"Correctly raised DoctorBreakConflict",
+            message="Correctly raised DoctorBreakConflict",
             metadata={"break_id": doc_break.id},
         )
     except Exception as e:
@@ -741,19 +745,19 @@ def simulate_doctor_break(ctx: SimulationContext) -> SimulationResult:
 def simulate_patient_double_booking(ctx: SimulationContext) -> SimulationResult:
     """
     Simulate a patient double-booking scenario.
-    
+
     Same patient has overlapping appointments (different doctors).
     Expected: SchedulingConflictError with patient_conflict type.
     """
     monday = ctx.get_next_weekday(0)
     patient_id = ctx.next_patient_id()
-    
+
     start1 = ctx.make_datetime(monday, time(10, 0))
     end1 = ctx.make_datetime(monday, time(10, 30))
     start2 = ctx.make_datetime(monday, time(10, 15))
     end2 = ctx.make_datetime(monday, time(10, 45))
 
-    appt1 = Appointment.objects.using("default").create(
+    Appointment.objects.using("default").create(
         patient_id=patient_id,
         doctor=ctx.doctors[0],
         type=ctx.appt_types[0],
@@ -768,7 +772,7 @@ def simulate_patient_double_booking(ctx: SimulationContext) -> SimulationResult:
         end_time=end2,
     )
 
-    if conflicts and any(c.type == 'patient_conflict' for c in conflicts):
+    if conflicts and any(c.type == "patient_conflict" for c in conflicts):
         return SimulationResult(
             scenario="patient_double_booking",
             success=True,
@@ -789,12 +793,12 @@ def simulate_patient_double_booking(ctx: SimulationContext) -> SimulationResult:
 def simulate_edge_cases(ctx: SimulationContext) -> list[SimulationResult]:
     """
     Simulate edge cases for scheduling validation.
-    
+
     Tests:
     - start_time == end_time (zero duration)
     - end_time < start_time (negative duration)
     - Date in the past
-    
+
     Returns list of SimulationResult for each edge case.
     """
     results: list[SimulationResult] = []
@@ -807,36 +811,42 @@ def simulate_edge_cases(ctx: SimulationContext) -> list[SimulationResult]:
         # plan_appointment should validate this
         plan_appointment(
             data={
-                'patient_id': ctx.next_patient_id(),
-                'doctor_id': doctor.id,
-                'start_time': zero_time,
-                'end_time': zero_time,
-                'type_id': ctx.appt_types[0].id,
+                "patient_id": ctx.next_patient_id(),
+                "doctor_id": doctor.id,
+                "start_time": zero_time,
+                "end_time": zero_time,
+                "type_id": ctx.appt_types[0].id,
             },
             user=ctx.admin,
         )
-        results.append(SimulationResult(
-            scenario="edge_case_zero_duration",
-            success=False,
-            expected_exception="InvalidSchedulingData",
-            message="Should have rejected zero duration",
-        ))
+        results.append(
+            SimulationResult(
+                scenario="edge_case_zero_duration",
+                success=False,
+                expected_exception="InvalidSchedulingData",
+                message="Should have rejected zero duration",
+            )
+        )
     except InvalidSchedulingData:
-        results.append(SimulationResult(
-            scenario="edge_case_zero_duration",
-            success=True,
-            expected_exception="InvalidSchedulingData",
-            actual_exception="InvalidSchedulingData",
-            message="Correctly rejected zero duration",
-        ))
+        results.append(
+            SimulationResult(
+                scenario="edge_case_zero_duration",
+                success=True,
+                expected_exception="InvalidSchedulingData",
+                actual_exception="InvalidSchedulingData",
+                message="Correctly rejected zero duration",
+            )
+        )
     except Exception as e:
-        results.append(SimulationResult(
-            scenario="edge_case_zero_duration",
-            success=False,
-            expected_exception="InvalidSchedulingData",
-            actual_exception=type(e).__name__,
-            message=f"Wrong exception: {e}",
-        ))
+        results.append(
+            SimulationResult(
+                scenario="edge_case_zero_duration",
+                success=False,
+                expected_exception="InvalidSchedulingData",
+                actual_exception=type(e).__name__,
+                message=f"Wrong exception: {e}",
+            )
+        )
 
     # Edge case 2: Negative duration (end_time < start_time)
     start = ctx.make_datetime(monday, time(11, 0))
@@ -844,36 +854,42 @@ def simulate_edge_cases(ctx: SimulationContext) -> list[SimulationResult]:
     try:
         plan_appointment(
             data={
-                'patient_id': ctx.next_patient_id(),
-                'doctor_id': doctor.id,
-                'start_time': start,
-                'end_time': end,
-                'type_id': ctx.appt_types[0].id,
+                "patient_id": ctx.next_patient_id(),
+                "doctor_id": doctor.id,
+                "start_time": start,
+                "end_time": end,
+                "type_id": ctx.appt_types[0].id,
             },
             user=ctx.admin,
         )
-        results.append(SimulationResult(
-            scenario="edge_case_negative_duration",
-            success=False,
-            expected_exception="InvalidSchedulingData",
-            message="Should have rejected negative duration",
-        ))
+        results.append(
+            SimulationResult(
+                scenario="edge_case_negative_duration",
+                success=False,
+                expected_exception="InvalidSchedulingData",
+                message="Should have rejected negative duration",
+            )
+        )
     except InvalidSchedulingData:
-        results.append(SimulationResult(
-            scenario="edge_case_negative_duration",
-            success=True,
-            expected_exception="InvalidSchedulingData",
-            actual_exception="InvalidSchedulingData",
-            message="Correctly rejected negative duration",
-        ))
+        results.append(
+            SimulationResult(
+                scenario="edge_case_negative_duration",
+                success=True,
+                expected_exception="InvalidSchedulingData",
+                actual_exception="InvalidSchedulingData",
+                message="Correctly rejected negative duration",
+            )
+        )
     except Exception as e:
-        results.append(SimulationResult(
-            scenario="edge_case_negative_duration",
-            success=False,
-            expected_exception="InvalidSchedulingData",
-            actual_exception=type(e).__name__,
-            message=f"Wrong exception: {e}",
-        ))
+        results.append(
+            SimulationResult(
+                scenario="edge_case_negative_duration",
+                success=False,
+                expected_exception="InvalidSchedulingData",
+                actual_exception=type(e).__name__,
+                message=f"Wrong exception: {e}",
+            )
+        )
 
     # Edge case 3: Edge-touch (end1 == start2)
     start1 = ctx.make_datetime(monday, time(14, 0))
@@ -881,7 +897,7 @@ def simulate_edge_cases(ctx: SimulationContext) -> list[SimulationResult]:
     start2 = ctx.make_datetime(monday, time(14, 30))
     end2 = ctx.make_datetime(monday, time(15, 0))
 
-    appt_edge = Appointment.objects.using("default").create(
+    Appointment.objects.using("default").create(
         patient_id=ctx.next_patient_id(),
         doctor=doctor,
         type=ctx.appt_types[0],
@@ -899,18 +915,22 @@ def simulate_edge_cases(ctx: SimulationContext) -> list[SimulationResult]:
 
     # Edge-touch should NOT be a conflict
     if not conflicts:
-        results.append(SimulationResult(
-            scenario="edge_case_edge_touch",
-            success=True,
-            message="Correctly allowed edge-touch (no overlap)",
-        ))
+        results.append(
+            SimulationResult(
+                scenario="edge_case_edge_touch",
+                success=True,
+                message="Correctly allowed edge-touch (no overlap)",
+            )
+        )
     else:
-        results.append(SimulationResult(
-            scenario="edge_case_edge_touch",
-            success=False,
-            conflicts=conflicts,
-            message="Incorrectly flagged edge-touch as conflict",
-        ))
+        results.append(
+            SimulationResult(
+                scenario="edge_case_edge_touch",
+                success=False,
+                conflicts=conflicts,
+                message="Incorrectly flagged edge-touch as conflict",
+            )
+        )
 
     return results
 
@@ -918,31 +938,31 @@ def simulate_edge_cases(ctx: SimulationContext) -> list[SimulationResult]:
 def simulate_full_day_load(ctx: SimulationContext, num_appointments: int = 20) -> SimulationResult:
     """
     Simulate a full day with many appointments and operations.
-    
+
     Creates num_appointments appointments distributed throughout the day
     and measures performance.
     """
     import time as time_module
-    
+
     monday = ctx.get_next_weekday(0)
     start_perf = time_module.perf_counter()
-    
+
     # Create appointments from 08:00 to 18:00 (10 hours = 600 minutes)
     # Each appointment is 30 minutes, so max 20 non-overlapping
     created_appts = []
     hour = 8
     minute = 0
-    
+
     for i in range(min(num_appointments, 20)):
         doctor = ctx.doctors[i % len(ctx.doctors)]
         start = ctx.make_datetime(monday, time(hour, minute))
         end = ctx.make_datetime(monday, time(hour, minute + 30 if minute < 30 else minute))
-        
+
         if minute < 30:
             end = ctx.make_datetime(monday, time(hour, minute + 30))
         else:
             end = ctx.make_datetime(monday, time(hour + 1, 0))
-        
+
         appt = Appointment.objects.using("default").create(
             patient_id=ctx.next_patient_id(),
             doctor=doctor,
@@ -952,7 +972,7 @@ def simulate_full_day_load(ctx: SimulationContext, num_appointments: int = 20) -
             status="scheduled",
         )
         created_appts.append(appt)
-        
+
         # Advance time
         minute += 30
         if minute >= 60:
@@ -964,7 +984,7 @@ def simulate_full_day_load(ctx: SimulationContext, num_appointments: int = 20) -
     # Now try to check conflicts for a new appointment (performance test)
     check_start = ctx.make_datetime(monday, time(12, 0))
     check_end = ctx.make_datetime(monday, time(12, 30))
-    
+
     conflicts = check_appointment_conflicts(
         date=monday,
         start_time=check_start,
@@ -991,40 +1011,40 @@ def simulate_full_day_load(ctx: SimulationContext, num_appointments: int = 20) -
 def simulate_randomized_day(ctx: SimulationContext, seed: int | None = None) -> SimulationResult:
     """
     Simulate a randomized day with mixed appointments and operations.
-    
+
     Uses deterministic randomness based on seed for reproducibility.
     """
     import time as time_module
-    
+
     if seed is not None:
         random.seed(seed)
-    
+
     monday = ctx.get_next_weekday(0)
     start_perf = time_module.perf_counter()
-    
+
     appointments_created = 0
     operations_created = 0
     conflicts_encountered = 0
-    
+
     # Generate random events
     for i in range(15):
-        event_type = random.choice(['appointment', 'operation'])
+        event_type = random.choice(["appointment", "operation"])
         doctor = random.choice(ctx.doctors)
         hour = random.randint(8, 16)
         minute = random.choice([0, 15, 30, 45])
         duration = random.choice([15, 30, 45, 60])
-        
+
         start = ctx.make_datetime(monday, time(hour, minute))
         end_hour = hour + (minute + duration) // 60
         end_minute = (minute + duration) % 60
-        
+
         if end_hour > 18:
             end_hour = 18
             end_minute = 0
-        
+
         end = ctx.make_datetime(monday, time(end_hour, end_minute))
-        
-        if event_type == 'appointment':
+
+        if event_type == "appointment":
             conflicts = check_appointment_conflicts(
                 date=monday,
                 start_time=start,
@@ -1086,7 +1106,7 @@ def simulate_randomized_day(ctx: SimulationContext, seed: int | None = None) -> 
 def simulate_team_conflict(ctx: SimulationContext) -> SimulationResult:
     """
     Simulate a conflict with operation team members (assistant, anesthesist).
-    
+
     Creates an operation with full team, then tries to book an appointment
     for the assistant during the operation.
     """
@@ -1094,7 +1114,7 @@ def simulate_team_conflict(ctx: SimulationContext) -> SimulationResult:
     surgeon = ctx.doctors[0]
     assistant = ctx.doctors[1]
     anesthesist = ctx.doctors[2] if len(ctx.doctors) > 2 else None
-    
+
     start_op = ctx.make_datetime(monday, time(10, 0))
     end_op = ctx.make_datetime(monday, time(11, 30))
 
@@ -1121,13 +1141,13 @@ def simulate_team_conflict(ctx: SimulationContext) -> SimulationResult:
         doctor_id=assistant.id,
     )
 
-    if conflicts and any(c.type == 'doctor_conflict' for c in conflicts):
+    if conflicts and any(c.type == "doctor_conflict" for c in conflicts):
         return SimulationResult(
             scenario="team_conflict",
             success=True,
             expected_exception="SchedulingConflictError",
             conflicts=conflicts,
-            message=f"Correctly detected team member conflict",
+            message="Correctly detected team member conflict",
             metadata={"operation_id": op.id, "assistant_id": assistant.id},
         )
     else:
@@ -1143,13 +1163,14 @@ def simulate_team_conflict(ctx: SimulationContext) -> SimulationResult:
 # Main Simulation Runner
 # ==============================================================================
 
+
 def run_all_simulations(seed: int = DEFAULT_SEED) -> SimulationSummary:
     """
     Run all simulation scenarios and return summary.
-    
+
     Args:
         seed: Random seed for deterministic results.
-        
+
     Returns:
         SimulationSummary with all results.
     """
@@ -1168,11 +1189,11 @@ def run_all_simulations(seed: int = DEFAULT_SEED) -> SimulationSummary:
     summary.add(simulate_doctor_break(ctx))
     summary.add(simulate_patient_double_booking(ctx))
     summary.add(simulate_team_conflict(ctx))
-    
+
     # Edge cases return multiple results
     for result in simulate_edge_cases(ctx):
         summary.add(result)
-    
+
     # Performance tests
     summary.add(simulate_full_day_load(ctx))
     summary.add(simulate_randomized_day(ctx, seed=seed))
@@ -1190,7 +1211,7 @@ def print_simulation_report(summary: SimulationSummary) -> None:
     print(f"Passed: {summary.passed}")
     print(f"Failed: {summary.failed}")
     print("-" * 70)
-    
+
     for result in summary.results:
         status = "✅ PASS" if result.success else "❌ FAIL"
         print(f"{status} | {result.scenario}")
@@ -1200,5 +1221,5 @@ def print_simulation_report(summary: SimulationSummary) -> None:
             print(f"       Conflicts: {len(result.conflicts)}")
         if result.duration_ms > 0:
             print(f"       Duration: {result.duration_ms:.2f}ms")
-    
+
     print("=" * 70)

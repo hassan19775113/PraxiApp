@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .base import *  # noqa
+from .base import *  # noqa: F403,F405
 
 # ------------------------------------------------------------
 # Development overrides

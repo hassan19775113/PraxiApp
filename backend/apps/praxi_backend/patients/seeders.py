@@ -2,7 +2,6 @@ import random
 from datetime import date, datetime, timedelta
 
 from django.db import transaction
-
 from praxi_backend.patients.models import Patient
 
 RANDOM_SEED = 42

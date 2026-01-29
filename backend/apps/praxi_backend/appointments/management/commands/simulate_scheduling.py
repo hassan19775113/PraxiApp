@@ -27,18 +27,15 @@ Examples:
 """
 
 import json
-import sys
 from argparse import ArgumentParser
 from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
-
 from praxi_backend.appointments.services.scheduling_simulation import (
     DEFAULT_SEED,
     SimulationContext,
     SimulationSummary,
-    print_simulation_report,
     run_all_simulations,
     simulate_appointment_overlap,
     simulate_device_conflict,
@@ -54,7 +51,6 @@ from praxi_backend.appointments.services.scheduling_simulation import (
     simulate_team_conflict,
     simulate_working_hours_violation,
 )
-
 
 SCENARIO_FUNCTIONS = {
     "doctor_conflict": simulate_doctor_conflict,
@@ -120,9 +116,7 @@ class Command(BaseCommand):
                 if "all" in scenarios:
                     summary = run_all_simulations(seed=seed)
                 else:
-                    summary = self._run_selected_scenarios(
-                        scenarios, seed, fail_fast
-                    )
+                    summary = self._run_selected_scenarios(scenarios, seed, fail_fast)
 
                 # Output results
                 if output_json:
@@ -136,8 +130,7 @@ class Command(BaseCommand):
             # Exit code based on results
             if summary.failed > 0:
                 raise CommandError(
-                    f"{summary.failed} simulation(s) failed. "
-                    "Run with -v 2 for details."
+                    f"{summary.failed} simulation(s) failed. " "Run with -v 2 for details."
                 )
 
             return f"All {summary.passed} simulations passed."
@@ -209,12 +202,8 @@ class Command(BaseCommand):
                     if result.message:
                         self.stdout.write(f"        {result.message}")
                     if result.conflicts:
-                        self.stdout.write(
-                            f"        Conflicts: {len(result.conflicts)}"
-                        )
+                        self.stdout.write(f"        Conflicts: {len(result.conflicts)}")
                     if result.duration_ms > 0:
-                        self.stdout.write(
-                            f"        Duration: {result.duration_ms:.2f}ms"
-                        )
+                        self.stdout.write(f"        Duration: {result.duration_ms:.2f}ms")
 
         self.stdout.write("=" * 70)

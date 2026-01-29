@@ -8,75 +8,109 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0004_add_meta_options_and_indexes'),
+        ("core", "0004_add_meta_options_and_indexes"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='auditlog',
-            options={'ordering': ['-timestamp', '-id'], 'verbose_name': 'Audit-Protokoll', 'verbose_name_plural': 'Audit-Protokolle'},
+            name="auditlog",
+            options={
+                "ordering": ["-timestamp", "-id"],
+                "verbose_name": "Audit-Protokoll",
+                "verbose_name_plural": "Audit-Protokolle",
+            },
         ),
         migrations.AlterModelOptions(
-            name='role',
-            options={'ordering': ['name'], 'verbose_name': 'Rolle', 'verbose_name_plural': 'Rollen'},
+            name="role",
+            options={
+                "ordering": ["name"],
+                "verbose_name": "Rolle",
+                "verbose_name_plural": "Rollen",
+            },
         ),
         migrations.AlterModelOptions(
-            name='user',
-            options={'ordering': ['username'], 'verbose_name': 'Benutzer', 'verbose_name_plural': 'Benutzer'},
+            name="user",
+            options={
+                "ordering": ["username"],
+                "verbose_name": "Benutzer",
+                "verbose_name_plural": "Benutzer",
+            },
         ),
         migrations.AlterField(
-            model_name='auditlog',
-            name='action',
-            field=models.CharField(db_index=True, max_length=50, verbose_name='Aktion'),
+            model_name="auditlog",
+            name="action",
+            field=models.CharField(db_index=True, max_length=50, verbose_name="Aktion"),
         ),
         migrations.AlterField(
-            model_name='auditlog',
-            name='meta',
-            field=models.JSONField(blank=True, null=True, verbose_name='Metadaten'),
+            model_name="auditlog",
+            name="meta",
+            field=models.JSONField(blank=True, null=True, verbose_name="Metadaten"),
         ),
         migrations.AlterField(
-            model_name='auditlog',
-            name='patient_id',
-            field=models.IntegerField(blank=True, db_index=True, null=True, verbose_name='Patient-ID'),
+            model_name="auditlog",
+            name="patient_id",
+            field=models.IntegerField(
+                blank=True, db_index=True, null=True, verbose_name="Patient-ID"
+            ),
         ),
         migrations.AlterField(
-            model_name='auditlog',
-            name='role_name',
-            field=models.CharField(db_index=True, max_length=50, verbose_name='Rollenname'),
+            model_name="auditlog",
+            name="role_name",
+            field=models.CharField(db_index=True, max_length=50, verbose_name="Rollenname"),
         ),
         migrations.AlterField(
-            model_name='auditlog',
-            name='timestamp',
-            field=models.DateTimeField(auto_now_add=True, db_index=True, verbose_name='Zeitstempel'),
+            model_name="auditlog",
+            name="timestamp",
+            field=models.DateTimeField(
+                auto_now_add=True, db_index=True, verbose_name="Zeitstempel"
+            ),
         ),
         migrations.AlterField(
-            model_name='auditlog',
-            name='user',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='audit_logs', to=settings.AUTH_USER_MODEL, verbose_name='Benutzer'),
+            model_name="auditlog",
+            name="user",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="audit_logs",
+                to=settings.AUTH_USER_MODEL,
+                verbose_name="Benutzer",
+            ),
         ),
         migrations.AlterField(
-            model_name='role',
-            name='label',
-            field=models.CharField(max_length=128, verbose_name='Bezeichnung'),
+            model_name="role",
+            name="label",
+            field=models.CharField(max_length=128, verbose_name="Bezeichnung"),
         ),
         migrations.AlterField(
-            model_name='role',
-            name='name',
-            field=models.CharField(db_index=True, max_length=64, unique=True, verbose_name='Name'),
+            model_name="role",
+            name="name",
+            field=models.CharField(db_index=True, max_length=64, unique=True, verbose_name="Name"),
         ),
         migrations.AlterField(
-            model_name='user',
-            name='calendar_color',
-            field=models.CharField(blank=True, default='#1E90FF', max_length=7, verbose_name='Kalenderfarbe'),
+            model_name="user",
+            name="calendar_color",
+            field=models.CharField(
+                blank=True, default="#1E90FF", max_length=7, verbose_name="Kalenderfarbe"
+            ),
         ),
         migrations.AlterField(
-            model_name='user',
-            name='email',
-            field=models.EmailField(blank=True, max_length=254, unique=True, verbose_name='E-Mail-Adresse'),
+            model_name="user",
+            name="email",
+            field=models.EmailField(
+                blank=True, max_length=254, unique=True, verbose_name="E-Mail-Adresse"
+            ),
         ),
         migrations.AlterField(
-            model_name='user',
-            name='role',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.PROTECT, related_name='users', to='core.role', verbose_name='Rolle'),
+            model_name="user",
+            name="role",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.PROTECT,
+                related_name="users",
+                to="core.role",
+                verbose_name="Rolle",
+            ),
         ),
     ]

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from django.test import RequestFactory, TestCase
-
 from praxi_backend.appointments.models import Resource
 from praxi_backend.dashboard.patient_views import PatientDashboardView, PatientOverviewView
 from praxi_backend.dashboard.resources_views import ResourcesDashboardView

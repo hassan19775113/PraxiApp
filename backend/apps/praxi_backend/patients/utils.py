@@ -35,7 +35,7 @@ def format_patient_display_name(
     name = f"{ln}, {fn}".strip(", ")
     if birth_date:
         try:
-            birth_str = birth_date.strftime('%d.%m.%Y')
+            birth_str = birth_date.strftime("%d.%m.%Y")
         except Exception:
             birth_str = ""
         if birth_str:
@@ -50,7 +50,7 @@ def get_patient_display_name(patient_id: int) -> str:
     "Patient #ID".
     """
     try:
-        patient = Patient.objects.using('default').get(id=patient_id)
+        patient = Patient.objects.using("default").get(id=patient_id)
         return format_patient_display_name(
             patient_id=patient_id,
             first_name=patient.first_name,
@@ -86,17 +86,17 @@ def get_patient_display_name_map(patient_ids: Iterable[int]) -> dict[int, str]:
         return {}
 
     rows = (
-        Patient.objects.using('default')
+        Patient.objects.using("default")
         .filter(id__in=ids)
-        .only('id', 'first_name', 'last_name', 'birth_date')
+        .only("id", "first_name", "last_name", "birth_date")
     )
     found: dict[int, str] = {}
     for p in rows:
         found[int(p.id)] = format_patient_display_name(
             patient_id=int(p.id),
-            first_name=getattr(p, 'first_name', None),
-            last_name=getattr(p, 'last_name', None),
-            birth_date=getattr(p, 'birth_date', None),
+            first_name=getattr(p, "first_name", None),
+            last_name=getattr(p, "last_name", None),
+            birth_date=getattr(p, "birth_date", None),
         )
 
     # Fill missing with stable fallback.

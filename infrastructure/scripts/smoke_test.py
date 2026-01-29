@@ -11,16 +11,17 @@ Verwendung:
 import argparse
 import sys
 import time
-from urllib.request import urlopen, Request
-from urllib.error import URLError, HTTPError
-import json
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 
-def test_endpoint(base_url: str, path: str, expected_status: int = 200, description: str = "") -> bool:
+def test_endpoint(
+    base_url: str, path: str, expected_status: int = 200, description: str = ""
+) -> bool:
     """Testet einen einzelnen Endpoint."""
     url = f"{base_url.rstrip('/')}{path}"
     try:
-        req = Request(url, headers={'Accept': 'application/json'})
+        req = Request(url, headers={"Accept": "application/json"})
         response = urlopen(req, timeout=10)
         status = response.status
         if status == expected_status:
@@ -54,7 +55,7 @@ def main():
         time.sleep(args.wait)
 
     print("=" * 60)
-    print(f"  PraxiApp Smoke Test")
+    print("  PraxiApp Smoke Test")
     print(f"  Base URL: {args.base_url}")
     print("=" * 60)
 
@@ -71,7 +72,7 @@ def main():
 
     print("\n[1] ENDPOINT TESTS")
     print("-" * 60)
-    
+
     results = []
     for path, expected, desc in tests:
         results.append(test_endpoint(args.base_url, path, expected, desc))
@@ -79,7 +80,7 @@ def main():
     # Summary
     passed = sum(results)
     total = len(results)
-    
+
     print("\n" + "=" * 60)
     print(f"  ERGEBNIS: {passed}/{total} Tests bestanden")
     print("=" * 60)

@@ -8,24 +8,38 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('core', '0001_initial'),
+        ("core", "0001_initial"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='AuditLog',
+            name="AuditLog",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('role_name', models.CharField(max_length=50)),
-                ('action', models.CharField(max_length=50)),
-                ('patient_id', models.IntegerField(blank=True, null=True)),
-                ('timestamp', models.DateTimeField(auto_now_add=True)),
-                ('meta', models.JSONField(blank=True, null=True)),
-                ('user', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='audit_logs', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("role_name", models.CharField(max_length=50)),
+                ("action", models.CharField(max_length=50)),
+                ("patient_id", models.IntegerField(blank=True, null=True)),
+                ("timestamp", models.DateTimeField(auto_now_add=True)),
+                ("meta", models.JSONField(blank=True, null=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="audit_logs",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Audit Log',
-                'verbose_name_plural': 'Audit Logs',
+                "verbose_name": "Audit Log",
+                "verbose_name_plural": "Audit Logs",
             },
         ),
     ]

@@ -39,6 +39,20 @@ from praxi_backend.appointments.services.scheduling_conflict_report import (
     get_conflict_types_overview,
     print_conflict_report,
 )
+from praxi_backend.appointments.services.scheduling_dashboard import (
+    DashboardContext,
+    DashboardStats,
+    DoctorStats,
+    RoomStats,
+    generate_conflict_summary,
+    generate_daily_overview,
+    generate_dashboard,
+    generate_kpis,
+    generate_recommendations,
+    generate_resource_summary,
+    generate_weekly_overview,
+    print_dashboard,
+)
 from praxi_backend.appointments.services.scheduling_simulation import (
     SimulationContext,
     SimulationResult,
@@ -60,32 +74,18 @@ from praxi_backend.appointments.services.scheduling_simulation import (
 )
 from praxi_backend.appointments.services.scheduling_visualization import (
     VisualizationContext,
-    generate_conflict_visualization,
-    print_conflict_visualization,
     create_conflict_table,
-    create_hourly_heatmap,
     create_doctor_heatmap,
+    create_hourly_heatmap,
     create_room_heatmap,
     create_summary,
-    visualize_doctor_conflicts,
-    visualize_room_conflicts,
+    generate_conflict_visualization,
+    print_conflict_visualization,
     visualize_absences,
-    visualize_working_hours,
+    visualize_doctor_conflicts,
     visualize_edge_cases,
-)
-from praxi_backend.appointments.services.scheduling_dashboard import (
-    DashboardContext,
-    DashboardStats,
-    DoctorStats,
-    RoomStats,
-    generate_dashboard,
-    generate_daily_overview,
-    generate_weekly_overview,
-    generate_conflict_summary,
-    generate_resource_summary,
-    generate_kpis,
-    generate_recommendations,
-    print_dashboard,
+    visualize_room_conflicts,
+    visualize_working_hours,
 )
 
 __all__ = [

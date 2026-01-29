@@ -12,10 +12,7 @@ Usage:
 from datetime import datetime
 
 from django.core.management.base import BaseCommand
-
-from praxi_backend.appointments.services.scheduling_dashboard import (
-    generate_dashboard,
-)
+from praxi_backend.appointments.services.scheduling_dashboard import generate_dashboard
 
 
 class Command(BaseCommand):
@@ -60,7 +57,7 @@ class Command(BaseCommand):
                 self.stderr.write(self.style.ERROR(f"Invalid date format: {date_str}"))
                 return
 
-        self.stdout.write(f"Generating scheduling dashboard...")
+        self.stdout.write("Generating scheduling dashboard...")
         if seed:
             self.stdout.write(f"Seed: {seed}")
         if target_date:

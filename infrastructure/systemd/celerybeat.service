@@ -10,7 +10,7 @@ User=praxiapp
 Group=praxiapp
 WorkingDirectory=/opt/praxiapp/backend
 Environment="PATH=/opt/praxiapp/venv/bin"
-Environment="DJANGO_SETTINGS_MODULE=praxi_backend.settings_prod"
+Environment="DJANGO_SETTINGS_MODULE=praxi_backend.settings.prod"
 EnvironmentFile=/opt/praxiapp/backend/.env
 
 ExecStart=/opt/praxiapp/venv/bin/celery -A praxi_backend beat \

@@ -16,10 +16,13 @@ from datetime import date, datetime, time, timedelta
 
 from django.test import TestCase
 from django.utils import timezone
-from rest_framework import status
-from rest_framework.test import APIClient
-
-from praxi_backend.core.models import Role, User
+from praxi_backend.appointments.exceptions import (
+    DoctorAbsentError,
+    DoctorBreakConflict,
+    InvalidSchedulingData,
+    SchedulingConflictError,
+    WorkingHoursViolation,
+)
 from praxi_backend.appointments.models import (
     Appointment,
     AppointmentResource,
@@ -33,13 +36,6 @@ from praxi_backend.appointments.models import (
     PracticeHours,
     Resource,
 )
-from praxi_backend.appointments.exceptions import (
-    DoctorAbsentError,
-    DoctorBreakConflict,
-    InvalidSchedulingData,
-    SchedulingConflictError,
-    WorkingHoursViolation,
-)
 from praxi_backend.appointments.services.scheduling import (
     check_appointment_conflicts,
     check_operation_conflicts,
@@ -50,7 +46,9 @@ from praxi_backend.appointments.services.scheduling import (
     validate_doctor_breaks,
     validate_working_hours,
 )
-
+from praxi_backend.core.models import Role, User
+from rest_framework import status
+from rest_framework.test import APIClient
 
 # Dummy patient_id for tests
 DUMMY_PATIENT_ID = 99999
@@ -206,7 +204,7 @@ class CheckAppointmentConflictsTestCase(SchedulingTestMixin, TestCase):
     def test_doctor_conflict_with_appointment(self):
         """Detect conflict when doctor has overlapping appointment."""
         monday = self._get_next_weekday(self.today, 0)
-        
+
         # Create existing appointment
         existing = Appointment.objects.using("default").create(
             patient_id=DUMMY_PATIENT_ID,
@@ -233,7 +231,7 @@ class CheckAppointmentConflictsTestCase(SchedulingTestMixin, TestCase):
     def test_doctor_conflict_with_operation(self):
         """Detect conflict when doctor is involved in an operation."""
         monday = self._get_next_weekday(self.today, 0)
-        
+
         # Create existing operation where doctor1 is primary surgeon
         Operation.objects.using("default").create(
             patient_id=DUMMY_PATIENT_ID,
@@ -260,7 +258,7 @@ class CheckAppointmentConflictsTestCase(SchedulingTestMixin, TestCase):
     def test_room_conflict_with_appointment(self):
         """Detect room conflict when resource is booked by another appointment."""
         monday = self._get_next_weekday(self.today, 0)
-        
+
         # Create existing appointment with room
         existing = Appointment.objects.using("default").create(
             patient_id=DUMMY_PATIENT_ID,
@@ -292,7 +290,7 @@ class CheckAppointmentConflictsTestCase(SchedulingTestMixin, TestCase):
     def test_exclude_appointment_id(self):
         """Excluding appointment ID should not flag it as conflict."""
         monday = self._get_next_weekday(self.today, 0)
-        
+
         # Create existing appointment
         existing = Appointment.objects.using("default").create(
             patient_id=DUMMY_PATIENT_ID,
@@ -337,7 +335,7 @@ class CheckOperationConflictsTestCase(SchedulingTestMixin, TestCase):
     def test_room_conflict_with_operation(self):
         """Detect room conflict with another operation."""
         monday = self._get_next_weekday(self.today, 0)
-        
+
         # Create existing operation
         existing = Operation.objects.using("default").create(
             patient_id=DUMMY_PATIENT_ID,
@@ -366,7 +364,7 @@ class CheckOperationConflictsTestCase(SchedulingTestMixin, TestCase):
     def test_device_conflict(self):
         """Detect device conflict with another operation."""
         monday = self._get_next_weekday(self.today, 0)
-        
+
         # Create existing operation with device
         existing = Operation.objects.using("default").create(
             patient_id=DUMMY_PATIENT_ID,
@@ -399,7 +397,7 @@ class CheckOperationConflictsTestCase(SchedulingTestMixin, TestCase):
     def test_surgeon_conflict_with_appointment(self):
         """Detect surgeon conflict when they have an appointment."""
         monday = self._get_next_weekday(self.today, 0)
-        
+
         # Create existing appointment for surgeon
         Appointment.objects.using("default").create(
             patient_id=DUMMY_PATIENT_ID,
@@ -429,7 +427,7 @@ class CheckPatientConflictsTestCase(SchedulingTestMixin, TestCase):
     def test_patient_conflict_with_appointment(self):
         """Detect conflict when patient already has an appointment."""
         monday = self._get_next_weekday(self.today, 0)
-        
+
         Appointment.objects.using("default").create(
             patient_id=DUMMY_PATIENT_ID,
             doctor=self.doctor1,
@@ -502,7 +500,7 @@ class ValidateWorkingHoursTestCase(SchedulingTestMixin, TestCase):
     def test_no_doctor_hours(self):
         """Error when doctor has no hours on that day."""
         monday = self._get_next_weekday(self.today, 0)
-        
+
         # Create a doctor without hours
         new_doctor = User.objects.db_manager("default").create_user(
             username="no_hours_doc",
@@ -558,7 +556,7 @@ class ValidateDoctorAbsencesTestCase(SchedulingTestMixin, TestCase):
     def test_doctor_absent(self):
         """Error when doctor is absent on the requested date."""
         monday = self._get_next_weekday(self.today, 0)
-        
+
         # Create absence
         absence = DoctorAbsence.objects.using("default").create(
             doctor=self.doctor1,
@@ -581,7 +579,7 @@ class ValidateDoctorAbsencesTestCase(SchedulingTestMixin, TestCase):
     def test_inactive_absence_ignored(self):
         """Inactive absences should be ignored."""
         monday = self._get_next_weekday(self.today, 0)
-        
+
         DoctorAbsence.objects.using("default").create(
             doctor=self.doctor1,
             start_date=monday,
@@ -967,7 +965,7 @@ class AppointmentViewIntegrationTestCase(SchedulingTestMixin, TestCase):
         # API returns either 'conflicts' (scheduling service) or 'detail' (serializer validation)
         self.assertTrue(
             "conflicts" in response.data or "detail" in response.data,
-            f"Expected 'conflicts' or 'detail' in response, got: {response.data.keys()}"
+            f"Expected 'conflicts' or 'detail' in response, got: {response.data.keys()}",
         )
 
     def test_create_appointment_outside_hours_400(self):
@@ -989,7 +987,7 @@ class AppointmentViewIntegrationTestCase(SchedulingTestMixin, TestCase):
         # API returns either 'reason' (scheduling service) or 'detail' (serializer validation)
         self.assertTrue(
             "reason" in response.data or "detail" in response.data,
-            f"Expected 'reason' or 'detail' in response, got: {response.data.keys()}"
+            f"Expected 'reason' or 'detail' in response, got: {response.data.keys()}",
         )
 
 
@@ -1052,5 +1050,5 @@ class OperationViewIntegrationTestCase(SchedulingTestMixin, TestCase):
         # API returns either 'conflicts' (scheduling service) or 'detail'/'reason' (serializer validation)
         self.assertTrue(
             "conflicts" in response.data or "detail" in response.data or "reason" in response.data,
-            f"Expected 'conflicts', 'detail', or 'reason' in response, got: {response.data.keys()}"
+            f"Expected 'conflicts', 'detail', or 'reason' in response, got: {response.data.keys()}",
         )

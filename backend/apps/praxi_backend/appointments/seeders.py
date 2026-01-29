@@ -1,23 +1,23 @@
 import random
-from datetime import datetime, timedelta, time, date
+from datetime import date, datetime, time, timedelta
 
-from django.conf import settings
 from django.db import transaction
-
 from praxi_backend.core.models import User
 from praxi_backend.patients.models import Patient
+
 from .models import (
+    Appointment,
     AppointmentType,
-    PracticeHours,
-    DoctorHours,
     DoctorAbsence,
     DoctorBreak,
-    Resource,
-    Appointment,
-    OperationType,
+    DoctorHours,
     Operation,
+    OperationType,
     PatientFlow,
+    PracticeHours,
+    Resource,
 )
+
 RANDOM_SEED = 42
 
 
@@ -231,7 +231,7 @@ def _seed_appointments(
     if not doctors or not appointment_types:
         return result
 
-    patients = list(Patient.objects.using('default').all())
+    patients = list(Patient.objects.using("default").all())
     if not patients:
         return result
 
@@ -251,7 +251,9 @@ def _seed_appointments(
 
         start_offset_days = random.randint(-7, 7)
         start_offset_minutes = random.randint(0, 60 * 8)
-        start = (now + timedelta(days=start_offset_days)).replace(hour=8, minute=0, second=0, microsecond=0)
+        start = (now + timedelta(days=start_offset_days)).replace(
+            hour=8, minute=0, second=0, microsecond=0
+        )
         start = start + timedelta(minutes=start_offset_minutes)
 
         duration = apptype.duration_minutes or 20
@@ -275,7 +277,9 @@ def _seed_appointments(
 
         # 0–2 Ressourcen zuweisen
         active_resources = [r for r in resources if r.active]
-        for res in random.sample(active_resources, k=random.randint(0, min(2, len(active_resources)))):
+        for res in random.sample(
+            active_resources, k=random.randint(0, min(2, len(active_resources)))
+        ):
             appt.resources.add(res)
 
         result.append(appt)

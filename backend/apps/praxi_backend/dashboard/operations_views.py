@@ -5,6 +5,7 @@ Enthält:
 - OperationsDashboardView: Hauptansicht des Operations-Dashboards
 - OperationsAPIView: JSON-API für AJAX-Anfragen
 """
+
 from __future__ import annotations
 
 from django.http import JsonResponse
@@ -21,7 +22,7 @@ from .services import (
 class OperationsDashboardView(TemplateView):
     """
     Hauptansicht für das Operations-Dashboard.
-    
+
     Zeigt:
     - KPI-Cards (Auslastung, Durchsatz, No-Show, etc.)
     - Patientenfluss-Visualisierung
@@ -29,8 +30,9 @@ class OperationsDashboardView(TemplateView):
     - Engpass-Analysen
     - Leistungsübersicht
     """
-    template_name = 'dashboard/operations.html'
-    
+
+    template_name = "dashboard/operations.html"
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         # Zeitraum aus Query-Parameter
@@ -47,32 +49,35 @@ class OperationsDashboardView(TemplateView):
 class OperationsAPIView(View):
     """
     JSON-API für Operations-Dashboard-Daten.
-    
+
     Unterstützt:
     - GET /api/operations-dashboard/?days=30 - Alle KPIs
     - GET /api/operations-dashboard/?mode=realtime - Echtzeit-Daten
     """
-    
+
     def get(self, request):
         days, mode, include_charts = parse_operations_request(request.GET)
-        return JsonResponse(build_operations_api_payload(days=days, mode=mode, include_charts=include_charts))
+        return JsonResponse(
+            build_operations_api_payload(days=days, mode=mode, include_charts=include_charts)
+        )
 
 
 class OperationsResourceView(TemplateView):
     """
     Detailansicht für einzelne Ressourcen.
     """
-    template_name = 'dashboard/operations_resource.html'
-    
+
+    template_name = "dashboard/operations_resource.html"
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        
-        resource_id = self.kwargs.get('resource_id')
-        days = int(self.request.GET.get('days', 30))
-        
+
+        resource_id = self.kwargs.get("resource_id")
+        days = int(self.request.GET.get("days", 30))
+
         # TODO: Detaillierte Ressourcen-KPIs implementieren
-        context['resource_id'] = resource_id
-        context['selected_days'] = days
-        context['title'] = 'Ressourcen-Details'
-        
+        context["resource_id"] = resource_id
+        context["selected_days"] = days
+        context["title"] = "Ressourcen-Details"
+
         return context

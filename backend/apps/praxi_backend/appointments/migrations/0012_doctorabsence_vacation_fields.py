@@ -10,12 +10,16 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name="doctorabsence",
             name="duration_workdays",
-            field=models.PositiveIntegerField(blank=True, null=True, verbose_name="Dauer (Werktage)"),
+            field=models.PositiveIntegerField(
+                blank=True, null=True, verbose_name="Dauer (Werktage)"
+            ),
         ),
         migrations.AddField(
             model_name="doctorabsence",
             name="remaining_days",
-            field=models.PositiveIntegerField(blank=True, null=True, verbose_name="Verbleibend (Urlaubstage)"),
+            field=models.PositiveIntegerField(
+                blank=True, null=True, verbose_name="Verbleibend (Urlaubstage)"
+            ),
         ),
         migrations.AddField(
             model_name="doctorabsence",

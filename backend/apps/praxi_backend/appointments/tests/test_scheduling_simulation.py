@@ -17,33 +17,11 @@ ARCHITECTURE RULES (from copilot-instructions.md)
 ==============================================================================
 """
 
-from datetime import date, time, timedelta
+from datetime import timedelta
 
 from django.test import TestCase
-from django.utils import timezone
-
-from praxi_backend.appointments.exceptions import (
-    DoctorAbsentError,
-    DoctorBreakConflict,
-    InvalidSchedulingData,
-    SchedulingConflictError,
-    WorkingHoursViolation,
-)
-from praxi_backend.appointments.models import (
-    Appointment,
-    AppointmentResource,
-    AppointmentType,
-    DoctorAbsence,
-    DoctorBreak,
-    DoctorHours,
-    Operation,
-    OperationType,
-    PracticeHours,
-    Resource,
-)
+from praxi_backend.appointments.models import DoctorHours, PracticeHours
 from praxi_backend.appointments.services.scheduling_simulation import (
-    DEFAULT_SEED,
-    DUMMY_PATIENT_ID_BASE,
     SimulationContext,
     SimulationResult,
     SimulationSummary,
@@ -63,7 +41,6 @@ from praxi_backend.appointments.services.scheduling_simulation import (
     simulate_team_conflict,
     simulate_working_hours_violation,
 )
-from praxi_backend.core.models import Role, User
 
 
 class SimulationContextTestCase(TestCase):
@@ -121,9 +98,7 @@ class SimulationContextTestCase(TestCase):
 
         # Check doctor hours for all doctors
         for doctor in ctx.doctors:
-            doctor_hours = DoctorHours.objects.using("default").filter(
-                doctor=doctor, active=True
-            )
+            doctor_hours = DoctorHours.objects.using("default").filter(doctor=doctor, active=True)
             self.assertEqual(doctor_hours.count(), 5)
 
     def test_next_patient_id_is_unique(self):
@@ -159,9 +134,7 @@ class SimulateDoctorConflictTest(TestCase):
         self.assertTrue(result.success)
         self.assertEqual(result.expected_exception, "SchedulingConflictError")
         self.assertGreater(len(result.conflicts), 0)
-        self.assertTrue(
-            any(c.type == "doctor_conflict" for c in result.conflicts)
-        )
+        self.assertTrue(any(c.type == "doctor_conflict" for c in result.conflicts))
 
 
 class SimulateRoomConflictTest(TestCase):
@@ -180,9 +153,7 @@ class SimulateRoomConflictTest(TestCase):
         self.assertTrue(result.success)
         self.assertEqual(result.expected_exception, "SchedulingConflictError")
         self.assertGreater(len(result.conflicts), 0)
-        self.assertTrue(
-            any(c.type == "room_conflict" for c in result.conflicts)
-        )
+        self.assertTrue(any(c.type == "room_conflict" for c in result.conflicts))
 
 
 class SimulateDeviceConflictTest(TestCase):
@@ -201,9 +172,7 @@ class SimulateDeviceConflictTest(TestCase):
         self.assertTrue(result.success)
         self.assertEqual(result.expected_exception, "SchedulingConflictError")
         self.assertGreater(len(result.conflicts), 0)
-        self.assertTrue(
-            any(c.type == "device_conflict" for c in result.conflicts)
-        )
+        self.assertTrue(any(c.type == "device_conflict" for c in result.conflicts))
 
 
 class SimulateAppointmentOverlapTest(TestCase):
@@ -310,9 +279,7 @@ class SimulatePatientDoubleBookingTest(TestCase):
 
         self.assertTrue(result.success)
         self.assertGreater(len(result.conflicts), 0)
-        self.assertTrue(
-            any(c.type == "patient_conflict" for c in result.conflicts)
-        )
+        self.assertTrue(any(c.type == "patient_conflict" for c in result.conflicts))
 
 
 class SimulateTeamConflictTest(TestCase):
@@ -356,27 +323,21 @@ class SimulateEdgeCasesTest(TestCase):
     def test_zero_duration_rejected(self):
         """Zero duration appointments should be rejected."""
         results = simulate_edge_cases(self.ctx)
-        zero_result = next(
-            r for r in results if r.scenario == "edge_case_zero_duration"
-        )
+        zero_result = next(r for r in results if r.scenario == "edge_case_zero_duration")
 
         self.assertTrue(zero_result.success)
 
     def test_negative_duration_rejected(self):
         """Negative duration appointments should be rejected."""
         results = simulate_edge_cases(self.ctx)
-        neg_result = next(
-            r for r in results if r.scenario == "edge_case_negative_duration"
-        )
+        neg_result = next(r for r in results if r.scenario == "edge_case_negative_duration")
 
         self.assertTrue(neg_result.success)
 
     def test_edge_touch_allowed(self):
         """Edge-touch (end1 == start2) should NOT be a conflict."""
         results = simulate_edge_cases(self.ctx)
-        edge_result = next(
-            r for r in results if r.scenario == "edge_case_edge_touch"
-        )
+        edge_result = next(r for r in results if r.scenario == "edge_case_edge_touch")
 
         self.assertTrue(edge_result.success)
 
@@ -420,12 +381,12 @@ class SimulateRandomizedDayTest(TestCase):
         # Note: We can't rerun with same context seed because of unique username constraints
         # Instead we verify the logic with different context seeds but same random seed
         result1 = simulate_randomized_day(self.ctx, seed=5001)
-        
+
         # Create separate context but use same simulation seed
         ctx2 = SimulationContext(seed=3099)  # Different context seed
         ctx2.setup()
         result2 = simulate_randomized_day(ctx2, seed=5001)  # Same simulation seed
-        
+
         # Due to different context data, we can only verify the seed was used
         # The key assertion is that results are generated (not crashing)
         self.assertIn("seed", result1.metadata)
@@ -435,10 +396,7 @@ class SimulateRandomizedDayTest(TestCase):
         """Randomized day should create appointments and/or operations."""
         result = simulate_randomized_day(self.ctx, seed=2013)
 
-        total = (
-            result.metadata["appointments_created"]
-            + result.metadata["operations_created"]
-        )
+        total = result.metadata["appointments_created"] + result.metadata["operations_created"]
         self.assertGreater(total, 0)
 
 
@@ -474,7 +432,7 @@ class RunAllSimulationsTest(TestCase):
 
         # Both should produce same number of total scenarios
         self.assertEqual(summary1.total, summary2.total)
-        
+
         # Both should have same scenario types
         scenarios1 = {r.scenario for r in summary1.results}
         scenarios2 = {r.scenario for r in summary2.results}

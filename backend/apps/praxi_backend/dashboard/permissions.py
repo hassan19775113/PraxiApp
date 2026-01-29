@@ -13,30 +13,28 @@ Important stability note:
 
 from __future__ import annotations
 
-import sys
 from django.contrib.admin.views.decorators import staff_member_required
-
 from praxi_backend.core.permissions import is_running_tests
 
 
 def _is_running_tests() -> bool:
-	"""Backward-compatible wrapper around core.permissions.is_running_tests."""
-	return is_running_tests()
+    """Backward-compatible wrapper around core.permissions.is_running_tests."""
+    return is_running_tests()
 
 
 def dashboard_access_required(view_func):
-	"""Decorator: staff-only outside tests; no-op during tests.
+    """Decorator: staff-only outside tests; no-op during tests.
 
-	Use with `@method_decorator(dashboard_access_required)` on CBVs.
-	"""
-	if _is_running_tests():
-		return view_func
-	return staff_member_required(view_func)
+    Use with `@method_decorator(dashboard_access_required)` on CBVs.
+    """
+    if _is_running_tests():
+        return view_func
+    return staff_member_required(view_func)
 
 
 def staff_required(view_func):
-	"""Alias kept for backward compatibility.
+    """Alias kept for backward compatibility.
 
-	Prefer `dashboard_access_required` for new/modernized views.
-	"""
-	return staff_member_required(view_func)
+    Prefer `dashboard_access_required` for new/modernized views.
+    """
+    return staff_member_required(view_func)

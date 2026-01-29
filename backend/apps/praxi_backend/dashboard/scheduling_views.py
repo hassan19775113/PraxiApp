@@ -1,6 +1,7 @@
 """
 Scheduling Dashboard Views
 """
+
 from __future__ import annotations
 
 from django.http import JsonResponse
@@ -15,7 +16,7 @@ from .services import build_scheduling_api_payload, build_scheduling_dashboard_c
 
 class SchedulingDashboardView(View):
     """Scheduling KPIs Dashboard View"""
-    
+
     @method_decorator(dashboard_access_required)
     def get(self, request):
         context = build_scheduling_dashboard_context()
@@ -24,7 +25,7 @@ class SchedulingDashboardView(View):
 
 class SchedulingAPIView(View):
     """API Endpoint für Scheduling Dashboard-Daten"""
-    
+
     @method_decorator(dashboard_access_required)
     @method_decorator(cache_page(60))
     def get(self, request):

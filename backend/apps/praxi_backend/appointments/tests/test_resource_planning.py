@@ -4,11 +4,9 @@ from datetime import datetime, time, timedelta
 
 from django.test import TestCase
 from django.utils import timezone
-
-from rest_framework.test import APIClient
-
-from praxi_backend.appointments.models import PracticeHours, DoctorHours, Resource
+from praxi_backend.appointments.models import DoctorHours, PracticeHours, Resource
 from praxi_backend.core.models import AuditLog, Role, User
+from rest_framework.test import APIClient
 
 
 class ResourcePlanningMiniTest(TestCase):

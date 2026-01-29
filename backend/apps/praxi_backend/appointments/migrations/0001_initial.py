@@ -15,20 +15,39 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Appointment',
+            name="Appointment",
             fields=[
-                ('id', models.AutoField(primary_key=True, serialize=False)),
-                ('patient_id', models.IntegerField()),
-                ('start_time', models.DateTimeField()),
-                ('end_time', models.DateTimeField()),
-                ('status', models.CharField(choices=[('scheduled', 'scheduled'), ('confirmed', 'confirmed'), ('cancelled', 'cancelled'), ('completed', 'completed')], default='scheduled', max_length=20)),
-                ('notes', models.TextField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('doctor', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='appointments', to=settings.AUTH_USER_MODEL)),
+                ("id", models.AutoField(primary_key=True, serialize=False)),
+                ("patient_id", models.IntegerField()),
+                ("start_time", models.DateTimeField()),
+                ("end_time", models.DateTimeField()),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("scheduled", "scheduled"),
+                            ("confirmed", "confirmed"),
+                            ("cancelled", "cancelled"),
+                            ("completed", "completed"),
+                        ],
+                        default="scheduled",
+                        max_length=20,
+                    ),
+                ),
+                ("notes", models.TextField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "doctor",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.PROTECT,
+                        related_name="appointments",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['-start_time', '-id'],
+                "ordering": ["-start_time", "-id"],
             },
         ),
     ]

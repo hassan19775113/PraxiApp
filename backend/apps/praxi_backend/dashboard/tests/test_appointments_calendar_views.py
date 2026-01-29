@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from django.test import TestCase
 from django.urls import reverse
-
 from praxi_backend.core.models import Role, User
 
 

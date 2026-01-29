@@ -4,7 +4,6 @@ from datetime import datetime, time, timedelta
 
 from django.test import TestCase
 from django.utils import timezone
-
 from praxi_backend.appointments.models import DoctorHours, PracticeHours
 from praxi_backend.appointments.serializers import AppointmentCreateUpdateSerializer
 from praxi_backend.core.models import Role, User

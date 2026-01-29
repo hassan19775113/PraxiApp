@@ -9,22 +9,15 @@ Routes:
 """
 
 from django.urls import path
+from praxi_backend.core.views import LoginView, MeView, RefreshView, health
 
-from praxi_backend.core.views import (
-    health,
-    LoginView,
-    MeView,
-    RefreshView,
-)
-
-app_name = 'core'
+app_name = "core"
 
 urlpatterns = [
     # Health check
-    path('health/', health, name='health'),
-
+    path("health/", health, name="health"),
     # JWT Authentication
-    path('auth/login/', LoginView.as_view(), name='login'),
-    path('auth/refresh/', RefreshView.as_view(), name='refresh'),
-    path('auth/me/', MeView.as_view(), name='me'),
+    path("auth/login/", LoginView.as_view(), name="login"),
+    path("auth/refresh/", RefreshView.as_view(), name="refresh"),
+    path("auth/me/", MeView.as_view(), name="me"),
 ]

@@ -12,11 +12,9 @@ Uses only the default/system test DB.
 from __future__ import annotations
 
 from django.test import TestCase
-
+from praxi_backend.core.models import Role, User
 from rest_framework import status
 from rest_framework.test import APIClient
-
-from praxi_backend.core.models import Role, User
 
 
 class AuthenticationTest(TestCase):

@@ -9,7 +9,6 @@ from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-
 PASTEL_COLORS = [
     "#A8C7F4",
     "#A7D8CF",
@@ -27,11 +26,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         User = get_user_model()
 
-        doctors = (
-            User.objects.using("default")
-            .filter(role__name="doctor")
-            .order_by("id")
-        )
+        doctors = User.objects.using("default").filter(role__name="doctor").order_by("id")
 
         if not doctors.exists():
             self.stdout.write("[INFO] Keine Ärzte gefunden.")

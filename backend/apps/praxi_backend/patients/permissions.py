@@ -1,6 +1,5 @@
-from rest_framework.permissions import SAFE_METHODS
-
 from praxi_backend.core.permissions import RBACPermission
+from rest_framework.permissions import SAFE_METHODS
 
 
 class PatientPermission(RBACPermission):

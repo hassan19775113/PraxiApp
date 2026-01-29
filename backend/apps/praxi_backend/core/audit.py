@@ -16,9 +16,9 @@ from praxi_backend.core import utils as core_utils
 
 
 def log_patient_action(user, action, patient_id=None, meta=None):
-	"""Write a patient-related audit entry.
+    """Write a patient-related audit entry.
 
-	Delegates to the legacy implementation in `praxi_backend.core.utils`.
-	Signature and behavior are intentionally unchanged.
-	"""
-	return core_utils.log_patient_action(user, action, patient_id, meta=meta)
+    Delegates to the legacy implementation in `praxi_backend.core.utils`.
+    Signature and behavior are intentionally unchanged.
+    """
+    return core_utils.log_patient_action(user, action, patient_id, meta=meta)

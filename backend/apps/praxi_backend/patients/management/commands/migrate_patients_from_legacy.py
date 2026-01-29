@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Any, Iterable, Iterator
@@ -6,7 +7,6 @@ from typing import Any, Iterable, Iterator
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.utils import timezone
-
 from praxi_backend.patients.models import Patient
 
 
@@ -68,6 +68,8 @@ def _safe_str(value: Any) -> str | None:
         return None
     s = str(value).strip()
     return s or None
+
+
 def _iter_postgres_patients(conninfo: str, *, table: str) -> Iterator[LegacyPatientRow]:
     """Read legacy patients from PostgreSQL via psycopg/psycopg2."""
 
@@ -132,10 +134,7 @@ def _upsert_patients(rows: Iterable[LegacyPatientRow], *, chunk_size: int = 1000
             return
 
         ids = [r.id for r in batch_rows]
-        existing = {
-            p.id: p
-            for p in Patient.objects.using("default").filter(id__in=ids)
-        }
+        existing = {p.id: p for p in Patient.objects.using("default").filter(id__in=ids)}
 
         to_create: list[Patient] = []
         to_update: list[Patient] = []
@@ -167,11 +166,15 @@ def _upsert_patients(rows: Iterable[LegacyPatientRow], *, chunk_size: int = 1000
         if to_create:
             # ignore_conflicts=True means we cannot trust len(to_create) as actually created.
             before_ids = set(
-                Patient.objects.using("default").filter(id__in=[p.id for p in to_create]).values_list("id", flat=True)
+                Patient.objects.using("default")
+                .filter(id__in=[p.id for p in to_create])
+                .values_list("id", flat=True)
             )
             Patient.objects.using("default").bulk_create(to_create, ignore_conflicts=True)
             after_ids = set(
-                Patient.objects.using("default").filter(id__in=[p.id for p in to_create]).values_list("id", flat=True)
+                Patient.objects.using("default")
+                .filter(id__in=[p.id for p in to_create])
+                .values_list("id", flat=True)
             )
             # Count IDs that appeared due to this batch.
             created += max(0, len(after_ids - before_ids))
@@ -221,9 +224,7 @@ class Command(BaseCommand):
         parser.add_argument(
             "--table",
             default="patients",
-            help=(
-                "Legacy table name to read from (default: 'patients')."
-            ),
+            help=("Legacy table name to read from (default: 'patients')."),
         )
 
         parser.add_argument(

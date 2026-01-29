@@ -27,13 +27,11 @@ Examples:
 """
 
 import json
-import sys
 from argparse import ArgumentParser
 from typing import Any
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
-
 from praxi_backend.appointments.services.scheduling_benchmark import (
     DEFAULT_SEED,
     BenchmarkContext,
@@ -46,9 +44,7 @@ from praxi_backend.appointments.services.scheduling_benchmark import (
     benchmark_single_day_load,
     benchmark_working_hours_validation,
     generate_report,
-    print_benchmark_report,
 )
-
 
 BENCHMARK_FUNCTIONS = {
     "single_day_load": lambda ctx, q: benchmark_single_day_load(
@@ -57,18 +53,12 @@ BENCHMARK_FUNCTIONS = {
     "conflict_detection": lambda ctx, q: benchmark_conflict_detection(
         ctx, n_checks=100 if q else 500
     ),
-    "no_conflict": lambda ctx, q: benchmark_no_conflict(
-        ctx, n_checks=100 if q else 500
-    ),
+    "no_conflict": lambda ctx, q: benchmark_no_conflict(ctx, n_checks=100 if q else 500),
     "working_hours": lambda ctx, q: benchmark_working_hours_validation(
         ctx, n_checks=50 if q else 200
     ),
-    "room_conflicts": lambda ctx, q: benchmark_room_conflicts(
-        ctx, n_checks=50 if q else 200
-    ),
-    "randomized": lambda ctx, q: benchmark_randomized(
-        ctx, seed=ctx.seed, n=30 if q else 100
-    ),
+    "room_conflicts": lambda ctx, q: benchmark_room_conflicts(ctx, n_checks=50 if q else 200),
+    "randomized": lambda ctx, q: benchmark_randomized(ctx, seed=ctx.seed, n=30 if q else 100),
 }
 
 
@@ -151,27 +141,27 @@ class Command(BaseCommand):
     ) -> BenchmarkReport:
         """Run selected benchmarks."""
         import time
-        
+
         if "all" in benchmarks:
             return benchmark_full_engine(seed=seed)
-        
+
         ctx = BenchmarkContext(seed=seed)
         ctx.setup()
-        
+
         results = []
         start = time.perf_counter()
-        
+
         for name in benchmarks:
             if name in BENCHMARK_FUNCTIONS:
                 func = BENCHMARK_FUNCTIONS[name]
                 result = func(ctx, quick)
                 results.append(result)
-        
+
         end = time.perf_counter()
-        
+
         report = generate_report(results)
         report.total_duration_sec = end - start
-        
+
         return report
 
     def _print_report(self, report: BenchmarkReport, verbosity: int) -> None:
@@ -201,11 +191,10 @@ class Command(BaseCommand):
                 f"Min: {r.timing.min_ms:.3f}ms | "
                 f"Max: {r.timing.max_ms:.3f}ms"
             )
-            
+
             if verbosity >= 2:
                 self.stdout.write(
-                    f"   P95: {r.timing.p95_ms:.3f}ms | "
-                    f"P99: {r.timing.p99_ms:.3f}ms"
+                    f"   P95: {r.timing.p95_ms:.3f}ms | " f"P99: {r.timing.p99_ms:.3f}ms"
                 )
                 self.stdout.write(
                     f"   Queries: {r.queries.total_queries} total "

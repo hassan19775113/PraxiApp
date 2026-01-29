@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from datetime import date
 
-from django.db import migrations, models
 import django.db.models.deletion
+from django.db import migrations, models
 
 
 def _table_names(schema_editor) -> set[str]:
@@ -49,9 +49,14 @@ def forwards_prepare_tables(apps, schema_editor):
         try:
             with conn.cursor() as cursor:
                 if vendor == "sqlite":
-                    cols = {row[1] for row in cursor.execute('PRAGMA table_info("patients");').fetchall()}
+                    cols = {
+                        row[1]
+                        for row in cursor.execute('PRAGMA table_info("patients");').fetchall()
+                    }
                 else:
-                    cols = {c.name for c in conn.introspection.get_table_description(cursor, "patients")}
+                    cols = {
+                        c.name for c in conn.introspection.get_table_description(cursor, "patients")
+                    }
         except Exception:
             cols = set()
 
@@ -170,34 +175,16 @@ def forwards_ensure_patients_for_references(apps, schema_editor):
             if pid > 0:
                 referenced_ids.add(pid)
 
-    _collect(
-        PatientNote.objects.using(alias)
-        .values_list("patient_id", flat=True)
-        .distinct()
-    )
-    _collect(
-        PatientDocument.objects.using(alias)
-        .values_list("patient_id", flat=True)
-        .distinct()
-    )
-    _collect(
-        Appointment.objects.using(alias)
-        .values_list("patient_id", flat=True)
-        .distinct()
-    )
-    _collect(
-        Operation.objects.using(alias)
-        .values_list("patient_id", flat=True)
-        .distinct()
-    )
+    _collect(PatientNote.objects.using(alias).values_list("patient_id", flat=True).distinct())
+    _collect(PatientDocument.objects.using(alias).values_list("patient_id", flat=True).distinct())
+    _collect(Appointment.objects.using(alias).values_list("patient_id", flat=True).distinct())
+    _collect(Operation.objects.using(alias).values_list("patient_id", flat=True).distinct())
 
     if not referenced_ids:
         return
 
     existing = set(
-        Patient.objects.using(alias)
-        .filter(id__in=referenced_ids)
-        .values_list("id", flat=True)
+        Patient.objects.using(alias).filter(id__in=referenced_ids).values_list("id", flat=True)
     )
     missing = sorted(referenced_ids - existing)
     if not missing:
@@ -224,7 +211,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.RunPython(forwards_prepare_tables, reverse_code=migrations.RunPython.noop),
-
         # Replace the former cache-based Patient model with a single, managed master model.
         migrations.SeparateDatabaseAndState(
             database_operations=[],
@@ -252,28 +238,23 @@ class Migration(migrations.Migration):
                 ),
             ],
         ),
-
         migrations.RunPython(
             forwards_create_patients_table_if_missing,
             reverse_code=migrations.RunPython.noop,
         ),
-
         migrations.RunPython(
             forwards_copy_cache_into_patients,
             reverse_code=migrations.RunPython.noop,
         ),
-
         migrations.RunPython(
             forwards_ensure_patients_for_references,
             reverse_code=migrations.RunPython.noop,
         ),
-
         # Drop the old cache table after copying (if it existed).
         migrations.RunSQL(
             sql="DROP TABLE IF EXISTS patients_cache_backup;",
             reverse_sql=migrations.RunSQL.noop,
         ),
-
         # Rename patient_id fields to patient (state-only) while keeping the same DB column.
         # IMPORTANT: Set db_column explicitly *before* the rename so Django doesn't assume
         # an implicit column name change (patient_id -> patient) during the later FK AlterField.
@@ -302,7 +283,6 @@ class Migration(migrations.Migration):
                 ),
             ],
         ),
-
         migrations.AlterField(
             model_name="patientdocument",
             name="patient",

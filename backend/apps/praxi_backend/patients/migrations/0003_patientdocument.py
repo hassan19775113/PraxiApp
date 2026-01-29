@@ -10,11 +10,24 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name="PatientDocument",
             fields=[
-                ("id", models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name="ID")),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
                 ("patient_id", models.IntegerField(db_index=True)),
                 ("title", models.CharField(max_length=255)),
-                ("doc_type", models.CharField(choices=[("document", "Dokument"), ("report", "Bericht")], max_length=20)),
-                ("file", models.FileField(blank=True, null=True, upload_to="patient_documents/%Y/%m/%d")),
+                (
+                    "doc_type",
+                    models.CharField(
+                        choices=[("document", "Dokument"), ("report", "Bericht")], max_length=20
+                    ),
+                ),
+                (
+                    "file",
+                    models.FileField(blank=True, null=True, upload_to="patient_documents/%Y/%m/%d"),
+                ),
                 ("note", models.TextField(blank=True)),
                 ("created_at", models.DateTimeField(auto_now_add=True)),
             ],

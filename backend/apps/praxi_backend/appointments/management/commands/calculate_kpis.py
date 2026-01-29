@@ -13,14 +13,7 @@ from statistics import mean, median
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
-
-from praxi_backend.appointments.models import (
-    Appointment,
-    DoctorAbsence,
-    DoctorBreak,
-    Operation,
-    Resource,
-)
+from praxi_backend.appointments.models import Appointment, Operation, Resource
 from praxi_backend.core.models import User
 
 
@@ -42,15 +35,19 @@ class Command(BaseCommand):
         month_start = today.replace(day=1)
         month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
 
-        appointments = list(Appointment.objects.using('default').all())
-        operations = list(Operation.objects.using('default').all())
-        doctors = list(User.objects.using('default').filter(role__name='doctor'))
-        rooms = list(Resource.objects.using('default').filter(type='room', active=True))
+        appointments = list(Appointment.objects.using("default").all())
+        operations = list(Operation.objects.using("default").all())
+        doctors = list(User.objects.using("default").filter(role__name="doctor"))
+        rooms = list(Resource.objects.using("default").filter(type="room", active=True))
 
         output = []
 
         if part == 0 or part == 1:
-            output.append(self.generate_part1(appointments, operations, today, week_start, week_end, month_start, month_end))
+            output.append(
+                self.generate_part1(
+                    appointments, operations, today, week_start, week_end, month_start, month_end
+                )
+            )
 
         if part == 0 or part == 2:
             output.append(self.generate_part2(appointments, operations, doctors, rooms))
@@ -70,7 +67,9 @@ class Command(BaseCommand):
         else:
             self.stdout.write(content)
 
-    def generate_part1(self, appointments, operations, today, week_start, week_end, month_start, month_end):
+    def generate_part1(
+        self, appointments, operations, today, week_start, week_end, month_start, month_end
+    ):
         """Teil 1: Mengen, Dauern, Peak-Stunden/Tage"""
         lines = []
         lines.append("╔════════════════════════════════════════════════════════════════════════╗")
@@ -87,7 +86,9 @@ class Command(BaseCommand):
 
         day_apts = len([a for a in appointments if a.start_time.date() == today])
         week_apts = len([a for a in appointments if week_start <= a.start_time.date() <= week_end])
-        month_apts = len([a for a in appointments if month_start <= a.start_time.date() <= month_end])
+        month_apts = len(
+            [a for a in appointments if month_start <= a.start_time.date() <= month_end]
+        )
         total_apts = len(appointments)
 
         day_ops = len([o for o in operations if o.start_time.date() == today])
@@ -95,9 +96,15 @@ class Command(BaseCommand):
         month_ops = len([o for o in operations if month_start <= o.start_time.date() <= month_end])
         total_ops = len(operations)
 
-        lines.append(f"│ Termine              │{day_apts:^10}│{week_apts:^10}│{month_apts:^10}│{total_apts:^16}│")
-        lines.append(f"│ Operationen          │{day_ops:^10}│{week_ops:^10}│{month_ops:^10}│{total_ops:^16}│")
-        lines.append(f"│ GESAMT               │{day_apts+day_ops:^10}│{week_apts+week_ops:^10}│{month_apts+month_ops:^10}│{total_apts+total_ops:^16}│")
+        lines.append(
+            f"│ Termine              │{day_apts:^10}│{week_apts:^10}│{month_apts:^10}│{total_apts:^16}│"
+        )
+        lines.append(
+            f"│ Operationen          │{day_ops:^10}│{week_ops:^10}│{month_ops:^10}│{total_ops:^16}│"
+        )
+        lines.append(
+            f"│ GESAMT               │{day_apts+day_ops:^10}│{week_apts+week_ops:^10}│{month_apts+month_ops:^10}│{total_apts+total_ops:^16}│"
+        )
         lines.append("└──────────────────────┴──────────┴──────────┴──────────┴────────────────┘")
         lines.append("")
 
@@ -108,18 +115,40 @@ class Command(BaseCommand):
         lines.append("│ Metrik               │    Ø     │  Median  │   Min    │      Max       │")
         lines.append("├──────────────────────┼──────────┼──────────┼──────────┼────────────────┤")
 
-        apt_durations = [(a.end_time - a.start_time).total_seconds() / 60 for a in appointments if a.end_time and a.start_time]
-        op_durations = [(o.end_time - o.start_time).total_seconds() / 60 for o in operations if o.end_time and o.start_time]
+        apt_durations = [
+            (a.end_time - a.start_time).total_seconds() / 60
+            for a in appointments
+            if a.end_time and a.start_time
+        ]
+        op_durations = [
+            (o.end_time - o.start_time).total_seconds() / 60
+            for o in operations
+            if o.end_time and o.start_time
+        ]
 
         if apt_durations:
-            apt_avg, apt_med, apt_min, apt_max = mean(apt_durations), median(apt_durations), min(apt_durations), max(apt_durations)
-            lines.append(f"│ Terminlänge (min)    │{apt_avg:^10.1f}│{apt_med:^10.1f}│{apt_min:^10.1f}│{apt_max:^16.1f}│")
+            apt_avg, apt_med, apt_min, apt_max = (
+                mean(apt_durations),
+                median(apt_durations),
+                min(apt_durations),
+                max(apt_durations),
+            )
+            lines.append(
+                f"│ Terminlänge (min)    │{apt_avg:^10.1f}│{apt_med:^10.1f}│{apt_min:^10.1f}│{apt_max:^16.1f}│"
+            )
         else:
             lines.append(f"│ Terminlänge (min)    │{'--':^10}│{'--':^10}│{'--':^10}│{'--':^16}│")
 
         if op_durations:
-            op_avg, op_med, op_min, op_max = mean(op_durations), median(op_durations), min(op_durations), max(op_durations)
-            lines.append(f"│ OP-Dauer (min)       │{op_avg:^10.1f}│{op_med:^10.1f}│{op_min:^10.1f}│{op_max:^16.1f}│")
+            op_avg, op_med, op_min, op_max = (
+                mean(op_durations),
+                median(op_durations),
+                min(op_durations),
+                max(op_durations),
+            )
+            lines.append(
+                f"│ OP-Dauer (min)       │{op_avg:^10.1f}│{op_med:^10.1f}│{op_min:^10.1f}│{op_max:^16.1f}│"
+            )
         else:
             lines.append(f"│ OP-Dauer (min)       │{'--':^10}│{'--':^10}│{'--':^10}│{'--':^16}│")
 
@@ -208,7 +237,9 @@ class Command(BaseCommand):
             avg_util = sum(d[3] for d in doc_stats) / len(doc_stats)
             bar_len = int(avg_util / 5)
             bar = "█" * bar_len + "░" * (20 - bar_len)
-            lines.append("├────────────────────────┼────────┼────────┼──────────────────────────────┤")
+            lines.append(
+                "├────────────────────────┼────────┼────────┼──────────────────────────────┤"
+            )
             lines.append(f"│ DURCHSCHNITT           │{'--':^8}│{'--':^8}│ {bar} {avg_util:5.1f}%│")
 
         lines.append("└────────────────────────┴────────┴────────┴──────────────────────────────┘")
@@ -237,7 +268,9 @@ class Command(BaseCommand):
             avg_util = sum(r[2] for r in room_stats) / len(room_stats)
             bar_len = int(avg_util / 5)
             bar = "█" * bar_len + "░" * (20 - bar_len)
-            lines.append("├────────────────────────┼────────┼──────────────────────────────────────┤")
+            lines.append(
+                "├────────────────────────┼────────┼──────────────────────────────────────┤"
+            )
             lines.append(f"│ DURCHSCHNITT           │{'--':^8}│ {bar} {avg_util:5.1f}%      │")
 
         lines.append("└────────────────────────┴────────┴──────────────────────────────────────┘")
@@ -270,6 +303,7 @@ class Command(BaseCommand):
 
         working_hours_violations = 0
         from datetime import time
+
         for a in appointments:
             if a.start_time.time() < time(8, 0) or a.end_time.time() > time(17, 0):
                 working_hours_violations += 1
@@ -284,11 +318,19 @@ class Command(BaseCommand):
         lines.append("├──────────────────────────────┼──────────┼────────────────────────────────┤")
 
         conf_per_100 = (total_conflicts / total_plannings * 100) if total_plannings > 0 else 0
-        status = "🔴 KRITISCH" if conf_per_100 > 20 else ("🟡 WARNUNG" if conf_per_100 > 5 else "🟢 GUT")
+        status = (
+            "🔴 KRITISCH" if conf_per_100 > 20 else ("🟡 WARNUNG" if conf_per_100 > 5 else "🟢 GUT")
+        )
         lines.append(f"│ Konflikte / 100 Planungen    │{conf_per_100:^10.1f}│ {status:<30}│")
-        lines.append(f"│ Arzt-Doppelbelegungen        │{doctor_conflicts:^10}│ {'🔴 ' + str(doctor_conflicts) + ' Konflikte' if doctor_conflicts else '🟢 OK':<30}│")
-        lines.append(f"│ Arbeitszeit-Verstöße         │{working_hours_violations:^10}│ {'🟡 ' + str(working_hours_violations) + ' außerhalb' if working_hours_violations else '🟢 OK':<30}│")
-        lines.append(f"│ Gesamt-Konflikte             │{total_conflicts:^10}│                                │")
+        lines.append(
+            f"│ Arzt-Doppelbelegungen        │{doctor_conflicts:^10}│ {'🔴 ' + str(doctor_conflicts) + ' Konflikte' if doctor_conflicts else '🟢 OK':<30}│"
+        )
+        lines.append(
+            f"│ Arbeitszeit-Verstöße         │{working_hours_violations:^10}│ {'🟡 ' + str(working_hours_violations) + ' außerhalb' if working_hours_violations else '🟢 OK':<30}│"
+        )
+        lines.append(
+            f"│ Gesamt-Konflikte             │{total_conflicts:^10}│                                │"
+        )
 
         lines.append("└──────────────────────────────┴──────────┴────────────────────────────────┘")
         lines.append("")
@@ -300,7 +342,11 @@ class Command(BaseCommand):
         lines.append("├──────────────────────────────────────────────────────────────────────────┤")
         bar_len = int(efficiency / 2.5)
         bar = "█" * bar_len + "░" * (40 - bar_len)
-        status = "🟢 OPTIMAL" if efficiency >= 80 else ("🟡 VERBESSERBAR" if efficiency >= 50 else "🔴 KRITISCH")
+        status = (
+            "🟢 OPTIMAL"
+            if efficiency >= 80
+            else ("🟡 VERBESSERBAR" if efficiency >= 50 else "🔴 KRITISCH")
+        )
         lines.append(f"│  Effizienz: {bar} {efficiency:5.1f}% {status}  │")
         lines.append("└────────────────────────────────────────────────────────────────────────┘")
 
@@ -314,8 +360,16 @@ class Command(BaseCommand):
         lines.append("╚════════════════════════════════════════════════════════════════════════╝")
         lines.append("")
 
-        apt_durations = [(a.end_time - a.start_time).total_seconds() / 60 for a in appointments if a.end_time and a.start_time]
-        op_durations = [(o.end_time - o.start_time).total_seconds() / 60 for o in operations if o.end_time and o.start_time]
+        apt_durations = [
+            (a.end_time - a.start_time).total_seconds() / 60
+            for a in appointments
+            if a.end_time and a.start_time
+        ]
+        op_durations = [
+            (o.end_time - o.start_time).total_seconds() / 60
+            for o in operations
+            if o.end_time and o.start_time
+        ]
 
         lines.append("┌────────────────────────────────────────────────────────────────────────┐")
         lines.append("│  9. KPI-ZUSAMMENFASSUNG                                                │")
@@ -324,9 +378,13 @@ class Command(BaseCommand):
         lines.append(f"│ Gesamtzahl Termine             │ {len(appointments):<39}│")
         lines.append(f"│ Gesamtzahl Operationen         │ {len(operations):<39}│")
         if apt_durations:
-            lines.append(f"│ Ø Terminlänge                  │ {mean(apt_durations):.1f} min{' ' * 32}│")
+            lines.append(
+                f"│ Ø Terminlänge                  │ {mean(apt_durations):.1f} min{' ' * 32}│"
+            )
         if op_durations:
-            lines.append(f"│ Ø OP-Dauer                     │ {mean(op_durations):.1f} min{' ' * 31}│")
+            lines.append(
+                f"│ Ø OP-Dauer                     │ {mean(op_durations):.1f} min{' ' * 31}│"
+            )
 
         lines.append("└────────────────────────────────┴─────────────────────────────────────────┘")
         lines.append("")

@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import date
 
 from django.test import TestCase
-
 from praxi_backend.dashboard.validators import (
     parse_iso_date,
     parse_optional_int,

@@ -6,7 +6,6 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-
 # ------------------------------------------------------------
 # Paths / Env
 # ------------------------------------------------------------
@@ -70,11 +69,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-
     # Third-party
     "rest_framework",
     "corsheaders",
-
     # PraxiApp
     "praxi_backend.core",
     "praxi_backend.appointments",
@@ -100,7 +97,6 @@ TEMPLATES = [
         "BACKEND": "django.template.backends.django.DjangoTemplates",
         "DIRS": [
             BASE_DIR / "templates",
-            BASE_DIR / "praxi_backend" / "templates",
         ],
         "APP_DIRS": True,
         "OPTIONS": {
@@ -215,9 +211,7 @@ CORS_ALLOW_ALL_ORIGINS = _env_bool("CORS_ALLOW_ALL_ORIGINS", default=DEBUG)
 CORS_ALLOW_CREDENTIALS = _env_bool("CORS_ALLOW_CREDENTIALS", default=True)
 
 CORS_ALLOWED_ORIGINS = [
-    origin.strip()
-    for origin in _env("CORS_ALLOWED_ORIGINS", "").split(",")
-    if origin.strip()
+    origin.strip() for origin in _env("CORS_ALLOWED_ORIGINS", "").split(",") if origin.strip()
 ]
 
 CSRF_TRUSTED_ORIGINS = [
@@ -281,8 +275,20 @@ LOGGING = {
         "level": LOG_LEVEL,
     },
     "loggers": {
-        "django": {"handlers": ["console", "file"], "level": _env("DJANGO_LOG_LEVEL", "INFO"), "propagate": False},
-        "django.db.backends": {"handlers": ["console"], "level": _env("DJANGO_DB_LOG_LEVEL", "WARNING"), "propagate": False},
-        "praxi_backend": {"handlers": ["console", "file"], "level": _env("PRAXI_LOG_LEVEL", LOG_LEVEL), "propagate": False},
+        "django": {
+            "handlers": ["console", "file"],
+            "level": _env("DJANGO_LOG_LEVEL", "INFO"),
+            "propagate": False,
+        },
+        "django.db.backends": {
+            "handlers": ["console"],
+            "level": _env("DJANGO_DB_LOG_LEVEL", "WARNING"),
+            "propagate": False,
+        },
+        "praxi_backend": {
+            "handlers": ["console", "file"],
+            "level": _env("PRAXI_LOG_LEVEL", LOG_LEVEL),
+            "propagate": False,
+        },
     },
 }

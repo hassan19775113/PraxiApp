@@ -8,7 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 @contextmanager
-def timed_block(label: str, *, log: logging.Logger | None = None, level: str = 'debug'):
+def timed_block(label: str, *, log: logging.Logger | None = None, level: str = "debug"):
     """Lightweight timing context manager for internal micro-benchmarks.
 
     - No external dependencies
@@ -21,12 +21,12 @@ def timed_block(label: str, *, log: logging.Logger | None = None, level: str = '
     finally:
         end = time.perf_counter()
         log_obj = log or logger
-        msg = 'timing %s: %.3fms'
+        msg = "timing %s: %.3fms"
         ms = (end - start) * 1000.0
         try:
-            if level == 'info':
+            if level == "info":
                 log_obj.info(msg, label, ms)
-            elif level == 'warning':
+            elif level == "warning":
                 log_obj.warning(msg, label, ms)
             else:
                 log_obj.debug(msg, label, ms)
@@ -38,21 +38,21 @@ def timed_block(label: str, *, log: logging.Logger | None = None, level: str = '
 def log_patient_action(user, action, patient_id=None, meta=None):
     """Schreibt Patient-Access-Aktionen in die system-DB (alias: default)."""
 
-    role_name = ''
+    role_name = ""
     try:
-        role = getattr(user, 'role', None)
+        role = getattr(user, "role", None)
         if role is not None:
-            role_name = getattr(role, 'name', '') or ''
+            role_name = getattr(role, "name", "") or ""
     except Exception:
-        role_name = ''
+        role_name = ""
 
     try:
-        AuditLog.objects.using('default').create(
-            user=user if getattr(user, 'is_authenticated', False) else None,
+        AuditLog.objects.using("default").create(
+            user=user if getattr(user, "is_authenticated", False) else None,
             role_name=role_name,
             action=action,
             patient_id=patient_id,
             meta=meta,
         )
     except Exception:
-        logger.exception('AuditLog write failed (action=%s, patient_id=%s)', action, patient_id)
+        logger.exception("AuditLog write failed (action=%s, patient_id=%s)", action, patient_id)

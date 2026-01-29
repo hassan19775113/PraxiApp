@@ -22,22 +22,22 @@ routing/adapter work.
 from __future__ import annotations
 
 # Suggestion engine + availability (legacy module)
+from .scheduling import availability_for_range  # noqa: F401
 from .scheduling import (  # noqa: F401
-	availability_for_range,
-	ceil_dt_to_minutes,
-	compute_suggestions_for_doctor,
-	doctor_display_name,
-	get_active_doctors,
-	iso_z,
-	resolve_doctor,
-	resolve_type,
+    ceil_dt_to_minutes,
+    compute_suggestions_for_doctor,
+    doctor_display_name,
+    get_active_doctors,
+    iso_z,
+    resolve_doctor,
+    resolve_type,
 )
 
 # Conflict / planning engine (service module)
+from .services.scheduling import filter_available_patients  # noqa: F401
 from .services.scheduling import (  # noqa: F401
-	filter_available_patients,
-	get_available_doctors,
-	get_available_rooms,
-	plan_appointment,
-	plan_operation,
+    get_available_doctors,
+    get_available_rooms,
+    plan_appointment,
+    plan_operation,
 )

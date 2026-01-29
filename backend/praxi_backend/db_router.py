@@ -9,9 +9,9 @@ deployment scripts. It is not referenced by current settings.
 
 
 class PraxiAppRouter:  # pragma: no cover
-	"""Deprecated: router not used in the single-DB architecture."""
+    """Deprecated: router not used in the single-DB architecture."""
 
-	def __getattr__(self, name):
-		raise AttributeError(
-			"PraxiAppRouter is deprecated; the project no longer uses multi-DB routing."
-		)
+    def __getattr__(self, name):
+        raise AttributeError(
+            "PraxiAppRouter is deprecated; the project no longer uses multi-DB routing."
+        )

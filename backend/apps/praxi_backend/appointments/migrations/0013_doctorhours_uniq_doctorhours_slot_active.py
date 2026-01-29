@@ -7,13 +7,16 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('appointments', '0012_doctorabsence_vacation_fields'),
+        ("appointments", "0012_doctorabsence_vacation_fields"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.AddConstraint(
-            model_name='doctorhours',
-            constraint=models.UniqueConstraint(fields=('doctor', 'weekday', 'start_time', 'end_time', 'active'), name='uniq_doctorhours_slot_active'),
+            model_name="doctorhours",
+            constraint=models.UniqueConstraint(
+                fields=("doctor", "weekday", "start_time", "end_time", "active"),
+                name="uniq_doctorhours_slot_active",
+            ),
         ),
     ]

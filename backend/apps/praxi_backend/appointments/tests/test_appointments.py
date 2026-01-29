@@ -21,12 +21,15 @@ from unittest.mock import patch
 
 from django.test import TestCase
 from django.utils import timezone
-
+from praxi_backend.appointments.models import (
+    Appointment,
+    AppointmentType,
+    DoctorHours,
+    PracticeHours,
+)
+from praxi_backend.core.models import Role, User
 from rest_framework import status
 from rest_framework.test import APIClient
-
-from praxi_backend.core.models import Role, User
-from praxi_backend.appointments.models import Appointment, AppointmentType, DoctorHours, PracticeHours
 
 
 class AppointmentCRUDTest(TestCase):

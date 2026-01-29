@@ -47,7 +47,7 @@ try:
         password=os.environ.get("SYS_DB_PASSWORD"),
         host=os.environ.get("SYS_DB_HOST"),
         port=os.environ.get("SYS_DB_PORT"),
-        connect_timeout=3
+        connect_timeout=3,
     )
     print("OK: Verbindung erfolgreich!")
     conn.close()
@@ -99,9 +99,7 @@ print("\nSchritt 5: Teste Django (showmigrations)...")
 
 try:
     result = subprocess.run(
-        [sys.executable, "manage.py", "showmigrations"],
-        capture_output=True,
-        text=True
+        [sys.executable, "manage.py", "showmigrations"], capture_output=True, text=True
     )
     if result.returncode == 0:
         print("OK: Django ist funktionsfähig")

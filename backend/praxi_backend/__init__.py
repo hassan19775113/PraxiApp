@@ -6,12 +6,12 @@ from pathlib import Path
 # Keep import paths stable (e.g. `praxi_backend.core`) while allowing the app
 # packages to live under: <BASE_DIR>/apps/praxi_backend/<app>
 try:
-	_apps_pkg = Path(__file__).resolve().parent.parent / "apps" / "praxi_backend"
-	if _apps_pkg.exists():
-		__path__.append(str(_apps_pkg))
+    _apps_pkg = Path(__file__).resolve().parent.parent / "apps" / "praxi_backend"
+    if _apps_pkg.exists():
+        __path__.append(str(_apps_pkg))
 except Exception:
-	# Best-effort only; never break imports if filesystem is in an unexpected state.
-	pass
+    # Best-effort only; never break imports if filesystem is in an unexpected state.
+    pass
 
 from .celery import app as celery_app
 

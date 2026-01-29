@@ -15,7 +15,6 @@ Usage:
 import sys
 
 from django.core.management.base import BaseCommand
-
 from praxi_backend.appointments.services.scheduling_visualization import (
     VisualizationContext,
     create_conflict_table,
@@ -55,11 +54,20 @@ class Command(BaseCommand):
             "-s",
             type=str,
             choices=[
-                'all', 'doctor', 'room', 'table', 'groups',
-                'heatmap', 'doctor-heatmap', 'room-heatmap',
-                'absences', 'working-hours', 'edge-cases', 'summary'
+                "all",
+                "doctor",
+                "room",
+                "table",
+                "groups",
+                "heatmap",
+                "doctor-heatmap",
+                "room-heatmap",
+                "absences",
+                "working-hours",
+                "edge-cases",
+                "summary",
             ],
-            default='all',
+            default="all",
             help="Generate only specific section",
         )
 
@@ -73,30 +81,30 @@ class Command(BaseCommand):
         self.stdout.write(f"Section: {section}\n")
 
         try:
-            if section == 'all':
+            if section == "all":
                 output = generate_conflict_visualization(seed=seed)
             else:
                 ctx = VisualizationContext(seed=seed)
                 ctx.setup()
-                
+
                 section_map = {
-                    'doctor': lambda: visualize_doctor_conflicts(ctx),
-                    'room': lambda: visualize_room_conflicts(ctx),
-                    'table': lambda: create_conflict_table(ctx),
-                    'groups': lambda: create_grouped_tables(ctx),
-                    'heatmap': lambda: create_hourly_heatmap(ctx),
-                    'doctor-heatmap': lambda: create_doctor_heatmap(ctx),
-                    'room-heatmap': lambda: create_room_heatmap(ctx),
-                    'absences': lambda: visualize_absences(ctx),
-                    'working-hours': lambda: visualize_working_hours(ctx),
-                    'edge-cases': lambda: visualize_edge_cases(),
-                    'summary': lambda: create_summary(ctx),
+                    "doctor": lambda: visualize_doctor_conflicts(ctx),
+                    "room": lambda: visualize_room_conflicts(ctx),
+                    "table": lambda: create_conflict_table(ctx),
+                    "groups": lambda: create_grouped_tables(ctx),
+                    "heatmap": lambda: create_hourly_heatmap(ctx),
+                    "doctor-heatmap": lambda: create_doctor_heatmap(ctx),
+                    "room-heatmap": lambda: create_room_heatmap(ctx),
+                    "absences": lambda: visualize_absences(ctx),
+                    "working-hours": lambda: visualize_working_hours(ctx),
+                    "edge-cases": lambda: visualize_edge_cases(),
+                    "summary": lambda: create_summary(ctx),
                 }
-                
+
                 output = section_map[section]()
 
             if output_file:
-                with open(output_file, 'w', encoding='utf-8') as f:
+                with open(output_file, "w", encoding="utf-8") as f:
                     f.write(output)
                 self.stdout.write(
                     self.style.SUCCESS(f"\n✓ Visualization written to: {output_file}")
@@ -107,5 +115,6 @@ class Command(BaseCommand):
         except Exception as e:
             self.stderr.write(self.style.ERROR(f"Error: {e}"))
             import traceback
+
             traceback.print_exc()
             sys.exit(1)

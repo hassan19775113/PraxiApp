@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from django.test import RequestFactory, TestCase
-
 from praxi_backend.core.models import Role, User
 from praxi_backend.dashboard.doctor_views import DoctorDashboardView
 
@@ -41,7 +40,9 @@ class DoctorsDashboardRenderTest(TestCase):
         self.assertNotIn("Keine Ärzte konfiguriert", html)
 
     def test_detail_renders_profile(self):
-        request = self.rf.get("/dashboard/doctors/", {"doctor_id": str(self.doctor.id), "period": "week"})
+        request = self.rf.get(
+            "/dashboard/doctors/", {"doctor_id": str(self.doctor.id), "period": "week"}
+        )
         response = DoctorDashboardView.as_view()(request)
         response.render()
         html = response.content.decode("utf-8")

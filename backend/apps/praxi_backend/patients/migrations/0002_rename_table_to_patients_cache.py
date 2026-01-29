@@ -6,21 +6,25 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('patients', '0001_initial'),
+        ("patients", "0001_initial"),
     ]
 
     operations = [
         migrations.AlterModelOptions(
-            name='patient',
-            options={'ordering': ['last_name', 'first_name', 'id'], 'verbose_name': 'Patient (Cache)', 'verbose_name_plural': 'Patients (Cache)'},
+            name="patient",
+            options={
+                "ordering": ["last_name", "first_name", "id"],
+                "verbose_name": "Patient (Cache)",
+                "verbose_name_plural": "Patients (Cache)",
+            },
         ),
         migrations.AlterField(
-            model_name='patient',
-            name='patient_id',
+            model_name="patient",
+            name="patient_id",
             field=models.IntegerField(db_index=True, unique=True),
         ),
         migrations.AlterModelTable(
-            name='patient',
-            table='patients_cache',
+            name="patient",
+            table="patients_cache",
         ),
     ]

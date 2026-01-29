@@ -4,15 +4,13 @@ Contains serializers for User, Role, and AuditLog models.
 Follows the Read/Write serializer pattern per architecture rules.
 """
 
-from rest_framework import serializers
-
 from praxi_backend.core.models import AuditLog, Role, User
 from praxi_backend.core.validators import (
     validate_old_password,
     validate_role_name,
     validate_unique_user_email,
 )
-
+from rest_framework import serializers
 
 # -----------------------------------------------------------------------------
 # Role Serializers
@@ -24,7 +22,7 @@ class RoleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Role
-        fields = ['id', 'name', 'label']
+        fields = ["id", "name", "label"]
         read_only_fields = fields
 
 
@@ -33,7 +31,7 @@ class RoleCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Role
-        fields = ['name', 'label']
+        fields = ["name", "label"]
 
     def validate_name(self, value):
         """Ensure name is lowercase and alphanumeric with underscores."""
@@ -53,16 +51,16 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id',
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'is_active',
-            'calendar_color',
-            'role',
-            'date_joined',
-            'last_login',
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "is_active",
+            "calendar_color",
+            "role",
+            "date_joined",
+            "last_login",
         ]
         read_only_fields = fields
 
@@ -70,11 +68,11 @@ class UserSerializer(serializers.ModelSerializer):
 class UserListSerializer(serializers.ModelSerializer):
     """Lightweight serializer for User lists (no nested objects)."""
 
-    role_name = serializers.CharField(source='role.name', read_only=True, allow_null=True)
+    role_name = serializers.CharField(source="role.name", read_only=True, allow_null=True)
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'is_active', 'role_name']
+        fields = ["id", "username", "email", "first_name", "last_name", "is_active", "role_name"]
         read_only_fields = fields
 
 
@@ -82,7 +80,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating new users."""
 
     role = serializers.PrimaryKeyRelatedField(
-        queryset=Role.objects.using('default').all(),
+        queryset=Role.objects.using("default").all(),
         required=False,
         allow_null=True,
     )
@@ -91,13 +89,13 @@ class UserCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'password',
-            'calendar_color',
-            'role',
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "password",
+            "calendar_color",
+            "role",
         ]
 
     def validate_email(self, value):
@@ -106,8 +104,8 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         """Create user with hashed password."""
-        password = validated_data.pop('password')
-        user = User.objects.db_manager('default').create_user(
+        password = validated_data.pop("password")
+        user = User.objects.db_manager("default").create_user(
             password=password,
             **validated_data,
         )
@@ -118,7 +116,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating existing users."""
 
     role = serializers.PrimaryKeyRelatedField(
-        queryset=Role.objects.using('default').all(),
+        queryset=Role.objects.using("default").all(),
         required=False,
         allow_null=True,
     )
@@ -126,12 +124,12 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'email',
-            'first_name',
-            'last_name',
-            'is_active',
-            'calendar_color',
-            'role',
+            "email",
+            "first_name",
+            "last_name",
+            "is_active",
+            "calendar_color",
+            "role",
         ]
 
     def validate_email(self, value):
@@ -147,7 +145,7 @@ class UserPasswordChangeSerializer(serializers.Serializer):
 
     def validate_old_password(self, value):
         """Verify old password is correct."""
-        user = self.context.get('user')
+        user = self.context.get("user")
         return validate_old_password(value, user=user)
 
 
@@ -164,23 +162,23 @@ class AuditLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = AuditLog
         fields = [
-            'id',
-            'user',
-            'user_display',
-            'role_name',
-            'action',
-            'patient_id',
-            'timestamp',
-            'meta',
+            "id",
+            "user",
+            "user_display",
+            "role_name",
+            "action",
+            "patient_id",
+            "timestamp",
+            "meta",
         ]
         read_only_fields = fields
 
     def get_user_display(self, obj):
         """Return username or 'System' if no user."""
-        user = getattr(obj, 'user', None)
+        user = getattr(obj, "user", None)
         if user is None:
-            return 'System'
-        return getattr(user, 'username', 'Unknown')
+            return "System"
+        return getattr(user, "username", "Unknown")
 
 
 class AuditLogListSerializer(serializers.ModelSerializer):
@@ -188,7 +186,7 @@ class AuditLogListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AuditLog
-        fields = ['id', 'action', 'patient_id', 'timestamp', 'role_name']
+        fields = ["id", "action", "patient_id", "timestamp", "role_name"]
         read_only_fields = fields
 
 
@@ -209,22 +207,22 @@ class LoginSerializer(serializers.Serializer):
     def validate(self, attrs):
         from django.contrib.auth import authenticate
 
-        username = attrs.get('username')
-        password = attrs.get('password')
+        username = attrs.get("username")
+        password = attrs.get("password")
 
         if not username or not password:
-            raise serializers.ValidationError('Username and password are required.')
+            raise serializers.ValidationError("Username and password are required.")
 
         # Authenticate against default database
         user = authenticate(username=username, password=password)
 
         if user is None:
-            raise serializers.ValidationError('Invalid credentials.')
+            raise serializers.ValidationError("Invalid credentials.")
 
         if not user.is_active:
-            raise serializers.ValidationError('User account is disabled.')
+            raise serializers.ValidationError("User account is disabled.")
 
-        attrs['user'] = user
+        attrs["user"] = user
         return attrs
 
 
@@ -237,15 +235,15 @@ class RefreshSerializer(serializers.Serializer):
     refresh = serializers.CharField(required=True)
 
     def validate_refresh(self, value):
-        from rest_framework_simplejwt.tokens import RefreshToken
         from rest_framework_simplejwt.exceptions import TokenError
+        from rest_framework_simplejwt.tokens import RefreshToken
 
         try:
-            token = RefreshToken(value)
-            # Token is valid, return it
+            # Constructor validates token.
+            RefreshToken(value)
             return value
         except TokenError as e:
-            raise serializers.ValidationError(f'Invalid or expired refresh token: {str(e)}')
+            raise serializers.ValidationError(f"Invalid or expired refresh token: {str(e)}")
 
 
 class UserMeSerializer(serializers.ModelSerializer):
@@ -259,13 +257,13 @@ class UserMeSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = [
-            'id',
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'is_active',
-            'calendar_color',
-            'role',
+            "id",
+            "username",
+            "email",
+            "first_name",
+            "last_name",
+            "is_active",
+            "calendar_color",
+            "role",
         ]
         read_only_fields = fields

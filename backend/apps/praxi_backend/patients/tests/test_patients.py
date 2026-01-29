@@ -4,12 +4,10 @@ from datetime import date
 from unittest.mock import patch
 
 from django.test import TestCase
-
-from rest_framework import status
-from rest_framework.test import APIClient
-
 from praxi_backend.core.models import Role, User
 from praxi_backend.patients.models import Patient
+from rest_framework import status
+from rest_framework.test import APIClient
 
 
 class PatientAPITest(TestCase):

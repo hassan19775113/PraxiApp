@@ -10,8 +10,8 @@ submodules like `praxi_backend.appointments.tests.test_conflicts`.
 
 With newer Python/unittest discovery this can raise:
 
-	ImportError: 'tests' module incorrectly imported from '.../appointments/tests'.
-	Expected '.../appointments'.
+        ImportError: 'tests' module incorrectly imported from '.../appointments/tests'.
+        Expected '.../appointments'.
 
 The fix is to make the *first* entry in `__path__` match the directory that
 unittest expects (the app directory), while still including the `tests/`
