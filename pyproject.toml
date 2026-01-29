@@ -1,0 +1,25 @@
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.black]
+line-length = 100
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+line_length = 100
+
+[tool.ruff.lint]
+# Keep this deliberately small: catch real errors (F), basic style (E), and import sorting (I).
+# Keep this deliberately small: catch real errors (F) and basic style issues (E).
+# Import sorting is handled by isort.
+select = ["E", "F"]
+
+# Black handles line-length wrapping; avoid conflicting E501 noise.
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Django settings commonly use star-import overrides; Ruff can't reliably infer names.
+"backend/praxi_backend/settings/*.py" = ["F403", "F405"]
+"backend/praxi_backend/settings_*.py" = ["F403", "F405"]

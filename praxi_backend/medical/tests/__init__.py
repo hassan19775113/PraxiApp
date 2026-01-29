@@ -1,1 +1,0 @@
-# Medical app tests package
