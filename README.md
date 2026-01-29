@@ -163,10 +163,10 @@ GET /api/appointments/suggest/
 
 ### Setup (PostgreSQL, Windows-native)
 
-1. Virtuelle Umgebung aktivieren (bereits im Repo vorhanden: `.venv/`)
-2. Dependencies installieren aus `praxi_backend/requirements.txt`
-3. `.env` konfigurieren (siehe `.env.example`) und PostgreSQL lokal starten
-4. Starten via `manage.py` (setzt standardmäßig `praxi_backend.settings.dev`)
+1. Virtuelle Umgebung aktivieren (bereits im Repo vorhanden: `.venv312/`)
+2. Dependencies installieren aus `backend/requirements.txt`
+3. `.env` konfigurieren (siehe `backend/.env.example`) und PostgreSQL lokal starten
+4. Starten via `backend/manage.py` (setzt standardmäßig `praxi_backend.settings.dev`)
 
 Wichtige DEV-Eigenschaften:
 - DEV nutzt PostgreSQL (`default`)
@@ -175,15 +175,15 @@ Wichtige DEV-Eigenschaften:
 
 ### Datenbank/Migrationen
 
-- DEV/Prod: `python manage.py migrate --database=default`
+- DEV/Prod: `python backend/manage.py migrate --database=default`
 
 ---
 
 ## Deployment (Windows-native / Bare Metal)
 
-Siehe `DEPLOYMENT.md`.
+Siehe `infrastructure/docs/notes/DEPLOYMENT.md`.
 
-Im Ordner `systemd/` liegen Service-Files und `install-services.sh` (Linux). Für Windows wird das Projekt typischerweise via `python manage.py runserver` (DEV) oder Gunicorn/Reverse-Proxy (PROD) betrieben.
+Im Ordner `infrastructure/systemd/` liegen Service-Files und `install-services.sh` (Linux). Für Windows wird das Projekt typischerweise via `python backend/manage.py runserver` (DEV) oder Gunicorn/Reverse-Proxy (PROD) betrieben.
 
 ---
 
