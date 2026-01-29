@@ -28,7 +28,7 @@ from .models import (
     Resource,
 )
 from praxi_backend.core.admin import praxi_admin_site
-from praxi_backend.dashboard.utils import get_patient_display_name
+from praxi_backend.patients.utils import get_patient_display_name
 
 
 # ============================================================================

@@ -18,7 +18,6 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from praxi_backend.core.models import User
-from praxi_backend.core.utils import log_patient_action
 
 from .models import (
 	Appointment,
@@ -31,7 +30,7 @@ from .models import (
 	PracticeHours,
 	Resource,
 )
-from .scheduling import compute_suggestions_for_doctor, doctor_display_name, get_active_doctors
+from .scheduling_facade import compute_suggestions_for_doctor, doctor_display_name, get_active_doctors
 
 
 def validate_positive_int(value, *, field_name: str, message_required: str, message_invalid: str, message_positive: str) -> int:
@@ -311,10 +310,9 @@ def validate_no_resource_conflicts(
 		return
 
 	if request_user is not None:
-		try:
-			pid = int(patient_id) if patient_id is not None else None
-		except Exception:
-			pid = None
-		log_patient_action(request_user, "resource_booking_conflict", pid, meta=conflict_meta)
+		# Phase 2E: no audit side-effects in validators.
+		# Audit is triggered by the view/use-case layer when returning the 400.
+		pass
 
 	raise serializers.ValidationError("Resource conflict")
+

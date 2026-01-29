@@ -16,16 +16,12 @@ from __future__ import annotations
 import sys
 from django.contrib.admin.views.decorators import staff_member_required
 
+from praxi_backend.core.permissions import is_running_tests
+
 
 def _is_running_tests() -> bool:
-	"""Heuristic to detect Django test runs.
-
-	Django's test runner invokes manage.py with `test` in argv.
-	This keeps dashboard views protected in normal runtime while allowing
-	existing RequestFactory render tests to keep working.
-	"""
-	argv = {str(a).lower() for a in sys.argv}
-	return bool({"test", "pytest"} & argv)
+	"""Backward-compatible wrapper around core.permissions.is_running_tests."""
+	return is_running_tests()
 
 
 def dashboard_access_required(view_func):

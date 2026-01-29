@@ -1,7 +1,9 @@
-from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.permissions import SAFE_METHODS
+
+from praxi_backend.core.permissions import RBACPermission
 
 
-class AppointmentPermission(BasePermission):
+class AppointmentPermission(RBACPermission):
     """RBAC für Termine.
 
     - admin: alles
@@ -13,26 +15,9 @@ class AppointmentPermission(BasePermission):
     read_roles = {"admin", "assistant", "doctor", "billing"}
     write_roles = {"admin", "assistant", "doctor"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        if user and (getattr(user, "is_superuser", False) or getattr(user, "is_staff", False)):
-            return "admin"
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
-
-    def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-
-        role_name = self._role_name(request)
-        if not role_name:
-            return False
-
-        if request.method in SAFE_METHODS:
-            return role_name in self.read_roles
-
-        return role_name in self.write_roles
+    # Preserve legacy behavior: staff/superuser act as admin for appointments.
+    treat_staff_as_admin = True
+    treat_superuser_as_admin = True
 
     def has_object_permission(self, request, view, obj):
         role_name = self._role_name(request)
@@ -48,7 +33,7 @@ class AppointmentPermission(BasePermission):
         return True
 
 
-class AppointmentTypePermission(BasePermission):
+class AppointmentTypePermission(RBACPermission):
     """RBAC für Termin-Typen.
 
     - admin: alle Rechte
@@ -60,27 +45,8 @@ class AppointmentTypePermission(BasePermission):
     read_roles = {"admin", "assistant", "doctor", "billing"}
     write_roles = {"admin"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
 
-    def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-
-        role_name = self._role_name(request)
-        if not role_name:
-            return False
-
-        if request.method in SAFE_METHODS:
-            return role_name in self.read_roles
-
-        return role_name in self.write_roles
-
-
-class PracticeHoursPermission(BasePermission):
+class PracticeHoursPermission(RBACPermission):
     """RBAC für Praxis-Arbeitszeiten.
 
     - admin: alle Rechte
@@ -92,27 +58,8 @@ class PracticeHoursPermission(BasePermission):
     read_roles = {"admin", "assistant", "doctor", "billing"}
     write_roles = {"admin", "assistant"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
 
-    def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-
-        role_name = self._role_name(request)
-        if not role_name:
-            return False
-
-        if request.method in SAFE_METHODS:
-            return role_name in self.read_roles
-
-        return role_name in self.write_roles
-
-
-class ResourcePermission(BasePermission):
+class ResourcePermission(RBACPermission):
     """RBAC für Ressourcen (Räume & Geräte).
 
     - admin: alle Rechte
@@ -124,27 +71,8 @@ class ResourcePermission(BasePermission):
     read_roles = {"admin", "assistant", "doctor", "billing"}
     write_roles = {"admin", "assistant"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
 
-    def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-
-        role_name = self._role_name(request)
-        if not role_name:
-            return False
-
-        if request.method in SAFE_METHODS:
-            return role_name in self.read_roles
-
-        return role_name in self.write_roles
-
-
-class DoctorHoursPermission(BasePermission):
+class DoctorHoursPermission(RBACPermission):
     """RBAC für Arzt-Sprechzeiten.
 
     - admin: alle Rechte
@@ -156,25 +84,6 @@ class DoctorHoursPermission(BasePermission):
     read_roles = {"admin", "assistant", "doctor", "billing"}
     write_roles = {"admin", "assistant"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
-
-    def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-
-        role_name = self._role_name(request)
-        if not role_name:
-            return False
-
-        if request.method in SAFE_METHODS:
-            return role_name in self.read_roles
-
-        return role_name in self.write_roles
-
     def has_object_permission(self, request, view, obj):
         role_name = self._role_name(request)
         if role_name == "doctor":
@@ -182,7 +91,7 @@ class DoctorHoursPermission(BasePermission):
         return True
 
 
-class DoctorAbsencePermission(BasePermission):
+class DoctorAbsencePermission(RBACPermission):
     """RBAC für Arzt-Abwesenheiten.
 
     - admin: alle Rechte
@@ -194,14 +103,12 @@ class DoctorAbsencePermission(BasePermission):
     read_roles = {"admin", "assistant", "doctor", "billing"}
     write_roles = {"admin", "assistant"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
-
     def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
+        # Preserve legacy behavior:
+        # - SAFE_METHODS: role-based read
+        # - doctor: may update/delete (no POST)
+        # - billing: read-only (no write)
+        if not self._is_authenticated(request):
             return False
 
         role_name = self._role_name(request)
@@ -211,7 +118,6 @@ class DoctorAbsencePermission(BasePermission):
         if request.method in SAFE_METHODS:
             return role_name in self.read_roles
 
-        # doctor has no POST/PUT/PATCH/DELETE globally; object-level handled below
         if role_name == "doctor":
             return request.method in ("PUT", "PATCH", "DELETE")
 
@@ -233,7 +139,7 @@ class DoctorAbsencePermission(BasePermission):
         return True
 
 
-class DoctorBreakPermission(BasePermission):
+class DoctorBreakPermission(RBACPermission):
     """RBAC für Pausen/Blockzeiten.
 
     - admin: alle Rechte
@@ -245,14 +151,11 @@ class DoctorBreakPermission(BasePermission):
     read_roles = {"admin", "assistant", "doctor", "billing"}
     write_roles = {"admin", "assistant"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
-
     def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
+        # Preserve legacy behavior:
+        # - SAFE_METHODS: role-based read
+        # - doctor: may update/delete (no POST)
+        if not self._is_authenticated(request):
             return False
 
         role_name = self._role_name(request)
@@ -283,7 +186,7 @@ class DoctorBreakPermission(BasePermission):
         return True
 
 
-class AppointmentSuggestPermission(BasePermission):
+class AppointmentSuggestPermission(RBACPermission):
     """RBAC für Terminvorschläge.
 
     - admin/assistant: erlaubt
@@ -293,14 +196,9 @@ class AppointmentSuggestPermission(BasePermission):
 
     read_roles = {"admin", "assistant", "doctor", "billing"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
-
     def has_permission(self, request, view):
         user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
+        if not self._is_authenticated(request):
             return False
 
         role_name = self._role_name(request)
@@ -326,7 +224,7 @@ class AppointmentSuggestPermission(BasePermission):
         return True
 
 
-class OperationPermission(BasePermission):
+class OperationPermission(RBACPermission):
     """RBAC für Operationen.
 
     - admin: CRUD
@@ -337,25 +235,6 @@ class OperationPermission(BasePermission):
 
     read_roles = {"admin", "assistant", "doctor", "billing"}
     write_roles = {"admin", "assistant"}
-
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
-
-    def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-
-        role_name = self._role_name(request)
-        if not role_name:
-            return False
-
-        if request.method in SAFE_METHODS:
-            return role_name in self.read_roles
-
-        return role_name in self.write_roles
 
     def has_object_permission(self, request, view, obj):
         role_name = self._role_name(request)
@@ -376,7 +255,7 @@ class OperationPermission(BasePermission):
         }
 
 
-class OperationTypePermission(BasePermission):
+class OperationTypePermission(RBACPermission):
     """RBAC für OP-Typen.
 
     - admin: CRUD
@@ -386,27 +265,8 @@ class OperationTypePermission(BasePermission):
     read_roles = {"admin", "assistant", "doctor", "billing"}
     write_roles = {"admin"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
 
-    def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-
-        role_name = self._role_name(request)
-        if not role_name:
-            return False
-
-        if request.method in SAFE_METHODS:
-            return role_name in self.read_roles
-
-        return role_name in self.write_roles
-
-
-class OperationSuggestPermission(BasePermission):
+class OperationSuggestPermission(RBACPermission):
     """RBAC für OP-Vorschläge.
 
     - admin/assistant: erlaubt
@@ -416,14 +276,9 @@ class OperationSuggestPermission(BasePermission):
 
     read_roles = {"admin", "assistant", "doctor", "billing"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
-
     def has_permission(self, request, view):
         user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
+        if not self._is_authenticated(request):
             return False
 
         role_name = self._role_name(request)
@@ -448,7 +303,7 @@ class OperationSuggestPermission(BasePermission):
         return True
 
 
-class OpDashboardPermission(BasePermission):
+class OpDashboardPermission(RBACPermission):
     """RBAC für OP-Dashboard Endpoints.
 
     - admin/assistant: GET + PATCH
@@ -459,27 +314,8 @@ class OpDashboardPermission(BasePermission):
     read_roles = {"admin", "assistant", "doctor", "billing"}
     write_roles = {"admin", "assistant"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
 
-    def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-
-        role_name = self._role_name(request)
-        if not role_name:
-            return False
-
-        if request.method in SAFE_METHODS:
-            return role_name in self.read_roles
-
-        return role_name in self.write_roles
-
-
-class OpStatsPermission(BasePermission):
+class OpStatsPermission(RBACPermission):
     """RBAC für OP-Statistik Endpoints.
 
     - admin/assistant: alle Endpoints
@@ -490,14 +326,8 @@ class OpStatsPermission(BasePermission):
     read_roles = {"admin", "assistant", "doctor", "billing"}
     doctor_scopes = {"overview", "surgeons"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
-
     def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
+        if not self._is_authenticated(request):
             return False
 
         role_name = self._role_name(request)
@@ -517,7 +347,7 @@ class OpStatsPermission(BasePermission):
         return True
 
 
-class OpTimelinePermission(BasePermission):
+class OpTimelinePermission(RBACPermission):
     """RBAC für OP-Timeline Endpoints.
 
     - admin/assistant: alle Timeline Endpoints (GET)
@@ -527,27 +357,11 @@ class OpTimelinePermission(BasePermission):
 
     read_roles = {"admin", "assistant", "doctor", "billing"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
-
-    def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-
-        role_name = self._role_name(request)
-        if not role_name:
-            return False
-
-        if request.method not in SAFE_METHODS:
-            return False
-
-        return role_name in self.read_roles
+    # Read-only endpoint.
+    write_roles = set()
 
 
-class ResourceCalendarPermission(BasePermission):
+class ResourceCalendarPermission(RBACPermission):
     """RBAC für Ressourcen-Kalender Endpoints.
 
     - admin/assistant: GET
@@ -557,27 +371,11 @@ class ResourceCalendarPermission(BasePermission):
 
     read_roles = {"admin", "assistant", "doctor", "billing"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
-
-    def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-
-        role_name = self._role_name(request)
-        if not role_name:
-            return False
-
-        if request.method not in SAFE_METHODS:
-            return False
-
-        return role_name in self.read_roles
+    # Read-only endpoint.
+    write_roles = set()
 
 
-class PatientFlowPermission(BasePermission):
+class PatientFlowPermission(RBACPermission):
     """RBAC für PatientFlow/Wartezimmer.
 
     - admin/assistant: alle Endpoints
@@ -587,28 +385,6 @@ class PatientFlowPermission(BasePermission):
 
     read_roles = {"admin", "assistant", "doctor", "billing"}
     write_roles = {"admin", "assistant", "doctor"}
-
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
-
-    def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-
-        role_name = self._role_name(request)
-        if not role_name:
-            return False
-
-        if request.method in SAFE_METHODS:
-            return role_name in self.read_roles
-
-        if role_name == "billing":
-            return False
-
-        return role_name in self.write_roles
 
     def has_object_permission(self, request, view, obj):
         role_name = self._role_name(request)

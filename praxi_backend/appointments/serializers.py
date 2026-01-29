@@ -6,8 +6,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from praxi_backend.core.models import User, AuditLog
-from praxi_backend.core.utils import log_patient_action
-from praxi_backend.dashboard.utils import get_patient_display_name
+from praxi_backend.patients.utils import get_patient_display_name
 
 from .models import (
     Appointment,
@@ -23,7 +22,7 @@ from .models import (
     OperationType,
 	PatientFlow,
 )
-from .scheduling import compute_suggestions_for_doctor, doctor_display_name, get_active_doctors
+from .scheduling_facade import compute_suggestions_for_doctor, doctor_display_name, get_active_doctors
 from .validators import (
     dedupe_int_list,
     resolve_active_devices,
@@ -259,6 +258,14 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     def get_patient_name(self, obj):
         """Holt den Anzeigenamen des Patienten (Name + Geburtsdatum)."""
+        try:
+            name_map = (self.context or {}).get('patient_name_map')
+            if isinstance(name_map, dict):
+                key = getattr(obj, 'patient_id', None)
+                if key in name_map:
+                    return name_map.get(key) or ''
+        except Exception:
+            pass
         return get_patient_display_name(obj.patient_id)
 
     def get_doctor_name(self, obj):
@@ -270,13 +277,37 @@ class AppointmentSerializer(serializers.ModelSerializer):
 
     def get_room_name(self, obj):
         """Holt den Namen des ersten Raumes (Resource mit type='room')."""
+        # If resources were prefetched, avoid per-object DB queries.
+        try:
+            cache = getattr(obj, '_prefetched_objects_cache', {}) or {}
+            prefetched = cache.get('resources')
+        except Exception:
+            prefetched = None
+
+        if prefetched is not None:
+            for r in prefetched:
+                if getattr(r, 'active', False) and getattr(r, 'type', None) == Resource.TYPE_ROOM:
+                    return getattr(r, 'name', None)
+            return None
+
         room_resources = obj.resources.filter(type=Resource.TYPE_ROOM, active=True).first()
-        if room_resources:
-            return room_resources.name
-        return None
+        return room_resources.name if room_resources else None
 
     def get_resource_names(self, obj):
         """Holt eine Liste aller Resource-Namen (außer Räume, die sind in room_name)."""
+        try:
+            cache = getattr(obj, '_prefetched_objects_cache', {}) or {}
+            prefetched = cache.get('resources')
+        except Exception:
+            prefetched = None
+
+        if prefetched is not None:
+            return [
+                getattr(r, 'name', '')
+                for r in prefetched
+                if getattr(r, 'active', False) and getattr(r, 'type', None) != Resource.TYPE_ROOM
+            ]
+
         resources = obj.resources.filter(active=True).exclude(type=Resource.TYPE_ROOM)
         return [resource.name for resource in resources]
 
@@ -492,6 +523,14 @@ class OperationSerializer(serializers.ModelSerializer):
     def get_patient_name(self, obj):
         if not getattr(obj, "patient_id", None):
             return ""
+        try:
+            name_map = (self.context or {}).get('patient_name_map')
+            if isinstance(name_map, dict):
+                key = getattr(obj, 'patient_id', None)
+                if key in name_map:
+                    return name_map.get(key) or ''
+        except Exception:
+            pass
         return get_patient_display_name(obj.patient_id)
 
 
@@ -931,13 +970,8 @@ class OperationCreateUpdateSerializer(serializers.ModelSerializer):
 
         # Helper for conflicts
         def _raise_conflict(reason: str, meta: dict | None = None):
-            if request is not None and not self.context.get('suppress_conflict_audit'):
-                log_patient_action(
-                    request.user,
-                    'operation_conflict',
-                    patient_id,
-                    meta=meta or {'reason': reason},
-                )
+            # Phase 2E: no audit side-effects in serializers/validators.
+            # Audit is triggered by the view/use-case layer when returning the 400.
             raise serializers.ValidationError({'detail': 'Operation conflict', 'reason': reason})
 
         # Room conflicts against other operations

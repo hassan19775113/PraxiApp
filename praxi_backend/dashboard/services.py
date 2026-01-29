@@ -22,30 +22,29 @@ from praxi_backend.appointments.serializers import ResourceSerializer
 from praxi_backend.core.models import User
 from praxi_backend.patients.models import Patient, PatientDocument, PatientNote
 
-from .charts import get_all_charts
-from .kpis import get_all_kpis
-from .doctor_charts import get_all_doctor_charts
-from .doctor_kpis import (
-	get_active_doctors,
-	get_all_doctor_kpis,
-	get_doctor_comparison_data,
-	get_doctor_profile,
-)
-from .operations_charts import get_all_operations_charts
-from .operations_kpis import get_all_operations_kpis, get_realtime_operations_kpis
-from .scheduling_charts import get_all_scheduling_charts
-from .scheduling_kpis import get_all_scheduling_kpis
-from .validators import parse_bool, parse_int, parse_optional_int, parse_period
-from .widgets import build_kpi_cards, build_status_badges, build_utilization_bars
-
-from .patient_charts import get_all_patient_charts
-from .patient_kpis import (
+from praxi_backend.appointments.kpi import (
 	calculate_patient_risk_score,
 	calculate_patient_status,
+	get_active_doctors,
+	get_all_charts,
+	get_all_doctor_charts,
+	get_all_doctor_kpis,
+	get_all_kpis,
+	get_all_operations_charts,
+	get_all_operations_kpis,
+	get_all_patient_charts,
 	get_all_patient_kpis,
+	get_all_scheduling_charts,
+	get_all_scheduling_kpis,
+	get_doctor_comparison_data,
+	get_doctor_profile,
 	get_patient_overview_stats,
 	get_patient_profile,
+	get_realtime_operations_kpis,
 )
+
+from .validators import parse_bool, parse_int, parse_optional_int, parse_period
+from .widgets import build_kpi_cards, build_status_badges, build_utilization_bars
 from .utils import get_patient_display_name
 
 

@@ -1,8 +1,38 @@
 import logging
+import time
+from contextlib import contextmanager
 
 from .models import AuditLog
 
 logger = logging.getLogger(__name__)
+
+
+@contextmanager
+def timed_block(label: str, *, log: logging.Logger | None = None, level: str = 'debug'):
+    """Lightweight timing context manager for internal micro-benchmarks.
+
+    - No external dependencies
+    - Does not alter return values / business logic
+    - Logging is best-effort and defaults to DEBUG
+    """
+    start = time.perf_counter()
+    try:
+        yield
+    finally:
+        end = time.perf_counter()
+        log_obj = log or logger
+        msg = 'timing %s: %.3fms'
+        ms = (end - start) * 1000.0
+        try:
+            if level == 'info':
+                log_obj.info(msg, label, ms)
+            elif level == 'warning':
+                log_obj.warning(msg, label, ms)
+            else:
+                log_obj.debug(msg, label, ms)
+        except Exception:
+            # Never let timing/logging break main code paths.
+            pass
 
 
 def log_patient_action(user, action, patient_id=None, meta=None):

@@ -2,7 +2,7 @@ from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from praxi_backend.core.utils import log_patient_action
+from praxi_backend.core import audit as core_audit
 from praxi_backend.patients.models import Patient
 from praxi_backend.patients.permissions import PatientPermission
 from praxi_backend.patients.serializers import PatientReadSerializer, PatientWriteSerializer
@@ -43,11 +43,7 @@ class PatientListCreateView(generics.ListCreateAPIView):
 
     def perform_create(self, serializer):
         obj = serializer.save()
-        log_patient_action(
-            self.request.user,
-            'patient_created',
-            patient_id=obj.id,
-        )
+        log_patient_action(self.request.user, 'patient_created', patient_id=obj.id)
 
 
 class PatientRetrieveUpdateView(generics.RetrieveUpdateAPIView):
@@ -65,8 +61,14 @@ class PatientRetrieveUpdateView(generics.RetrieveUpdateAPIView):
 
     def perform_update(self, serializer):
         obj = serializer.save()
-        log_patient_action(
-            self.request.user,
-            'patient_updated',
-            patient_id=obj.id,
-        )
+        log_patient_action(self.request.user, 'patient_updated', patient_id=obj.id)
+
+
+def log_patient_action(user, action, patient_id=None, meta=None):
+    """Stable audit patch point for patients tests.
+
+    Tests patch `praxi_backend.patients.views.log_patient_action`.
+    Internally we delegate to the central audit layer.
+    """
+    return core_audit.log_patient_action(user, action, patient_id, meta=meta)
+

@@ -1,7 +1,9 @@
-from rest_framework.permissions import BasePermission, SAFE_METHODS
+from rest_framework.permissions import SAFE_METHODS
+
+from praxi_backend.core.permissions import RBACPermission
 
 
-class PatientPermission(BasePermission):
+class PatientPermission(RBACPermission):
     """RBAC for Patient endpoints.
 
     Current domain model has no explicit patient ownership/assignment relation.
@@ -15,26 +17,9 @@ class PatientPermission(BasePermission):
     read_roles = {"admin", "assistant", "doctor", "billing"}
     write_roles = {"admin", "assistant", "doctor"}
 
-    def _role_name(self, request):
-        user = getattr(request, "user", None)
-        if user and (getattr(user, "is_superuser", False) or getattr(user, "is_staff", False)):
-            return "admin"
-        role = getattr(user, "role", None)
-        return getattr(role, "name", None)
-
-    def has_permission(self, request, view):
-        user = getattr(request, "user", None)
-        if not user or not user.is_authenticated:
-            return False
-
-        role_name = self._role_name(request)
-        if not role_name:
-            return False
-
-        if request.method in SAFE_METHODS:
-            return role_name in self.read_roles
-
-        return role_name in self.write_roles
+    # Preserve legacy behavior: staff/superuser act as admin.
+    treat_staff_as_admin = True
+    treat_superuser_as_admin = True
 
     def has_object_permission(self, request, view, obj):
         role_name = self._role_name(request)

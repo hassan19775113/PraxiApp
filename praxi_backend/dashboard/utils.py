@@ -1,39 +1,17 @@
-"""
-Utility functions for dashboard views.
-"""
+"""Utility functions for dashboard views."""
 
 from typing import Dict
 
+from praxi_backend.patients import utils as patients_utils
 from praxi_backend.patients.models import Patient
 
 
 def get_patient_display_name(patient_id: int) -> str:
+    """Backwards-compatible wrapper.
+
+    NOTE: The canonical implementation lives in `praxi_backend.patients.utils`.
     """
-    Holt den Anzeigenamen eines Patienten (Name, Geburtsdatum).
-    
-    Nutzt die managed Patienten-Tabelle (default DB).
-    Falls nicht gefunden, gibt "Patient #ID" zurück.
-    
-    Args:
-        patient_id: Die Patient-ID
-        
-    Returns:
-        Anzeigename im Format "Nachname, Vorname (Geburtsdatum)" oder "Patient #ID"
-    """
-    try:
-        patient = Patient.objects.using('default').get(id=patient_id)
-        birth_str = patient.birth_date.strftime('%d.%m.%Y') if patient.birth_date else ''
-        name = f"{patient.last_name}, {patient.first_name}"
-        if birth_str:
-            name += f" ({birth_str})"
-        return name
-    except Patient.DoesNotExist:
-        pass
-    except Exception:
-        pass
-    
-    # Fallback
-    return f"Patient #{patient_id}"
+    return patients_utils.get_patient_display_name(patient_id)
 
 
 def get_patient_names_batch(patient_ids: list[int]) -> Dict[int, str]:

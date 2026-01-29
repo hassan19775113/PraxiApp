@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 
@@ -7,6 +8,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from praxi_backend.core.models import User
+from praxi_backend.core.utils import timed_block
 
 from .models import (
 	Appointment,
@@ -20,6 +22,9 @@ from .models import (
 	PracticeHours,
 	Resource,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def iso_z(dt: datetime) -> str:
@@ -288,36 +293,49 @@ def compute_suggestions_for_doctor(
 
 	Returns list of dicts with keys: start_time, end_time, type.
 	"""
-	if duration_minutes <= 0 or limit <= 0:
-		return []
+	logger.debug(
+		'scheduling.compute_suggestions_for_doctor start (doctor_id=%s, start_date=%s, duration=%s, limit=%s)',
+		getattr(doctor, 'id', None),
+		getattr(start_date, 'isoformat', lambda: start_date)(),
+		duration_minutes,
+		limit,
+	)
+	with timed_block('scheduling.compute_suggestions_for_doctor', log=logger, level='debug'):
+		if duration_minutes <= 0 or limit <= 0:
+			return []
 
-	tz = timezone.get_current_timezone()
-	now_local = timezone.localtime(now or timezone.now(), tz)
+		tz = timezone.get_current_timezone()
+		now_local = timezone.localtime(now or timezone.now(), tz)
 
-	suggestions: list[dict] = []
-	days_checked = 0
-	current_date = start_date
+		suggestions: list[dict] = []
+		days_checked = 0
+		current_date = start_date
 
-	while len(suggestions) < limit and days_checked < max_days:
-		if end_date is not None and current_date > end_date:
-			break
+		while len(suggestions) < limit and days_checked < max_days:
+			if end_date is not None and current_date > end_date:
+				break
 
-		day_suggestions, _diag = _scan_day_for_slot(
-			doctor=doctor,
-			current_date=current_date,
-			duration_minutes=duration_minutes,
-			now_local=now_local,
-			start_date=start_date,
-			type_obj=type_obj,
-			resources=resources,
-			limit=limit - len(suggestions),
+			day_suggestions, _diag = _scan_day_for_slot(
+				doctor=doctor,
+				current_date=current_date,
+				duration_minutes=duration_minutes,
+				now_local=now_local,
+				start_date=start_date,
+				type_obj=type_obj,
+				resources=resources,
+				limit=limit - len(suggestions),
+			)
+			suggestions.extend(day_suggestions)
+
+			current_date = current_date + timedelta(days=1)
+			days_checked += 1
+
+		logger.debug(
+			'scheduling.compute_suggestions_for_doctor end (doctor_id=%s, suggestions=%s)',
+			getattr(doctor, 'id', None),
+			len(suggestions),
 		)
-		suggestions.extend(day_suggestions)
-
-		current_date = current_date + timedelta(days=1)
-		days_checked += 1
-
-	return suggestions
+		return suggestions
 
 
 def availability_for_range(
@@ -333,49 +351,66 @@ def availability_for_range(
 	Assumption: "available" means at least one free slot of given duration exists
 	within [start_date, end_date].
 	"""
-	if end_date < start_date:
-		return Availability(available=False, reason='no_hours')
+	logger.debug(
+		'scheduling.availability_for_range start (doctor_id=%s, start_date=%s, end_date=%s, duration=%s)',
+		getattr(doctor, 'id', None),
+		getattr(start_date, 'isoformat', lambda: start_date)(),
+		getattr(end_date, 'isoformat', lambda: end_date)(),
+		duration_minutes,
+	)
+	with timed_block('scheduling.availability_for_range', log=logger, level='debug'):
+		if end_date < start_date:
+			return Availability(available=False, reason='no_hours')
 
-	tz = timezone.get_current_timezone()
-	now_local = timezone.localtime(timezone.now(), tz)
+		tz = timezone.get_current_timezone()
+		now_local = timezone.localtime(timezone.now(), tz)
 
-	days_checked = 0
-	max_days = max_days if max_days is not None else (end_date - start_date).days + 1
+		days_checked = 0
+		max_days = max_days if max_days is not None else (end_date - start_date).days + 1
 
-	seen_hours_any = False
-	seen_absence_on_hours_day = False
-	seen_break_block = False
-	seen_busy_block = False
+		seen_hours_any = False
+		seen_absence_on_hours_day = False
+		seen_break_block = False
+		seen_busy_block = False
 
-	current_date = start_date
-	while current_date <= end_date and days_checked < max_days:
-		suggestions, diag = _scan_day_for_slot(
-			doctor=doctor,
-			current_date=current_date,
-			duration_minutes=duration_minutes,
-			now_local=now_local,
-			start_date=start_date,
-			type_obj=None,
-			limit=1,
+		current_date = start_date
+		while current_date <= end_date and days_checked < max_days:
+			suggestions, diag = _scan_day_for_slot(
+				doctor=doctor,
+				current_date=current_date,
+				duration_minutes=duration_minutes,
+				now_local=now_local,
+				start_date=start_date,
+				type_obj=None,
+				limit=1,
+			)
+			if diag['has_hours']:
+				seen_hours_any = True
+				if diag['absent']:
+					seen_absence_on_hours_day = True
+				else:
+					seen_break_block = seen_break_block or diag['blocked_by_break']
+					seen_busy_block = seen_busy_block or diag['blocked_by_busy']
+
+			if suggestions:
+				return Availability(available=True, reason=None)
+
+			current_date = current_date + timedelta(days=1)
+			days_checked += 1
+
+		if not seen_hours_any:
+			result = Availability(available=False, reason='no_hours')
+		elif seen_absence_on_hours_day and not (seen_break_block or seen_busy_block):
+			result = Availability(available=False, reason='absence')
+		elif seen_break_block and not seen_busy_block:
+			result = Availability(available=False, reason='break')
+		else:
+			result = Availability(available=False, reason='busy')
+
+		logger.debug(
+			'scheduling.availability_for_range end (doctor_id=%s, available=%s, reason=%s)',
+			getattr(doctor, 'id', None),
+			result.available,
+			result.reason,
 		)
-		if diag['has_hours']:
-			seen_hours_any = True
-			if diag['absent']:
-				seen_absence_on_hours_day = True
-			else:
-				seen_break_block = seen_break_block or diag['blocked_by_break']
-				seen_busy_block = seen_busy_block or diag['blocked_by_busy']
-
-		if suggestions:
-			return Availability(available=True, reason=None)
-
-		current_date = current_date + timedelta(days=1)
-		days_checked += 1
-
-	if not seen_hours_any:
-		return Availability(available=False, reason='no_hours')
-	if seen_absence_on_hours_day and not (seen_break_block or seen_busy_block):
-		return Availability(available=False, reason='absence')
-	if seen_break_block and not seen_busy_block:
-		return Availability(available=False, reason='break')
-	return Availability(available=False, reason='busy')
+		return result
