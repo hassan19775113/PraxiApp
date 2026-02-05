@@ -1,5 +1,5 @@
 {% extends "admin/base_site.html" %}
-{% load static %}
+{% load static admin_sections %}
 
 {% block extrahead %}
     {{ block.super }}
@@ -15,11 +15,37 @@
             padding: 16px 18px;
             box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
         }
-        .prx-admin-section__title {
+        .prx-section-header {
             margin: 0 0 12px 0;
+        }
+        .prx-section-header__link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+            padding: 6px 8px;
+            border-radius: 8px;
+            transition: background 120ms ease, color 120ms ease;
+        }
+        .prx-section-header__link:hover,
+        .prx-section-header__link:focus-visible {
+            background: #EDF3FB;
+        }
+        .prx-section-header__title {
             font-size: 16px;
             font-weight: 600;
             color: var(--body-loud-color);
+        }
+        .prx-section-header__cta {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--body-quiet-color);
+            margin-left: auto;
+        }
+        .prx-section-header__icon {
+            font-size: 14px;
+            color: #0F6CBD;
         }
         .prx-tile-grid {
             display: grid;
@@ -56,9 +82,23 @@
 {% endblock %}
 
 {% block content %}
+{% get_admin_app app_list "dashboard" as dashboard_app %}
+{% get_admin_app app_list "appointments" as appointments_app %}
+{% get_admin_app app_list "core" as core_app %}
+{% get_admin_app app_list "patients" as patients_app %}
 <div class="prx-admin-tiles">
     <section class="prx-admin-section">
-        <h2 class="prx-admin-section__title">Dashboards</h2>
+        <div class="prx-section-header">
+            {% if dashboard_app %}
+                <a class="prx-section-header__link" href="{{ dashboard_app.app_url }}">
+                    <span class="prx-section-header__title">Dashboards</span>
+                    <span class="prx-section-header__cta">Bereich öffnen</span>
+                    <span class="prx-section-header__icon" aria-hidden="true">↗</span>
+                </a>
+            {% else %}
+                <h2 class="prx-section-header__title">Dashboards</h2>
+            {% endif %}
+        </div>
         <div class="prx-tile-grid">
             {% for app in app_list %}
                 {% if app.app_label == "dashboard" %}
@@ -74,7 +114,17 @@
     </section>
 
     <section class="prx-admin-section">
-        <h2 class="prx-admin-section__title">Termine & Planung</h2>
+        <div class="prx-section-header">
+            {% if appointments_app %}
+                <a class="prx-section-header__link" href="{{ appointments_app.app_url }}">
+                    <span class="prx-section-header__title">Termine &amp; Planung</span>
+                    <span class="prx-section-header__cta">Bereich öffnen</span>
+                    <span class="prx-section-header__icon" aria-hidden="true">↗</span>
+                </a>
+            {% else %}
+                <h2 class="prx-section-header__title">Termine &amp; Planung</h2>
+            {% endif %}
+        </div>
         <div class="prx-tile-grid">
             {% for app in app_list %}
                 {% if app.app_label == "appointments" %}
@@ -90,7 +140,17 @@
     </section>
 
     <section class="prx-admin-section">
-        <h2 class="prx-admin-section__title">Core (Benutzer & Rollen)</h2>
+        <div class="prx-section-header">
+            {% if core_app %}
+                <a class="prx-section-header__link" href="{{ core_app.app_url }}">
+                    <span class="prx-section-header__title">Core (Benutzer &amp; Rollen)</span>
+                    <span class="prx-section-header__cta">Bereich öffnen</span>
+                    <span class="prx-section-header__icon" aria-hidden="true">↗</span>
+                </a>
+            {% else %}
+                <h2 class="prx-section-header__title">Core (Benutzer &amp; Rollen)</h2>
+            {% endif %}
+        </div>
         <div class="prx-tile-grid">
             {% for app in app_list %}
                 {% if app.app_label == "core" %}
@@ -106,7 +166,17 @@
     </section>
 
     <section class="prx-admin-section">
-        <h2 class="prx-admin-section__title">Patients</h2>
+        <div class="prx-section-header">
+            {% if patients_app %}
+                <a class="prx-section-header__link" href="{{ patients_app.app_url }}">
+                    <span class="prx-section-header__title">Patients</span>
+                    <span class="prx-section-header__cta">Bereich öffnen</span>
+                    <span class="prx-section-header__icon" aria-hidden="true">↗</span>
+                </a>
+            {% else %}
+                <h2 class="prx-section-header__title">Patients</h2>
+            {% endif %}
+        </div>
         <div class="prx-tile-grid">
             {% for app in app_list %}
                 {% if app.app_label == "patients" %}
