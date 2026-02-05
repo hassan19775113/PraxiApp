@@ -1,21 +1,4 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[project]
-name = "praxiapp-backend"
-version = "1.0.0"
-requires-python = ">=3.12"
-dependencies = [
-    "Django>=5.0,<6.0",
-    "djangorestframework>=3.15,<4.0",
-    "djangorestframework-simplejwt>=5.3,<6.0",
-    "psycopg[binary]>=3.1,<4.0",
-    "django-cors-headers>=4.3,<5.0",
-    "python-dotenv>=1.0,<2.0",
-    "whitenoise>=6.6,<7.0",
-]
-
+# Vercel uses requirements.txt - this file is for local development only
 [tool.ruff]
 line-length = 100
 target-version = "py312"
