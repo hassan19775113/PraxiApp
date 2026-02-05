@@ -9,7 +9,14 @@ from .base import *  # noqa: F403,F405
 DEBUG = True
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]", "*"]
 
-# Single-DB architecture: Postgres only (inherited from base)
+# Lightweight SQLite backend for local dev on Windows/ARM (avoids psycopg build issues)
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
+}
+
 DATABASE_ROUTERS = []
 
 REST_FRAMEWORK = {
