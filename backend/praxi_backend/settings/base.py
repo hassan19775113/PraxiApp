@@ -244,7 +244,14 @@ CELERY_TASK_EAGER_PROPAGATES = _env_bool("CELERY_TASK_EAGER_PROPAGATES", default
 
 LOG_LEVEL = _env("LOG_LEVEL", "INFO")
 LOG_DIR = Path(_env("DJANGO_LOG_DIR", str(BASE_DIR / "logs")))
-LOG_DIR.mkdir(parents=True, exist_ok=True)
+
+# Only create log directory if filesystem is writable (not in Vercel serverless)
+try:
+    LOG_DIR.mkdir(parents=True, exist_ok=True)
+except (OSError, PermissionError):
+    # Read-only filesystem (Vercel, AWS Lambda, etc.)
+    # Use /tmp for logs or disable file logging
+    LOG_DIR = Path("/tmp")
 
 LOGGING = {
     "version": 1,
