@@ -13,6 +13,12 @@ except Exception:
     # Best-effort only; never break imports if filesystem is in an unexpected state.
     pass
 
-from .celery import app as celery_app
+# Celery is not available in Vercel serverless environment
+# Only import if celery is installed (for local development)
+try:
+    from .celery import app as celery_app
+    __all__ = ("celery_app",)
+except ImportError:
+    # Running in Vercel or environment without Celery
+    __all__ = ()
 
-__all__ = ("celery_app",)
