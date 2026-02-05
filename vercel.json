@@ -22,5 +22,6 @@
   ],
   "env": {
     "DJANGO_SETTINGS_MODULE": "praxi_backend.settings.prod"
-  }
+  },
+  "installCommand": "pip install -r backend/praxi_backend/requirements.txt"
 }
