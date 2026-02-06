@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from datetime import timedelta
 from pathlib import Path
+from urllib.parse import urlparse
 
 from dotenv import load_dotenv
 
@@ -118,21 +119,47 @@ ASGI_APPLICATION = "praxi_backend.asgi.application"
 # Database (PostgreSQL only)
 # ------------------------------------------------------------
 
+_database_url = _env("DATABASE_URL")
 
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": _env("SYS_DB_NAME", "praxiapp_system"),
-        "USER": _env("SYS_DB_USER", "postgres"),
-        "PASSWORD": _env("SYS_DB_PASSWORD") or _env("PGPASSWORD", ""),
-        "HOST": _env("SYS_DB_HOST", "localhost"),
-        "PORT": _env("SYS_DB_PORT", "5432"),
-        "CONN_MAX_AGE": _env_int("SYS_DB_CONN_MAX_AGE", 60),
-        "OPTIONS": {
-            "connect_timeout": _env_int("SYS_DB_CONNECT_TIMEOUT", 10),
-        },
+if _database_url:
+    parsed = urlparse(_database_url)
+    # Support both postgres:// and postgresql://
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": (parsed.path or "").lstrip("/") or _env("SYS_DB_NAME", "praxiapp_system"),
+            "USER": parsed.username or _env("SYS_DB_USER", "postgres"),
+            "PASSWORD": parsed.password or _env("SYS_DB_PASSWORD") or _env("PGPASSWORD", ""),
+            "HOST": parsed.hostname or _env("SYS_DB_HOST", "localhost"),
+            "PORT": str(parsed.port or _env("SYS_DB_PORT", "5432")),
+            "CONN_MAX_AGE": _env_int("SYS_DB_CONN_MAX_AGE", 60),
+            "OPTIONS": {
+                "connect_timeout": _env_int("SYS_DB_CONNECT_TIMEOUT", 10),
+            },
+        }
     }
-}
+else:
+    # Backwards-compatible env var names:
+    # - SYS_DB_* (preferred in this repo)
+    # - POSTGRES_* (common in hosting providers)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.postgresql",
+            "NAME": _env("SYS_DB_NAME") or _env("POSTGRES_DB") or "praxiapp_system",
+            "USER": _env("SYS_DB_USER") or _env("POSTGRES_USER") or "postgres",
+            "PASSWORD": (
+                _env("SYS_DB_PASSWORD")
+                or _env("POSTGRES_PASSWORD")
+                or _env("PGPASSWORD", "")
+            ),
+            "HOST": _env("SYS_DB_HOST") or _env("POSTGRES_HOST") or "localhost",
+            "PORT": _env("SYS_DB_PORT") or _env("POSTGRES_PORT") or "5432",
+            "CONN_MAX_AGE": _env_int("SYS_DB_CONN_MAX_AGE", 60),
+            "OPTIONS": {
+                "connect_timeout": _env_int("SYS_DB_CONNECT_TIMEOUT", 10),
+            },
+        }
+    }
 
 # Single-DB architecture; no routers.
 DATABASE_ROUTERS: list[str] = []

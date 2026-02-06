@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from .base import *  # noqa: F403,F405
+from .base import _env_bool
 
 # ------------------------------------------------------------
 # Development overrides
@@ -9,13 +10,16 @@ from .base import *  # noqa: F403,F405
 DEBUG = True
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]", "*"]
 
-# Lightweight SQLite backend for local dev on Windows/ARM (avoids psycopg build issues)
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+# Database
+# - Default: PostgreSQL (from base.py)
+# - Optional: SQLite for quick local dev by setting DEV_USE_SQLITE=true
+if _env_bool("DEV_USE_SQLITE", default=False):
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
     }
-}
 
 DATABASE_ROUTERS = []
 

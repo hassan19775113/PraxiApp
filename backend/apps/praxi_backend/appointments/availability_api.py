@@ -130,7 +130,7 @@ class AvailabilityView(generics.GenericAPIView):
             from praxi_backend.patients.models import Patient
 
             all_patients = list(
-                Patient.objects.using("default").order_by("last_name", "first_name", "id")[:100]
+                Patient.objects.using("default").order_by("last_name", "first_name", "id")
             )
             all_patient_ids = [p.id for p in all_patients]
 

@@ -52,18 +52,4 @@ class DoctorListView(generics.ListAPIView):
 
         # Serialize all doctors
         serializer = self.get_serializer(queryset, many=True)
-        doctors_data = serializer.data
-
-        # Remove duplicates based on display name (keep first occurrence)
-        seen_names = set()
-        unique_doctors = []
-        for doctor in doctors_data:
-            name_key = doctor["name"].casefold() if doctor.get("name") else ""
-            if name_key and name_key not in seen_names:
-                seen_names.add(name_key)
-                unique_doctors.append(doctor)
-            elif not name_key:
-                # Keep doctors without names (shouldn't happen, but safe)
-                unique_doctors.append(doctor)
-
-        return Response(unique_doctors, status=status.HTTP_200_OK)
+        return Response(serializer.data, status=status.HTTP_200_OK)

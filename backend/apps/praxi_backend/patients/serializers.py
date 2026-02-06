@@ -31,6 +31,9 @@ class PatientReadSerializer(serializers.ModelSerializer):
 class PatientWriteSerializer(serializers.ModelSerializer):
     """Write serializer for create/update operations."""
 
+    # Legacy schema uses a manually managed PK, so we must accept it explicitly.
+    id = serializers.IntegerField(write_only=True, required=True)
+
     class Meta:
         model = Patient
         fields = [

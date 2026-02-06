@@ -35,3 +35,22 @@ class PatientViewsMiniTest(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertIsInstance(r.data, list)
         self.assertGreaterEqual(len(r.data), 1)
+
+    def test_create_patient_allows_explicit_id(self):
+        payload = {
+            "id": 2002,
+            "first_name": "Erika",
+            "last_name": "Mustermann",
+            "birth_date": "1992-03-10",
+            "gender": "female",
+            "phone": "+49 123 4567",
+            "email": "erika@example.com",
+        }
+
+        response = self.client.post("/api/patients/", data=payload, format="json")
+
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(
+            Patient.objects.using("default").filter(id=payload["id"]).exists(),
+            "Patient row with explicit ID was not created.",
+        )

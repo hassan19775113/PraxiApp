@@ -143,7 +143,10 @@ urlpatterns = [
     # Root & Admin
     path("", root, name="root"),
     path("favicon.ico", favicon_view, name="favicon"),  # Favicon handler
-    path("admin/", admin.site.urls),  # Standard Django Admin
+    # Stelle das Custom Praxi-Admin unter /admin/ bereit, damit die registrierten
+    # Modelle und Dashboards sichtbar sind. Das Default-Admin (admin.site) wird
+    # hier nicht benötigt, weil alle Models an praxi_admin_site gehängt sind.
+    path("admin/", praxi_admin_site.urls),
     path(
         "praxi_backend/dashboard/", include("praxi_backend.dashboard.urls")
     ),  # Dashboard (MUSS VOR praxi_backend/ stehen!)
