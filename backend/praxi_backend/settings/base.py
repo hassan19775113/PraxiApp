@@ -54,7 +54,7 @@ DEBUG = _env_bool("DJANGO_DEBUG", default=False)
 
 ALLOWED_HOSTS = [
     host.strip()
-    for host in _env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1]").split(",")
+    for host in _env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1,[::1],praxis-server,.local").split(",")
     if host.strip()
 ]
 

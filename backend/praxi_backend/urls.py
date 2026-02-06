@@ -19,6 +19,7 @@ from django.urls import include, path, re_path
 from django.views.generic import RedirectView
 from django.views.static import serve as static_serve
 from praxi_backend.core.admin import praxi_admin_site
+from praxi_backend.core.views import health
 
 
 def root(request):
@@ -142,6 +143,7 @@ def favicon_view(request):
 urlpatterns = [
     # Root & Admin
     path("", root, name="root"),
+    path("health/", health, name="health"),
     path("favicon.ico", favicon_view, name="favicon"),  # Favicon handler
     # Stelle das Custom Praxi-Admin unter /admin/ bereit, damit die registrierten
     # Modelle und Dashboards sichtbar sind. Das Default-Admin (admin.site) wird
