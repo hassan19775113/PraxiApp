@@ -20,6 +20,10 @@ jobs:
       E2E_DOCTOR_PASSWORD: ${{ secrets.E2E_DOCTOR_PASSWORD }}
       E2E_ASSIST_USER: ${{ secrets.E2E_ASSIST_USER }}
       E2E_ASSIST_PASSWORD: ${{ secrets.E2E_ASSIST_PASSWORD }}
+      POSTGRES_DB: praxiapp
+      POSTGRES_USER: praxiapp
+      POSTGRES_PASSWORD: praxiapp
+     
 
     services:
       postgres:
