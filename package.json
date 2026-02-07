@@ -22,5 +22,9 @@
   "homepage": "https://github.com/hassan19775113/backend#readme",
   "devDependencies": {
     "@playwright/test": "^1.58.2"
+  },
+  "dependencies": {
+    "playwright": "^1.58.2",
+    "playwright-core": "^1.58.2"
   }
 }
