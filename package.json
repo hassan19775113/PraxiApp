@@ -1,0 +1,26 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "PraxiApp ist ein Backend für Praxis-Workflows (Termine, OP-Planung, Ressourcen, Patientenfluss) mit einem klaren Fokus auf **RBAC**, **Audit Logging** und einer **Single-Datenbank-Architektur** (eine Django-managed PostgreSQL DB unter Alias `default`).",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hassan19775113/backend.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/hassan19775113/backend/issues"
+  },
+  "homepage": "https://github.com/hassan19775113/backend#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.58.2"
+  }
+}
