@@ -1,6 +1,6 @@
 # 🚀 Vercel Deployment - Schnellstart Checkliste
 
-## ✅ Pre-Deployment Checkliste
+## ✅ Pre-Deployment Checkliste ja
 
 ### 1. Dateien überprüfen
 - [ ] `vercel.json` existiert im Root-Verzeichnis
