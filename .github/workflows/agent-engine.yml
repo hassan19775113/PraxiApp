@@ -22,6 +22,18 @@ env:
   AGENT_OUTPUT_DIR: agent-outputs
 
 jobs:
+  debug-event:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Print event context
+        run: |
+          echo "EVENT_NAME=${GITHUB_EVENT_NAME}"
+          echo "EVENT_ACTION=${{ github.event.action }}"
+          echo "REF=${GITHUB_REF}"
+          echo "HEAD_SHA=${GITHUB_SHA}"
+          echo "EVENT_PATH=${GITHUB_EVENT_PATH}"
+          if [ -f "$GITHUB_EVENT_PATH" ]; then head -n 40 "$GITHUB_EVENT_PATH"; fi
+
   setup-backend:
     runs-on: ubuntu-latest
     services:
