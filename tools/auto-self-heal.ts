@@ -1,6 +1,4 @@
 #!/usr/bin/env ts-node
-
-import './check-node-version.js';
 import { Octokit } from '@octokit/rest';
 import * as fs from 'fs';
 import * as os from 'os';
@@ -12,6 +10,7 @@ const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 const OWNER = process.env.GH_OWNER;
 const REPO = process.env.GH_REPO;
 const WORKFLOW_FILE = process.env.GH_WORKFLOW_FILE || 'e2e-self-heal.yml';
+const WORKFLOW_ID = process.env.GH_WORKFLOW_ID || WORKFLOW_FILE;
 const BRANCH_FIX = process.env.GH_BRANCH_FIX || 'ai-fix';
 const BRANCH_MAIN = process.env.GH_BRANCH_MAIN || 'main';
 const MAX_ITER = parseInt(process.env.MAX_ITER || '10', 10);
@@ -27,7 +26,7 @@ async function dispatchWorkflow(): Promise<number> {
   const res = await octokit.actions.createWorkflowDispatch({
     owner: OWNER,
     repo: REPO,
-    workflow_id: WORKFLOW_FILE,
+    workflow_id: WORKFLOW_ID,
     ref: BRANCH_FIX,
   });
   if (res.status !== 204) throw new Error('Failed to dispatch workflow');
@@ -39,7 +38,7 @@ async function waitForNewRunId(): Promise<number> {
     const runs = await octokit.actions.listWorkflowRuns({
       owner: OWNER,
       repo: REPO,
-      workflow_id: WORKFLOW_FILE,
+      workflow_id: WORKFLOW_ID,
       branch: BRANCH_FIX,
       per_page: 1,
     });
