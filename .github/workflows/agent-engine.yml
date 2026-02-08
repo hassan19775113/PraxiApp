@@ -66,11 +66,6 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
         run: python django/manage.py migrate
 
-      - name: Fallback E2E creds if unset
-        run: |
-          echo "E2E_USER=${E2E_USER:-e2e_ci}" >> $GITHUB_ENV
-          echo "E2E_PASSWORD=${E2E_PASSWORD:-e2e_ci_pw}" >> $GITHUB_ENV
-
       - name: Start Django server
         env:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
@@ -147,11 +142,6 @@ jobs:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
         run: python django/manage.py migrate
 
-      - name: Fallback E2E creds if unset
-        run: |
-          echo "E2E_USER=${E2E_USER:-e2e_ci}" >> $GITHUB_ENV
-          echo "E2E_PASSWORD=${E2E_PASSWORD:-e2e_ci_pw}" >> $GITHUB_ENV
-
       - name: Start Django server
         env:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
@@ -163,6 +153,17 @@ jobs:
         run: |
           npx wait-on http://localhost:8000
           curl -f http://localhost:8000/api/health/
+
+      - name: Create E2E user
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
+        run: |
+          python django/manage.py shell -c "
+          from django.contrib.auth import get_user_model;
+          User = get_user_model();
+          User.objects.filter(username='$E2E_USER').delete();
+          User.objects.create_superuser('$E2E_USER','admin@example.com','$E2E_PASSWORD')
+          "
 
       - name: npm ci
         run: npm ci
@@ -252,6 +253,17 @@ jobs:
           npx wait-on http://localhost:8000
           curl -f http://localhost:8000/api/health/
 
+      - name: Create E2E user
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
+        run: |
+          python django/manage.py shell -c "
+          from django.contrib.auth import get_user_model;
+          User = get_user_model();
+          User.objects.filter(username='$E2E_USER').delete();
+          User.objects.create_superuser('$E2E_USER','admin@example.com','$E2E_PASSWORD')
+          "
+
       - name: npm ci
         run: npm ci
 
@@ -336,6 +348,17 @@ jobs:
           npx wait-on http://localhost:8000
           curl -f http://localhost:8000/api/health/
 
+      - name: Create E2E user
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
+        run: |
+          python django/manage.py shell -c "
+          from django.contrib.auth import get_user_model;
+          User = get_user_model();
+          User.objects.filter(username='$E2E_USER').delete();
+          User.objects.create_superuser('$E2E_USER','admin@example.com','$E2E_PASSWORD')
+          "
+
       - name: npm ci
         run: npm ci
 
@@ -419,6 +442,17 @@ jobs:
           npx wait-on http://localhost:8000
           curl -f http://localhost:8000/api/health/
 
+      - name: Create E2E user
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
+        run: |
+          python django/manage.py shell -c "
+          from django.contrib.auth import get_user_model;
+          User = get_user_model();
+          User.objects.filter(username='$E2E_USER').delete();
+          User.objects.create_superuser('$E2E_USER','admin@example.com','$E2E_PASSWORD')
+          "
+
       - name: npm ci
         run: npm ci
 
@@ -442,13 +476,6 @@ jobs:
         with:
           name: test-results
           path: test-results
-          if-no-files-found: ignore
-
-      - name: Upload storage state
-        uses: actions/upload-artifact@v4
-        with:
-          name: storage-state
-          path: tests/fixtures/storageState.json
           if-no-files-found: ignore
 
       - name: Upload Playwright log
@@ -528,6 +555,17 @@ jobs:
         run: |
           npx wait-on http://localhost:8000
           curl -f http://localhost:8000/api/health/
+
+      - name: Create E2E user
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
+        run: |
+          python django/manage.py shell -c "
+          from django.contrib.auth import get_user_model;
+          User = get_user_model();
+          User.objects.filter(username='$E2E_USER').delete();
+          User.objects.create_superuser('$E2E_USER','admin@example.com','$E2E_PASSWORD')
+          "
 
       - name: npm ci
         run: npm ci
@@ -611,6 +649,17 @@ jobs:
           npx wait-on http://localhost:8000
           curl -f http://localhost:8000/api/health/
 
+      - name: Create E2E user
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
+        run: |
+          python django/manage.py shell -c "
+          from django.contrib.auth import get_user_model;
+          User = get_user_model();
+          User.objects.filter(username='$E2E_USER').delete();
+          User.objects.create_superuser('$E2E_USER','admin@example.com','$E2E_PASSWORD')
+          "
+
       - name: npm ci
         run: npm ci
 
@@ -639,6 +688,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
       - name: Download agent outputs
         uses: actions/download-artifact@v4
@@ -670,12 +725,6 @@ jobs:
           name: selector-auditor-output
           path: agent-outputs
 
-      - name: Download supervisor outputs
-        uses: actions/download-artifact@v4
-        with:
-          name: fix-agent-supervisor-output
-          path: agent-outputs
-
       - name: Run ci-dashboard-agent
         run: node scripts/agents/ci-dashboard-agent.js > agent-outputs/ci-dashboard-agent.json
 
@@ -693,15 +742,16 @@ jobs:
 
   fix-agent-supervisor:
     needs:
-      - auth-validator
-      - seed-orchestrator
-      - page-smoke
-      - e2e-tests
-      - flaky-classifier
-      - selector-auditor
+      - ci-dashboard-agent
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
 
       - name: Download agent outputs
         uses: actions/download-artifact@v4
