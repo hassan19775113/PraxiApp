@@ -37,7 +37,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
+          --health-cmd="pg_isready -U praxiapp" --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
       - name: Ensure E2E fallback creds
@@ -57,6 +57,15 @@ jobs:
         run: python -m pip install --upgrade pip
       - name: Install backend deps
         run: pip install -r requirements.txt
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..20}; do
+            pg_isready -U praxiapp && break
+            echo "Postgres not ready yet..."
+            sleep 2
+          done
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: Apply migrations
         env:
           DATABASE_URL: postgres://praxiapp:praxiapp@localhost:5432/praxiapp
@@ -75,6 +84,8 @@ jobs:
         run: |
           npx wait-on http://localhost:8000
           curl -f http://localhost:8000/api/health/
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: Create E2E user
         run: |
           python django/manage.py shell -c "
@@ -101,7 +112,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
+          --health-cmd="pg_isready -U praxiapp" --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
       - name: Ensure E2E fallback creds
@@ -121,6 +132,15 @@ jobs:
         run: python -m pip install --upgrade pip
       - name: Install backend deps
         run: pip install -r requirements.txt
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..20}; do
+            pg_isready -U praxiapp && break
+            echo "Postgres not ready yet..."
+            sleep 2
+          done
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: Apply migrations
         env:
           DATABASE_URL: postgres://praxiapp:praxiapp@localhost:5432/praxiapp
@@ -139,6 +159,8 @@ jobs:
         run: |
           npx wait-on http://localhost:8000
           curl -f http://localhost:8000/api/health/
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: npm ci
         run: npm ci
       - name: Install Playwright browsers
@@ -171,7 +193,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
+          --health-cmd="pg_isready -U praxiapp" --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
       - name: Ensure E2E fallback creds
@@ -196,6 +218,15 @@ jobs:
         run: python -m pip install --upgrade pip
       - name: Install backend deps
         run: pip install -r requirements.txt
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..20}; do
+            pg_isready -U praxiapp && break
+            echo "Postgres not ready yet..."
+            sleep 2
+          done
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: Apply migrations
         env:
           DATABASE_URL: postgres://praxiapp:praxiapp@localhost:5432/praxiapp
@@ -210,6 +241,8 @@ jobs:
         run: |
           npx wait-on http://localhost:8000
           curl -f http://localhost:8000/api/health/
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: npm ci
         run: npm ci
       - name: Install Playwright browsers
@@ -239,7 +272,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
+          --health-cmd="pg_isready -U praxiapp" --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
       - name: Ensure E2E fallback creds
@@ -264,6 +297,15 @@ jobs:
         run: python -m pip install --upgrade pip
       - name: Install backend deps
         run: pip install -r requirements.txt
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..20}; do
+            pg_isready -U praxiapp && break
+            echo "Postgres not ready yet..."
+            sleep 2
+          done
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: Apply migrations
         env:
           DATABASE_URL: postgres://praxiapp:praxiapp@localhost:5432/praxiapp
@@ -278,6 +320,8 @@ jobs:
         run: |
           npx wait-on http://localhost:8000
           curl -f http://localhost:8000/api/health/
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: npm ci
         run: npm ci
       - name: Install Playwright browsers
@@ -306,7 +350,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
+          --health-cmd="pg_isready -U praxiapp" --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
       - name: Ensure E2E fallback creds
@@ -331,6 +375,15 @@ jobs:
         run: python -m pip install --upgrade pip
       - name: Install backend deps
         run: pip install -r requirements.txt
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..20}; do
+            pg_isready -U praxiapp && break
+            echo "Postgres not ready yet..."
+            sleep 2
+          done
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: Apply migrations
         env:
           DATABASE_URL: postgres://praxiapp:praxiapp@localhost:5432/praxiapp
@@ -345,6 +398,8 @@ jobs:
         run: |
           npx wait-on http://localhost:8000
           curl -f http://localhost:8000/api/health/
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: npm ci
         run: npm ci
       - name: Install Playwright browsers
@@ -391,7 +446,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
+          --health-cmd="pg_isready -U praxiapp" --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
       - name: Ensure E2E fallback creds
@@ -421,6 +476,15 @@ jobs:
         run: python -m pip install --upgrade pip
       - name: Install backend deps
         run: pip install -r requirements.txt
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..20}; do
+            pg_isready -U praxiapp && break
+            echo "Postgres not ready yet..."
+            sleep 2
+          done
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: Apply migrations
         env:
           DATABASE_URL: postgres://praxiapp:praxiapp@localhost:5432/praxiapp
@@ -435,6 +499,8 @@ jobs:
         run: |
           npx wait-on http://localhost:8000
           curl -f http://localhost:8000/api/health/
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: npm ci
         run: npm ci
       - name: Install Playwright browsers
@@ -462,7 +528,7 @@ jobs:
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
+          --health-cmd="pg_isready -U praxiapp" --health-interval=5s --health-timeout=5s --health-retries=20
     steps:
       - uses: actions/checkout@v4
       - name: Ensure E2E fallback creds
@@ -487,6 +553,15 @@ jobs:
         run: python -m pip install --upgrade pip
       - name: Install backend deps
         run: pip install -r requirements.txt
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..20}; do
+            pg_isready -U praxiapp && break
+            echo "Postgres not ready yet..."
+            sleep 2
+          done
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: Apply migrations
         env:
           DATABASE_URL: postgres://praxiapp:praxiapp@localhost:5432/praxiapp
@@ -501,6 +576,8 @@ jobs:
         run: |
           npx wait-on http://localhost:8000
           curl -f http://localhost:8000/api/health/
+      - name: Check PostgreSQL status
+        run: pg_isready -U praxiapp
       - name: npm ci
         run: npm ci
       - name: Install Playwright browsers
