@@ -5,7 +5,8 @@ import path from 'path';
 // Uses BASE_URL env (defaults to http://localhost:8000) and tests/fixtures/storageState.json.
 // Provides helpers for common API endpoints seen in the app.
 
-const STORAGE_STATE = path.join(__dirname, '..', 'fixtures', 'storageState.json');
+// Resolve relative to repo root to avoid __dirname differences in TS transpilation output
+const STORAGE_STATE = path.resolve(process.cwd(), 'tests', 'fixtures', 'storageState.json');
 const BASE_URL = process.env.BASE_URL || 'http://localhost:8000';
 
 export class ApiClient {
