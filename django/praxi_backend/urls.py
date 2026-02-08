@@ -164,6 +164,23 @@ urlpatterns = [
             url="/praxi_backend/Dashboardadministration/appointments/operation/", permanent=False
         ),
     ),
+    # Legacy-friendly shortcuts to dashboard views for E2E smoke tests
+    path(
+        "praxi_backend/appointments/",
+        RedirectView.as_view(url="/praxi_backend/dashboard/appointments/", permanent=False),
+    ),
+    path(
+        "praxi_backend/patients/",
+        RedirectView.as_view(url="/praxi_backend/dashboard/patients/", permanent=False),
+    ),
+    path(
+        "praxi_backend/operations/",
+        RedirectView.as_view(url="/praxi_backend/dashboard/operations/", permanent=False),
+    ),
+    path(
+        "praxi_backend/scheduling/",
+        RedirectView.as_view(url="/praxi_backend/dashboard/scheduling/", permanent=False),
+    ),
     path("praxi_backend/Dashboardadministration/", praxi_admin_site.urls),  # Custom PraxiApp Admin
     path(
         "praxi_backend/",
