@@ -2,7 +2,7 @@ import { request, chromium, type FullConfig } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 
-const STORAGE_PATH = path.join(__dirname, 'storageState.json');
+const STORAGE_PATH = path.resolve(process.cwd(), 'tests', 'fixtures', 'storageState.json');
 
 async function globalSetup(config: FullConfig) {
   const baseURL = process.env.BASE_URL || 'http://localhost:8000';

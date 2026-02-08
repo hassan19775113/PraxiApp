@@ -17,8 +17,8 @@ export default defineConfig({
     video: 'retain-on-failure',
     screenshot: 'only-on-failure',
 
-    // Pfad korrigiert
-    storageState: './tests/fixtures/storageState.json',
+    // Resolve via repo root relative path for CI stability
+    storageState: 'tests/fixtures/storageState.json',
   },
 
   // Pfad korrigiert
