@@ -35,6 +35,10 @@ jobs:
           --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
       - uses: actions/checkout@v4
+      - name: Ensure E2E fallback creds
+        run: |
+          if [ -z "${E2E_USER}" ]; then echo "E2E_USER=e2e_ci" >> $GITHUB_ENV; fi
+          if [ -z "${E2E_PASSWORD}" ]; then echo "E2E_PASSWORD=e2e_ci_pw" >> $GITHUB_ENV; fi
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -95,6 +99,10 @@ jobs:
           --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
       - uses: actions/checkout@v4
+      - name: Ensure E2E fallback creds
+        run: |
+          if [ -z "${E2E_USER}" ]; then echo "E2E_USER=e2e_ci" >> $GITHUB_ENV; fi
+          if [ -z "${E2E_PASSWORD}" ]; then echo "E2E_PASSWORD=e2e_ci_pw" >> $GITHUB_ENV; fi
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -161,6 +169,10 @@ jobs:
           --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
       - uses: actions/checkout@v4
+      - name: Ensure E2E fallback creds
+        run: |
+          if [ -z "${E2E_USER}" ]; then echo "E2E_USER=e2e_ci" >> $GITHUB_ENV; fi
+          if [ -z "${E2E_PASSWORD}" ]; then echo "E2E_PASSWORD=e2e_ci_pw" >> $GITHUB_ENV; fi
       - name: Download storage state
         uses: actions/download-artifact@v4
         with:
@@ -225,6 +237,10 @@ jobs:
           --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
       - uses: actions/checkout@v4
+      - name: Ensure E2E fallback creds
+        run: |
+          if [ -z "${E2E_USER}" ]; then echo "E2E_USER=e2e_ci" >> $GITHUB_ENV; fi
+          if [ -z "${E2E_PASSWORD}" ]; then echo "E2E_PASSWORD=e2e_ci_pw" >> $GITHUB_ENV; fi
       - name: Download storage state
         uses: actions/download-artifact@v4
         with:
@@ -288,6 +304,10 @@ jobs:
           --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
       - uses: actions/checkout@v4
+      - name: Ensure E2E fallback creds
+        run: |
+          if [ -z "${E2E_USER}" ]; then echo "E2E_USER=e2e_ci" >> $GITHUB_ENV; fi
+          if [ -z "${E2E_PASSWORD}" ]; then echo "E2E_PASSWORD=e2e_ci_pw" >> $GITHUB_ENV; fi
       - name: Download storage state
         uses: actions/download-artifact@v4
         with:
@@ -369,6 +389,10 @@ jobs:
           --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
       - uses: actions/checkout@v4
+      - name: Ensure E2E fallback creds
+        run: |
+          if [ -z "${E2E_USER}" ]; then echo "E2E_USER=e2e_ci" >> $GITHUB_ENV; fi
+          if [ -z "${E2E_PASSWORD}" ]; then echo "E2E_PASSWORD=e2e_ci_pw" >> $GITHUB_ENV; fi
       - name: Download storage state
         uses: actions/download-artifact@v4
         with:
@@ -436,6 +460,10 @@ jobs:
           --health-cmd="pg_isready -U praxiapp" --health-interval=10s --health-timeout=5s --health-retries=5
     steps:
       - uses: actions/checkout@v4
+      - name: Ensure E2E fallback creds
+        run: |
+          if [ -z "${E2E_USER}" ]; then echo "E2E_USER=e2e_ci" >> $GITHUB_ENV; fi
+          if [ -z "${E2E_PASSWORD}" ]; then echo "E2E_PASSWORD=e2e_ci_pw" >> $GITHUB_ENV; fi
       - name: Download storage state
         uses: actions/download-artifact@v4
         with:
