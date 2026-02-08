@@ -73,6 +73,11 @@ jobs:
           DATABASE_URL: postgres://praxiapp:praxiapp@localhost:5432/praxiapp
         run: python django/manage.py migrate
 
+      - name: Fallback E2E creds if unset
+        run: |
+          echo "E2E_USER=${E2E_USER:-e2e_ci}" >> $GITHUB_ENV
+          echo "E2E_PASSWORD=${E2E_PASSWORD:-e2e_ci_pw}" >> $GITHUB_ENV
+
       - name: Start Django server
         env:
           DATABASE_URL: postgres://praxiapp:praxiapp@localhost:5432/praxiapp
@@ -90,11 +95,11 @@ jobs:
           python django/manage.py shell -c "
           from django.contrib.auth import get_user_model;
           User = get_user_model();
-          User.objects.filter(username='${{ secrets.E2E_USER }}').delete();
+          User.objects.filter(username='$E2E_USER').delete();
           User.objects.create_superuser(
-              '${{ secrets.E2E_USER }}',
+              '$E2E_USER',
               'admin@example.com',
-              '${{ secrets.E2E_PASSWORD }}'
+              '$E2E_PASSWORD'
           )
           "
 
