@@ -1,0 +1,52 @@
+name: AI Startup Fix Agent
+
+on:
+  workflow_run:
+    workflows: ["Playwright Tests"]
+    types:
+      - completed
+
+jobs:
+  ai-startup-fix:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Download Playwright logs
+        uses: actions/download-artifact@v4
+        with:
+          name: playwright-logs
+          path: logs
+
+      - name: Read log file
+        id: readlog
+        run: |
+          if [ -f logs/playwright.log ]; then
+            echo "log=$(cat logs/playwright.log | sed 's/"/\\"/g')" >> $GITHUB_OUTPUT
+          else
+            echo "log=No log file found" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Run AI Startup Fix Agent
+        run: |
+          node tools/ai-startup-fix-agent/startup-fix.js "${{ steps.readlog.outputs.log }}"
+
+      - name: Push changes
+        if: always()
+        run: |
+          git config user.name "AI Startup Fix Agent"
+          git config user.email "agent@praxiapp.local"
+          git push
