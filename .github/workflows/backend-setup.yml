@@ -51,6 +51,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Init logs
+        shell: bash
+        run: |
+          set -eo pipefail
+          mkdir -p logs/django logs/agent logs/system
+          : > logs/django/server.log
+          : > logs/django/server.pid
+          : > logs/agent/agent.log
+          : > logs/system/ci.log
+          echo "Initialized log directories" >> logs/system/ci.log
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -94,25 +105,32 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
-          echo "BASE_URL=${BASE_URL}"
-          echo "POSTGRES_DB=${POSTGRES_DB}"
-          echo "POSTGRES_USER=${POSTGRES_USER}"
-          echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
-          echo "AGENT_OUTPUT_DIR=${AGENT_OUTPUT_DIR:-agent-outputs}"
-          echo "DATABASE_URL=${DATABASE_URL}"
+          echo "BASE_URL=${BASE_URL}" | tee -a logs/system/ci.log
+          echo "POSTGRES_DB=${POSTGRES_DB}" | tee -a logs/system/ci.log
+          echo "POSTGRES_USER=${POSTGRES_USER}" | tee -a logs/system/ci.log
+          echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" | tee -a logs/system/ci.log
+          echo "AGENT_OUTPUT_DIR=${AGENT_OUTPUT_DIR:-agent-outputs}" | tee -a logs/system/ci.log
+          echo "DATABASE_URL=${DATABASE_URL}" | tee -a logs/system/ci.log
 
       # Ensure Postgres is ready before touching the DB
       - name: Wait for PostgreSQL
         shell: bash
         run: |
           set -eo pipefail
+          echo "Waiting for PostgreSQL" | tee -a logs/system/ci.log
+          ready=false
           for i in {1..30}; do
             if pg_isready -h 127.0.0.1 -p 5432 -U "${POSTGRES_USER}"; then
-              exit 0
+              ready=true
+              break
             fi
             sleep 1
           done
-          echo "PostgreSQL not ready after 30 seconds" >&2
+          if [ "$ready" = "true" ]; then
+            echo "PostgreSQL is ready" | tee -a logs/system/ci.log
+            exit 0
+          fi
+          echo "PostgreSQL not ready after 30 seconds" | tee -a logs/system/ci.log
           exit 1
 
       # Django DB prep
@@ -122,7 +140,12 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
-          python django/manage.py migrate
+          echo "Applying migrations" | tee -a logs/system/ci.log
+          python django/manage.py migrate || {
+            echo "Migrations failed" | tee -a logs/system/ci.log
+            exit 1
+          }
+          echo "Migrations complete" | tee -a logs/system/ci.log
 
       - name: Create E2E user
         env:
@@ -130,19 +153,25 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
+          echo "Creating E2E user" | tee -a logs/system/ci.log
           python django/manage.py shell -c "
           from django.contrib.auth import get_user_model;
           User = get_user_model();
           User.objects.filter(username='e2e_ci').delete();
           User.objects.create_superuser('e2e_ci','admin@example.com','e2e_ci_pw')
-          "
+          " || {
+            echo "E2E user creation failed" | tee -a logs/system/ci.log
+            exit 1
+          }
+          echo "E2E user created" | tee -a logs/system/ci.log
 
       # Clean stale PID before starting server
       - name: Clean up stale PID
         shell: bash
         run: |
           set -eo pipefail
-          if [ -f server.pid ]; then rm server.pid; fi
+          if [ -f logs/django/server.pid ]; then rm -f logs/django/server.pid; fi
+          echo "Cleaned stale Django PID (if any)" | tee -a logs/system/ci.log
 
       # Start Django in background with logging
       - name: Start Django
@@ -151,34 +180,37 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
-          nohup python django/manage.py runserver 0.0.0.0:8000 > server.log 2>&1 &
-          echo $! > server.pid
+          echo "Starting Django server" | tee -a logs/system/ci.log
+          nohup python django/manage.py runserver 0.0.0.0:8000 >> logs/django/server.log 2>&1 &
+          echo $! > logs/django/server.pid
           sleep 15
-          if ! kill -0 "$(cat server.pid)" 2>/dev/null; then
-            echo "Django server failed to start"
-            if [ -f server.log ]; then
-              echo "--- server.log ---"
-              cat server.log || true
-              echo "------------------"
+          if ! kill -0 "$(cat logs/django/server.pid)" 2>/dev/null; then
+            echo "Django server failed to start" | tee -a logs/system/ci.log
+            if [ -f logs/django/server.log ]; then
+              echo "--- server.log ---" | tee -a logs/system/ci.log
+              cat logs/django/server.log | tee -a logs/system/ci.log
+              echo "------------------" | tee -a logs/system/ci.log
             fi
             exit 1
           fi
-          echo "Django process is running"
+          echo "Django process is running" | tee -a logs/system/ci.log
 
       # Wait for HTTP readiness; dump server.log on failure
       - name: Wait for backend
         shell: bash
         run: |
           set -eo pipefail
+          echo "Waiting for backend at $BASE_URL" | tee -a logs/system/ci.log
           npx --yes wait-on@latest "$BASE_URL" --timeout 60000 --interval 1000 --verbose || {
-            echo "Backend not reachable at $BASE_URL"
-            if [ -f server.log ]; then
-              echo "--- server.log ---"
-              cat server.log || true
-              echo "------------------"
+            echo "Backend not reachable at $BASE_URL" | tee -a logs/system/ci.log
+            if [ -f logs/django/server.log ]; then
+              echo "--- server.log ---" | tee -a logs/system/ci.log
+              cat logs/django/server.log | tee -a logs/system/ci.log
+              echo "------------------" | tee -a logs/system/ci.log
             fi
             exit 1
           }
+          echo "Backend is reachable" | tee -a logs/system/ci.log
 
       # Run the agent command with safe output dir
       - name: Run agent command
@@ -188,9 +220,13 @@ jobs:
         run: |
           set -eo pipefail
           OUT_DIR="${AGENT_OUTPUT_DIR:-agent-outputs}"
-          mkdir -p "$OUT_DIR" || true
-          echo "Using AGENT_OUTPUT_DIR=$OUT_DIR"
-          AGENT_OUTPUT_DIR="$OUT_DIR" ${{ inputs.agent_command }}
+          mkdir -p "$OUT_DIR" logs/agent || true
+          echo "Running agent command; AGENT_OUTPUT_DIR=$OUT_DIR" | tee -a logs/system/ci.log
+          AGENT_OUTPUT_DIR="$OUT_DIR" ${{ inputs.agent_command }} >> logs/agent/agent.log 2>&1 || {
+            echo "Agent command failed" | tee -a logs/system/ci.log
+            exit 1
+          }
+          echo "Agent command completed" | tee -a logs/system/ci.log
 
       # Tolerant shutdown of Django
       - name: Stop Django
@@ -198,8 +234,12 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
-          if [ -f server.pid ]; then
-            kill "$(cat server.pid)" || true
+          echo "Stopping Django" | tee -a logs/system/ci.log
+          if [ -f logs/django/server.pid ]; then
+            kill "$(cat logs/django/server.pid)" || true
+            echo "Sent stop signal to Django" | tee -a logs/system/ci.log
+          else
+            echo "No Django PID file found" | tee -a logs/system/ci.log
           fi
           sleep 2
 
@@ -210,3 +250,10 @@ jobs:
           name: ${{ inputs.upload_artifact_name }}
           path: ${{ inputs.upload_artifact_path }}
           if-no-files-found: warn
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-logs
+          path: logs/
