@@ -12,6 +12,22 @@ on:
       upload_artifact_path:
         required: false
         type: string
+      upload_storage_state:
+        required: false
+        type: boolean
+        default: false
+      download_storage_state:
+        required: false
+        type: boolean
+        default: false
+      storage_state_artifact_name:
+        required: false
+        type: string
+        default: storage-state
+      storage_state_path:
+        required: false
+        type: string
+        default: tests/fixtures/storageState.json
 
 permissions:
   contents: read
@@ -63,6 +79,13 @@ jobs:
           : > django/logs/agent/agent.log
           : > django/logs/system/ci.log
           echo "Initialized log directories" >> django/logs/system/ci.log
+
+      - name: Download storage state
+        if: ${{ inputs.download_storage_state }}
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ inputs.storage_state_artifact_name }}
+          path: .
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -267,6 +290,14 @@ jobs:
             exit 1
           }
           echo "Agent command completed" | tee -a django/logs/system/ci.log
+
+      - name: Upload storage state
+        if: ${{ inputs.upload_storage_state }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.storage_state_artifact_name }}
+          path: ${{ inputs.storage_state_path }}
+          if-no-files-found: warn
 
       # Tolerant shutdown of Django
       - name: Stop Django

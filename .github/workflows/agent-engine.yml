@@ -19,6 +19,9 @@ jobs:
       agent_command: node scripts/agents/auth-validator.js > agent-outputs/auth-validator.json
       upload_artifact_name: auth-validator-output
       upload_artifact_path: agent-outputs/auth-validator.json
+      upload_storage_state: true
+      storage_state_artifact_name: storage-state
+      storage_state_path: tests/fixtures/storageState.json
 
   seed-orchestrator:
     needs: auth-validator
@@ -27,6 +30,8 @@ jobs:
       agent_command: node scripts/agents/seed-orchestrator.js > agent-outputs/seed-orchestrator.json
       upload_artifact_name: seed-orchestrator-output
       upload_artifact_path: agent-outputs/seed-orchestrator.json
+      download_storage_state: true
+      storage_state_artifact_name: storage-state
 
   page-smoke:
     needs: seed-orchestrator
@@ -35,6 +40,8 @@ jobs:
       agent_command: node scripts/agents/page-smoke.js > agent-outputs/page-smoke.json
       upload_artifact_name: page-smoke-output
       upload_artifact_path: agent-outputs/page-smoke.json
+      download_storage_state: true
+      storage_state_artifact_name: storage-state
 
   e2e-tests:
     needs: page-smoke
@@ -61,6 +68,8 @@ jobs:
       agent_command: node scripts/agents/selector-auditor.js > agent-outputs/selector-auditor.json
       upload_artifact_name: selector-auditor-output
       upload_artifact_path: agent-outputs/selector-auditor.json
+      download_storage_state: true
+      storage_state_artifact_name: storage-state
 
   fix-agent-supervisor:
     needs:
