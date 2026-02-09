@@ -1,6 +1,4 @@
-"""Legacy settings module (compatibility shim).
-
-New modular settings live in the package ``praxi_backend.settings``.
+"""Compatibility shim for modular settings (PostgreSQL only).
 
 Prefer:
     DJANGO_SETTINGS_MODULE=praxi_backend.settings.dev
