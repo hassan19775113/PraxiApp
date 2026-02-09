@@ -67,8 +67,8 @@ jobs:
           sleep 10
 
       - run: |
-        npx wait-on http://localhost:8000
-        curl -f http://localhost:8000/api/health/
+          npx wait-on http://localhost:8000
+          curl -f http://localhost:8000/api/health/
 
       - name: Create E2E user
         env:
