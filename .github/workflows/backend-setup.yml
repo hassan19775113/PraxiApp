@@ -26,6 +26,8 @@ env:
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
   AGENT_OUTPUT_DIR: agent-outputs
+  E2E_USER: e2e_ci
+  E2E_PASSWORD: e2e_ci_pw
   DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
 
 jobs:
@@ -110,6 +112,8 @@ jobs:
           echo "POSTGRES_USER=${POSTGRES_USER}" | tee -a logs/system/ci.log
           echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}" | tee -a logs/system/ci.log
           echo "AGENT_OUTPUT_DIR=${AGENT_OUTPUT_DIR:-agent-outputs}" | tee -a logs/system/ci.log
+          echo "E2E_USER=${E2E_USER}" | tee -a logs/system/ci.log
+          echo "E2E_PASSWORD=${E2E_PASSWORD}" | tee -a logs/system/ci.log
           echo "DATABASE_URL=${DATABASE_URL}" | tee -a logs/system/ci.log
 
       # Ensure Postgres is ready before touching the DB
@@ -212,17 +216,43 @@ jobs:
           }
           echo "Backend is reachable" | tee -a logs/system/ci.log
 
+      - name: PostgreSQL and Django healthcheck routine
+        shell: bash
+        run: |
+          set -eo pipefail
+          echo "Healthcheck: pg_isready" | tee -a logs/system/ci.log
+          pg_isready -h 127.0.0.1 -p 5432 -U "${POSTGRES_USER}" 2>&1 | tee -a logs/system/ci.log
+          echo "Healthcheck: Python DATABASE_URL" | tee -a logs/system/ci.log
+          python - <<'PY' 2>&1 | tee -a logs/system/ci.log
+          import dj_database_url, os
+          cfg = dj_database_url.config(env="DATABASE_URL")
+          assert cfg["ENGINE"] == "django.db.backends.postgresql"
+          print("PostgreSQL ENGINE confirmed.")
+          PY
+          echo "Healthcheck: Django migrate --check" | tee -a logs/system/ci.log
+          python django/manage.py migrate --check 2>&1 | tee -a logs/system/ci.log
+          echo "Healthcheck: HTTP /api/health" | tee -a logs/system/ci.log
+          curl -f http://127.0.0.1:8000/api/health/ 2>&1 | tee -a logs/system/ci.log
+
       # Run the agent command with safe output dir
       - name: Run agent command
         shell: bash
         env:
           AGENT_OUTPUT_DIR: ${{ env.AGENT_OUTPUT_DIR }}
+          E2E_USER: ${{ env.E2E_USER }}
+          E2E_PASSWORD: ${{ env.E2E_PASSWORD }}
         run: |
           set -eo pipefail
           OUT_DIR="${AGENT_OUTPUT_DIR:-agent-outputs}"
           mkdir -p "$OUT_DIR" logs/agent || true
+          echo "Running auth-validator; AGENT_OUTPUT_DIR=$OUT_DIR" | tee -a logs/system/ci.log
+          echo "E2E_USER=$E2E_USER" | tee -a logs/system/ci.log
+          AGENT_OUTPUT_DIR="$OUT_DIR" E2E_USER="$E2E_USER" E2E_PASSWORD="$E2E_PASSWORD" node scripts/agents/auth-validator.js >> logs/agent/agent.log 2>&1 || {
+            echo "Auth-validator failed" | tee -a logs/system/ci.log
+            exit 1
+          }
           echo "Running agent command; AGENT_OUTPUT_DIR=$OUT_DIR" | tee -a logs/system/ci.log
-          AGENT_OUTPUT_DIR="$OUT_DIR" ${{ inputs.agent_command }} >> logs/agent/agent.log 2>&1 || {
+          AGENT_OUTPUT_DIR="$OUT_DIR" E2E_USER="$E2E_USER" E2E_PASSWORD="$E2E_PASSWORD" ${{ inputs.agent_command }} >> logs/agent/agent.log 2>&1 || {
             echo "Agent command failed" | tee -a logs/system/ci.log
             exit 1
           }
