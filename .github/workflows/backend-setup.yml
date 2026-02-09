@@ -78,6 +78,12 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps
 
+      - name: Wait for PostgreSQL
+        run: |
+          until pg_isready -h 127.0.0.1 -p 5432 -U "${POSTGRES_USER}"; do
+            sleep 1
+          done
+
       - name: Apply migrations
         env:
           DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
@@ -93,6 +99,10 @@ jobs:
           User.objects.filter(username='e2e_ci').delete();
           User.objects.create_superuser('e2e_ci','admin@example.com','e2e_ci_pw')
           "
+
+      - name: Clean up stale PID
+        run: |
+          if [ -f server.pid ]; then rm server.pid; fi
 
       - name: Start Django
         env:
