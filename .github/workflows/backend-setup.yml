@@ -146,14 +146,24 @@ jobs:
           set -eo pipefail
           nohup python django/manage.py runserver 0.0.0.0:8000 > server.log 2>&1 &
           echo $! > server.pid
-          sleep 10
+          sleep 15
+          if ! kill -0 "$(cat server.pid)" 2>/dev/null; then
+            echo "Django server failed to start"
+            if [ -f server.log ]; then
+              echo "--- server.log ---"
+              cat server.log || true
+              echo "------------------"
+            fi
+            exit 1
+          fi
+          echo "Django process is running"
 
       # Wait for HTTP readiness; dump server.log on failure
       - name: Wait for backend
         shell: bash
         run: |
           set -eo pipefail
-          npx --yes wait-on@latest "$BASE_URL" || {
+          npx --yes wait-on@latest "$BASE_URL" --timeout 60000 --interval 1000 --verbose || {
             echo "Backend not reachable at $BASE_URL"
             if [ -f server.log ]; then
               echo "--- server.log ---"
