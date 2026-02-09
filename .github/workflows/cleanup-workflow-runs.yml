@@ -2,6 +2,8 @@ name: Cleanup Workflow Runs
 
 on:
   # Run weekly on Sundays at 00:00 UTC
+  # Cron: minute hour day-of-month month day-of-week
+  # Day 0 = Sunday (also could use 7)
   schedule:
     - cron: '0 0 * * 0'
   # Allow manual trigger
@@ -39,9 +41,11 @@ jobs:
           if [[ "$OSTYPE" == "darwin"* ]]; then
             # macOS
             CUTOFF_DATE=$(date -u -v-${RETENTION_DAYS}d +"%Y-%m-%dT%H:%M:%SZ")
+            CUTOFF_TIMESTAMP=$(date -u -v-${RETENTION_DAYS}d +%s)
           else
             # Linux
             CUTOFF_DATE=$(date -u -d "${RETENTION_DAYS} days ago" +"%Y-%m-%dT%H:%M:%SZ")
+            CUTOFF_TIMESTAMP=$(date -u -d "${RETENTION_DAYS} days ago" +%s)
           fi
           
           echo "Cutoff date: $CUTOFF_DATE"
@@ -90,16 +94,19 @@ jobs:
                 continue
               fi
               
-              # Delete runs older than cutoff date
-              if [[ "$run_created" < "$CUTOFF_DATE" ]]; then
+              # Delete runs older than cutoff date (using timestamp comparison for reliability)
+              # Convert run creation date to timestamp
+              if [[ "$OSTYPE" == "darwin"* ]]; then
+                # macOS
+                run_timestamp=$(date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$run_created" +%s 2>/dev/null || echo "0")
+              else
+                # Linux
+                run_timestamp=$(date -u -d "$run_created" +%s 2>/dev/null || echo "0")
+              fi
+              
+              if [ "$run_timestamp" != "0" ] && [ "$run_timestamp" -lt "$CUTOFF_TIMESTAMP" ]; then
                 # Calculate actual age in days
-                if [[ "$OSTYPE" == "darwin"* ]]; then
-                  # macOS
-                  run_age_seconds=$(( $(date -u +%s) - $(date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$run_created" +%s) ))
-                else
-                  # Linux
-                  run_age_seconds=$(( $(date -u +%s) - $(date -u -d "$run_created" +%s) ))
-                fi
+                run_age_seconds=$(( $(date -u +%s) - run_timestamp ))
                 run_age_days=$(( run_age_seconds / 86400 ))
                 
                 echo "  ✗ Deleting old run: ID $run_id (created: $run_created, age: $run_age_days days, status: $run_status, conclusion: $run_conclusion)"
