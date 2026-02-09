@@ -15,25 +15,20 @@ def _table_names(schema_editor) -> set[str]:
 def _rename_table(schema_editor, *, old: str, new: str) -> None:
     """Rename a table if the backend supports it.
 
-    We keep this tiny and backend-aware because SQLite and Postgres differ in
-    quoting behavior.
+    We keep this tiny and backend-aware to avoid cross-backend surprises.
     """
     conn = schema_editor.connection
-    vendor = conn.vendor
-
-    if vendor in {"sqlite", "postgresql"}:
-        with conn.cursor() as cursor:
-            cursor.execute(f'ALTER TABLE "{old}" RENAME TO "{new}";')
-        return
-
-    raise RuntimeError(f"Unsupported DB backend for table rename: {vendor}")
+    if conn.vendor != "postgresql":
+        raise RuntimeError(f"Unsupported DB backend for table rename: {conn.vendor}")
+    with conn.cursor() as cursor:
+        cursor.execute(f'ALTER TABLE "{old}" RENAME TO "{new}";')
 
 
 def forwards_prepare_tables(apps, schema_editor):
     """Prepare tables before we (re)create the managed `patients` table.
 
-    - DEV SQLite historically used a legacy table named `patients`.
-      We rename it to `legacy_patients` to avoid name collision.
+        - We rename any legacy `patients` table to `legacy_patients` to avoid
+            name collision when the unified model is created.
     - We rename the former cache table `patients_cache` to
       `patients_cache_backup` so we can copy data and then drop it.
     """
@@ -43,20 +38,13 @@ def forwards_prepare_tables(apps, schema_editor):
     # expected unified schema. Otherwise we rename it out of the way.
     if "patients" in tables and "legacy_patients" not in tables:
         conn = schema_editor.connection
-        vendor = conn.vendor
         cols: set[str] = set()
 
         try:
             with conn.cursor() as cursor:
-                if vendor == "sqlite":
-                    cols = {
-                        row[1]
-                        for row in cursor.execute('PRAGMA table_info("patients");').fetchall()
-                    }
-                else:
-                    cols = {
-                        c.name for c in conn.introspection.get_table_description(cursor, "patients")
-                    }
+                cols = {
+                    c.name for c in conn.introspection.get_table_description(cursor, "patients")
+                }
         except Exception:
             cols = set()
 
@@ -86,25 +74,7 @@ def forwards_copy_cache_into_patients(apps, schema_editor):
     if "patients_cache_backup" not in tables:
         return
 
-    if vendor == "sqlite":
-        sql = """
-        INSERT OR IGNORE INTO patients (
-            id, first_name, last_name, birth_date, gender, phone, email, created_at, updated_at
-        )
-        SELECT
-            patient_id,
-            first_name,
-            last_name,
-            birth_date,
-            NULL,
-            NULL,
-            NULL,
-            created_at,
-            updated_at
-        FROM patients_cache_backup
-        WHERE patient_id IS NOT NULL AND patient_id > 0;
-        """.strip()
-    elif vendor == "postgresql":
+    if vendor == "postgresql":
         sql = """
         INSERT INTO patients (
             id, first_name, last_name, birth_date, gender, phone, email, created_at, updated_at
@@ -133,9 +103,9 @@ def forwards_copy_cache_into_patients(apps, schema_editor):
 def forwards_create_patients_table_if_missing(apps, schema_editor):
     """Create `patients` table if it does not exist.
 
-    Some environments (DEV SQLite) may already have a `patients` table with the
-    correct schema (e.g. after previous import steps). In those cases we must
-    not recreate it.
+    Some environments may already have a `patients` table with the correct
+    schema (e.g. after previous import steps). In those cases we must not
+    recreate it.
     """
     tables = _table_names(schema_editor)
     if "patients" in tables:
@@ -149,7 +119,7 @@ def forwards_ensure_patients_for_references(apps, schema_editor):
     """Ensure every referenced patient_id exists in the managed patients table.
 
     We add placeholder rows so that FK constraints on patient_notes / patient_documents
-    can be enabled safely on both SQLite and PostgreSQL.
+    can be enabled safely on PostgreSQL.
 
     The management command `migrate_patients_from_legacy` should be run afterwards
     to replace placeholders with real master data.

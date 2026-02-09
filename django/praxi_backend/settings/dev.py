@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from .base import *  # noqa: F403,F405
-from .base import _env_bool
 
 # ------------------------------------------------------------
 # Development overrides
@@ -10,17 +9,7 @@ from .base import _env_bool
 DEBUG = True
 ALLOWED_HOSTS = ["localhost", "127.0.0.1", "[::1]", "*"]
 
-# Database
-# - Default: PostgreSQL (from base.py)
-# - Optional: SQLite for quick local dev by setting DEV_USE_SQLITE=true
-if _env_bool("DEV_USE_SQLITE", default=False):
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
-
+# Database: PostgreSQL only (from base.py)
 DATABASE_ROUTERS = []
 
 REST_FRAMEWORK = {

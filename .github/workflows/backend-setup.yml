@@ -26,6 +26,7 @@ env:
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
   AGENT_OUTPUT_DIR: agent-outputs
+  DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
 
 jobs:
   backend-job:
@@ -98,6 +99,7 @@ jobs:
           echo "POSTGRES_USER=${POSTGRES_USER}"
           echo "POSTGRES_PASSWORD=${POSTGRES_PASSWORD}"
           echo "AGENT_OUTPUT_DIR=${AGENT_OUTPUT_DIR:-agent-outputs}"
+          echo "DATABASE_URL=${DATABASE_URL}"
 
       # Ensure Postgres is ready before touching the DB
       - name: Wait for PostgreSQL
@@ -116,7 +118,7 @@ jobs:
       # Django DB prep
       - name: Apply migrations
         env:
-          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
+          DATABASE_URL: ${{ env.DATABASE_URL }}
         shell: bash
         run: |
           set -eo pipefail
@@ -124,7 +126,7 @@ jobs:
 
       - name: Create E2E user
         env:
-          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
+          DATABASE_URL: ${{ env.DATABASE_URL }}
         shell: bash
         run: |
           set -eo pipefail
@@ -145,7 +147,7 @@ jobs:
       # Start Django in background with logging
       - name: Start Django
         env:
-          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/praxiapp_system
+          DATABASE_URL: ${{ env.DATABASE_URL }}
         shell: bash
         run: |
           set -eo pipefail

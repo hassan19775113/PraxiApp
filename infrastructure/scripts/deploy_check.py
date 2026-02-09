@@ -77,7 +77,7 @@ def main():
             (
                 "Database",
                 "OK",
-                f"{db_engine.split('.')[-1]}: {Path(db_name).name if 'sqlite' in db_engine else db_name}",
+                f"{db_engine.split('.')[-1]}: {db_name}",
             )
         )
     except Exception as e:

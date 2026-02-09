@@ -8,6 +8,7 @@ djangorestframework-simplejwt>=5.3,<6.0
 # - Django uses `django.db.backends.postgresql`
 # - psycopg v3 provides prebuilt wheels via the `[binary]` extra on Windows.
 psycopg[binary]>=3.1,<4.0
+dj-database-url>=2.1,<3.0
 
 # CORS (für Frontend-Integration)
 django-cors-headers>=4.3,<5.0
