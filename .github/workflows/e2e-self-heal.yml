@@ -7,8 +7,12 @@ on:
     branches: [ai-fix]
 
 permissions:
-  contents: write
+  contents: read
   actions: read
+
+concurrency:
+  group: e2e-self-heal-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   BASE_URL: http://localhost:8000
@@ -28,6 +32,7 @@ env:
 jobs:
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -87,7 +92,7 @@ jobs:
 
       - name: Wait for backend
         run: |
-          npx wait-on http://localhost:8000
+          npx --yes wait-on@latest http://localhost:8000
           curl -f http://localhost:8000/api/health/
 
       - name: Create E2E user
@@ -165,3 +170,7 @@ jobs:
           path: tsc-output.log
           if-no-files-found: ignore
           retention-days: 7
+
+      - name: Stop Django
+        if: always()
+        run: pkill -f "manage.py runserver" || true

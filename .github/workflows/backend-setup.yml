@@ -13,6 +13,13 @@ on:
         required: false
         type: string
 
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-setup-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   BASE_URL: http://127.0.0.1:8000
   POSTGRES_DB: praxiapp_system
@@ -23,6 +30,7 @@ env:
 jobs:
   backend-job:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     services:
       postgres:
@@ -94,7 +102,7 @@ jobs:
           echo $! > server.pid
           sleep 10
 
-      - run: npx wait-on $BASE_URL
+      - run: npx --yes wait-on@latest "$BASE_URL"
 
       - name: Run agent command
         run: |
@@ -103,11 +111,15 @@ jobs:
 
       - name: Stop Django
         if: always()
-        run: kill $(cat server.pid)
+        run: |
+          if [ -f server.pid ]; then
+            kill $(cat server.pid) || true
+          fi
 
       - name: Upload artifact
-        if: ${{ inputs.upload_artifact_name }}
+        if: ${{ inputs.upload_artifact_name && inputs.upload_artifact_path }}
         uses: actions/upload-artifact@v4
         with:
           name: ${{ inputs.upload_artifact_name }}
           path: ${{ inputs.upload_artifact_path }}
+          if-no-files-found: warn
