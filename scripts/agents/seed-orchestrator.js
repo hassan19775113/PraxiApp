@@ -115,8 +115,8 @@ async function main() {
     const authRefresh = spawnSync('node', ['scripts/agents/auth-validator.js'], {
       env: {
         ...process.env,
-        STORAGE_PATH: STORAGE_PATH,
-        BASE_URL: BASE_URL,
+        STORAGE_PATH,
+        BASE_URL,
         E2E_USER: process.env.E2E_USER,
         E2E_PASSWORD: process.env.E2E_PASSWORD,
       },
