@@ -205,8 +205,6 @@ jobs:
       - name: Unified health checks (DB, Django, HTTP)
         shell: bash
         run: |
-          set -eo pipefail
-          echo "Healthcheck: PostgreSQL" | tee -a django/logs/system/ci.log
           ready=false
           for i in {1..90}; do
             if pg_isready -h 127.0.0.1 -p 5432 -U "${POSTGRES_USER}"; then
@@ -222,12 +220,10 @@ jobs:
           fi
           echo "PostgreSQL is ready"
 
-          echo "Healthcheck: Django" | tee -a django/logs/system/ci.log
-          python django/manage.py migrate --check 2>&1 | tee -a django/logs/system/ci.log
-          python django/manage.py check 2>&1 | tee -a django/logs/system/ci.log
-          python django/manage.py shell -c "import django; print('Django OK')" 2>&1 | tee -a django/logs/system/ci.log
+          python django/manage.py migrate --check
+          python django/manage.py check
+          python django/manage.py shell -c "import django; print('Django OK')"
 
-          echo "Healthcheck: HTTP" | tee -a django/logs/system/ci.log
           ready=false
           for i in {1..60}; do
             if curl -sf "http://127.0.0.1:8000/api/health/" >/dev/null; then
