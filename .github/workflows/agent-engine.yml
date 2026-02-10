@@ -37,7 +37,7 @@ jobs:
     needs: seed-orchestrator
     uses: hassan19775113/PraxiApp/.github/workflows/backend-setup.yml@main
     with:
-      agent_command: node scripts/agents/page-smoke.js > agent-outputs/page-smoke.json
+      agent_command: node scripts/agents/page-smoke.cjs > agent-outputs/page-smoke.json
       upload_artifact_name: page-smoke-output
       upload_artifact_path: agent-outputs/page-smoke.json
       download_storage_state: true
@@ -52,20 +52,24 @@ jobs:
         npx playwright test 2>&1 | tee logs/playwright.log
       upload_artifact_name: test-results
       upload_artifact_path: logs/playwright.log
+      download_storage_state: true
+      storage_state_artifact_name: storage-state
 
   flaky-classifier:
     needs: e2e-tests
     uses: hassan19775113/PraxiApp/.github/workflows/backend-setup.yml@main
     with:
-      agent_command: node scripts/agents/flaky-classifier.js > agent-outputs/flaky-classifier.json
+      agent_command: node scripts/agents/flaky-classifier.cjs > agent-outputs/flaky-classifier.json
       upload_artifact_name: flaky-classifier-output
       upload_artifact_path: agent-outputs/flaky-classifier.json
+      download_storage_state: true
+      storage_state_artifact_name: storage-state
 
   selector-auditor:
     needs: e2e-tests
     uses: hassan19775113/PraxiApp/.github/workflows/backend-setup.yml@main
     with:
-      agent_command: node scripts/agents/selector-auditor.js > agent-outputs/selector-auditor.json
+      agent_command: node scripts/agents/selector-auditor.cjs > agent-outputs/selector-auditor.json
       upload_artifact_name: selector-auditor-output
       upload_artifact_path: agent-outputs/selector-auditor.json
       download_storage_state: true
@@ -83,6 +87,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
       - name: Download agent outputs
         uses: actions/download-artifact@v4
         with:
@@ -109,7 +117,9 @@ jobs:
           name: selector-auditor-output
           path: agent-outputs
       - name: Run supervisor
-        run: node scripts/agents/fix-agent-supervisor.js > agent-outputs/fix-agent-supervisor.json
+        run: |
+          mkdir -p agent-outputs
+          node scripts/agents/fix-agent-supervisor.cjs > agent-outputs/fix-agent-supervisor.json
       - name: Upload supervisor report
         uses: actions/upload-artifact@v4
         with:
@@ -131,6 +141,10 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
       - name: Download agent outputs
         uses: actions/download-artifact@v4
         with:
@@ -162,7 +176,9 @@ jobs:
           name: fix-agent-supervisor-output
           path: agent-outputs
       - name: Run ci-dashboard-agent
-        run: node scripts/agents/ci-dashboard-agent.js > agent-outputs/ci-dashboard-agent.json
+        run: |
+          mkdir -p agent-outputs
+          node scripts/agents/ci-dashboard-agent.js > agent-outputs/ci-dashboard-agent.json
       - name: Upload dashboard artifact
         uses: actions/upload-artifact@v4
         with:

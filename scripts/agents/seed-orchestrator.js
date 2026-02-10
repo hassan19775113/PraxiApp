@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-const fs = require('fs');
-const { spawnSync } = require('child_process');
-const path = require('path');
-const { request } = require('playwright');
+import fs from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import path from 'node:path';
+import { request } from '@playwright/test';
 
 const STORAGE_PATH = process.env.STORAGE_PATH || path.join('tests', 'fixtures', 'storageState.json');
 const BASE_URL = process.env.BASE_URL || 'http://localhost:8000';
@@ -12,7 +12,6 @@ const SEED_COMMAND = process.env.SEED_COMMAND || '';
 const ENDPOINTS = [
   { key: 'patients', path: '/api/patients/' },
   { key: 'appointments', path: '/api/appointments/' },
-  { key: 'kpis', path: '/api/kpis/' },
   { key: 'operations', path: '/api/operations/' },
 ];
 
@@ -32,7 +31,7 @@ function output(status, details = {}, exitCode = 0) {
   process.exit(exitCode);
 }
 
-function truncateLog(value, limit = 2000) {
+function truncateLog(value, limit = 10000) {
   if (!value) return '';
   if (value.length <= limit) return value;
   return `${value.slice(0, limit)}\n...truncated...`;
@@ -71,7 +70,7 @@ async function fetchCounts(ctx) {
 
 async function main() {
   ensureStorage();
-  const ctx = await request.newContext({ baseURL: BASE_URL, storageState: STORAGE_PATH });
+  let ctx = await request.newContext({ baseURL: BASE_URL, storageState: STORAGE_PATH });
   let seedLogs = '';
 
   const before = await fetchCounts(ctx);
@@ -108,6 +107,37 @@ async function main() {
         1
       );
     }
+
+    // Refresh auth token after seeding (seed --flush invalidates the old token)
+    await ctx.dispose();
+
+    const authRefresh = spawnSync('node', ['scripts/agents/auth-validator.js'], {
+      env: {
+        ...process.env,
+        STORAGE_PATH: STORAGE_PATH,
+        BASE_URL: BASE_URL,
+        E2E_USER: process.env.E2E_USER,
+        E2E_PASSWORD: process.env.E2E_PASSWORD,
+        AGENT_OUTPUT_DIR: process.env.AGENT_OUTPUT_DIR || 'agent-outputs',
+      },
+      encoding: 'utf8',
+    });
+
+    if (authRefresh.status !== 0) {
+      const logParts = [];
+      if (authRefresh.stdout) logParts.push(`stdout: ${authRefresh.stdout}`);
+      if (authRefresh.stderr) logParts.push(`stderr: ${authRefresh.stderr}`);
+      if (authRefresh.error) logParts.push(`error: ${authRefresh.error.message}`);
+      const authLogs = logParts.join('\n');
+      output('error', {
+        reason: 'auth-refresh-failed',
+        message: 'Failed to refresh auth token after seeding',
+        ...(logParts.length > 0 && { logs: authLogs })
+      }, 1);
+    }
+
+    // Create new context with refreshed token
+    ctx = await request.newContext({ baseURL: BASE_URL, storageState: STORAGE_PATH });
   }
 
   const after = await fetchCounts(ctx);
