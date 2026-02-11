@@ -37,7 +37,10 @@ permissions:
   contents: read
 
 concurrency:
-  group: backend-setup-${{ github.run_id }}
+  # Important: this workflow is called multiple times from Agent Engine.
+  # Using only github.run_id causes different invocations to share a concurrency group,
+  # which can cancel each other ("higher priority waiting request"), even within the same run.
+  group: backend-setup-${{ github.run_id }}-${{ inputs.logs_artifact_name || inputs.upload_artifact_name || github.job }}
   cancel-in-progress: true
 
 env:
