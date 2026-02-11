@@ -1,0 +1,6 @@
+# Project import structure
+# This file is used by gh project item-import command
+---
+project:
+  name: "Stabilization Backlog"
+  description: "Track stabilization tasks and improvements"
