@@ -42,13 +42,13 @@ jobs:
         run: |
           set -eo pipefail
           echo "Starting issue import..."
-          jq -c '.[]' automation/issues.json | while read issue; do
-            TITLE=$(echo "$issue" | jq -r '.title')
-            BODY=$(echo "$issue" | jq -r '.body')
-            LABELS=$(echo "$issue" | jq -r '.labels? | join(",")')
+          jq -c '.[]' automation/issues.json | while IFS= read -r issue; do
+            TITLE=$(printf '%s' "$issue" | jq -r '.title')
+            BODY=$(printf '%s' "$issue" | jq -r '.body')
+            LABELS=$(printf '%s' "$issue" | jq -r '(.labels // []) | join(",")')
 
             # Check if issue already exists
-            if gh issue list --search "$TITLE" --json title | jq -e ".[] | select(.title==\"$TITLE\")" > /dev/null; then
+            if gh issue list --search "$TITLE" --json title | jq -e --arg title "$TITLE" '.[] | select(.title==$title)' > /dev/null; then
               echo "Skipping existing issue: $TITLE"
               continue
             fi
@@ -57,7 +57,7 @@ jobs:
               echo "[DRY RUN] Would create issue: $TITLE"
             else
               echo "Creating issue: $TITLE"
-              if [ -n "${LABELS:-}" ] && [ "${LABELS}" != "null" ]; then
+              if [ -n "${LABELS:-}" ]; then
                 gh issue create \
                   --title "$TITLE" \
                   --body "$BODY" \
