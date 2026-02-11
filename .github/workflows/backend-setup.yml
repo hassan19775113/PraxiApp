@@ -45,6 +45,10 @@ concurrency:
 
 env:
   BASE_URL: http://127.0.0.1:8000
+  NODE_VERSION: 20.11.1
+  PYTHON_VERSION: 3.12.8
+  PIP_VERSION: 24.3.1
+  PLAYWRIGHT_VERSION: 1.58.2
   POSTGRES_DB: praxiapp_system
   POSTGRES_USER: postgres
   POSTGRES_PASSWORD: postgres
@@ -97,29 +101,31 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: ${{ env.NODE_VERSION }}
           cache: 'npm'
 
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: ${{ env.PYTHON_VERSION }}
 
       # Caches to speed up installs (OS-scoped with restore keys)
       - name: Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: pip-${{ runner.os }}-${{ hashFiles('requirements.txt') }}
+          key: pip-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-pip${{ env.PIP_VERSION }}-${{ hashFiles('requirements.txt') }}
           restore-keys: |
+            pip-${{ runner.os }}-py${{ env.PYTHON_VERSION }}-pip${{ env.PIP_VERSION }}-
             pip-${{ runner.os }}-
 
       - name: Cache Playwright
         uses: actions/cache@v4
         with:
           path: ~/.cache/ms-playwright
-          key: pw-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: pw-${{ runner.os }}-node${{ env.NODE_VERSION }}-pw${{ env.PLAYWRIGHT_VERSION }}-${{ hashFiles('package-lock.json') }}
           restore-keys: |
+            pw-${{ runner.os }}-node${{ env.NODE_VERSION }}-pw${{ env.PLAYWRIGHT_VERSION }}-
             pw-${{ runner.os }}-
 
       # Install all runtime deps (Python + Node + browsers)
@@ -127,13 +133,14 @@ jobs:
         shell: bash
         run: |
           set -eo pipefail
-          python -m pip install --upgrade pip
+          python -m pip install --upgrade "pip==${PIP_VERSION}"
+          python -m pip --version
           pip install -r requirements.txt
           npm ci
           # CI uses only the Chromium project (see playwright.config.ts).
           # Avoid `--with-deps` here because it triggers a large `apt-get` install
           # on ubuntu-latest that can exceed the 30m job timeout.
-          npx playwright install chromium
+          npx playwright@${PLAYWRIGHT_VERSION} install chromium
 
       # Log critical env for transparency
       - name: Show debug environment
