@@ -1,20 +1,4 @@
 ## Epic 1: Stabilize CI/CD Pipeline
-### Issue: Pin Workflow Dependencies and Runtime Versions
-- Problem Summary: Workflow executions drift between Node, Python, and Playwright versions causing flaky installs and cache misses.
-- Acceptance Criteria:
-  - Actions workflows pin Node, Python, Playwright, and pip versions.
-  - Cache keys include version hashes for determinism.
-  - Successful dry run proves reproducible environment setup.
-- Labels: P0, ci, backend
-
-### Issue: Provision Deterministic Postgres Service
-- Problem Summary: Shared Postgres service definitions leak state between jobs leading to inconsistent migration behavior.
-- Acceptance Criteria:
-  - Each workflow job provisions an isolated Postgres container with health checks.
-  - Retry logic waits up to 90 seconds before failing.
-  - Connection diagnostics appended to backend-logs artifact.
-- Labels: P0, ci, backend, database
-
 ### Issue: Introduce Backend Smoke Gate
 - Problem Summary: Missing HTTP readiness probes cause downstream jobs to hit a half-ready Django server.
 - Acceptance Criteria:
@@ -205,14 +189,6 @@
   - Reviewed by at least two recent hires.
 - Labels: P1, docs, dx
 
-### Issue: Document CI/CD Troubleshooting Guide
-- Problem Summary: Repeated questions arise about pipeline failures and log locations.
-- Acceptance Criteria:
-  - Guide lists common failures, log locations, and escalation steps.
-  - Linked from workflow summary outputs.
-  - Updated whenever new failure mode is discovered.
-- Labels: P1, docs, ci, dx
-
 ### Issue: Provide Dev Containers for Local Work
 - Problem Summary: Local environments rarely match production, causing "works on my machine" bugs.
 - Acceptance Criteria:
@@ -220,11 +196,3 @@
   - Support VS Code and GitHub Codespaces usage.
   - README includes setup instructions.
 - Labels: P2, dx, backend
-
-### Issue: Automate Changelog Generation
-- Problem Summary: Manual changelog updates lag behind releases.
-- Acceptance Criteria:
-  - Add a release workflow generating changelog from conventional commits.
-  - Publish artifact and PR comment on releases.
-  - Document the new process in README.
-- Labels: P2, docs, dx, ci
