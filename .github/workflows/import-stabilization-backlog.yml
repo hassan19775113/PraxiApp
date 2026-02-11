@@ -27,11 +27,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install GitHub CLI
-        uses: cli/cli-action@v2
-        with:
-          version: latest
-
       - name: Load issues.json
         id: load
         run: |
