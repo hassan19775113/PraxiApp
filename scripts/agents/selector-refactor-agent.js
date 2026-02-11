@@ -16,8 +16,8 @@ const REPLACEMENTS = {
   },
   'patients.anchor': {
     file: path.join('tests', 'pages', 'patients-page.ts'),
-    from: "page.locator('#patientSelect')",
-    to: "page.getByTestId('patientSelect')",
+    from: "page.locator('#patientsTable')",
+    to: "page.locator('#patientsTable')",
   },
   'operations.anchor': {
     file: path.join('tests', 'pages', 'operations-page.ts'),
