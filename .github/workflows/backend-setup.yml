@@ -170,7 +170,7 @@ jobs:
           User.objects.filter(username='e2e_ci').delete();
           
           # Create or get admin role
-          admin_role, created = Role.objects.get_or_create(
+          admin_role, _ = Role.objects.get_or_create(
               name='admin',
               defaults={'label': 'Admin'}
           );
