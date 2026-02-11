@@ -1,0 +1,17 @@
+[
+  {
+    "title": "Stabilization: Fix authentication flow",
+    "body": "Review and stabilize the authentication flow to ensure proper error handling and user feedback.",
+    "labels": ["stabilization", "authentication", "bug"]
+  },
+  {
+    "title": "Stabilization: Improve database query performance",
+    "body": "Optimize slow database queries identified in production monitoring.",
+    "labels": ["stabilization", "performance", "database"]
+  },
+  {
+    "title": "Stabilization: Add comprehensive error logging",
+    "body": "Implement structured logging for better debugging and monitoring.",
+    "labels": ["stabilization", "logging", "enhancement"]
+  }
+]
