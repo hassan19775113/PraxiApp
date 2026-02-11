@@ -1,5 +1,7 @@
 name: Import Stabilization Backlog
 
+run-name: Import Stabilization Backlog
+
 on:
   workflow_dispatch:
 
