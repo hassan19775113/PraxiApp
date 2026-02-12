@@ -35,7 +35,20 @@ jobs:
 
           if [ -f docs/stabilization-epics.md ]; then
             echo "Generating automation/issues.json from docs/stabilization-epics.md"
+            set +e
             python3 scripts/stabilization_epics_to_issues.py docs/stabilization-epics.md automation/issues.json
+            code=$?
+            set -e
+
+            # Exit code 3 means: no issues parsed (script refuses to write empty issues.json).
+            # In that case, keep the existing automation/issues.json as a fallback.
+            if [ "$code" -ne 0 ]; then
+              if [ "$code" -eq 3 ]; then
+                echo "No issues parsed from docs/stabilization-epics.md; keeping existing automation/issues.json"
+              else
+                exit "$code"
+              fi
+            fi
           else
             echo "docs/stabilization-epics.md not found; using existing automation/issues.json"
           fi
