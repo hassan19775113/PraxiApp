@@ -22,8 +22,11 @@ function adminCredsOrNull(): { username: string; password: string } | null {
 }
 
 async function adminLoginIfNeeded(page: Page) {
-  // Works for both /admin/ and /praxi_backend/Dashboardadministration/
+  // Django admin login form has #id_username + #id_password.
+  // Some admin create/change forms also have #id_username but NOT #id_password.
+  // Only treat this as a login page when the password field is present.
   if (!(await page.locator('#id_username').count())) return;
+  if (!(await page.locator('#id_password').count())) return;
   const creds = adminCredsOrNull();
   test.skip(!creds, 'Missing DJANGO_ADMIN_USER/DJANGO_ADMIN_PASSWORD (or E2E_USER/E2E_PASSWORD) for admin UI actions');
   await page.locator('#id_username').fill(creds!.username);
