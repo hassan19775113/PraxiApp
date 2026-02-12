@@ -13,6 +13,14 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:8000';
 export class ApiClient {
   private ctx: APIRequestContext | null = null;
 
+  private generateLegacyPatientId(): number {
+    // Patient.id is a legacy integer PK (required). Use epoch seconds + small random
+    // to stay under 32-bit int range and avoid collisions in parallel tests.
+    const epochSeconds = Math.floor(Date.now() / 1000);
+    const jitter = Math.floor(Math.random() * 1000);
+    return epochSeconds + jitter;
+  }
+
   private getAccessTokenFromStorageState(): string {
     const raw = fs.readFileSync(STORAGE_STATE, 'utf-8');
     const json = JSON.parse(raw);
@@ -106,6 +114,7 @@ export class ApiClient {
 
   async createPatient(payload?: Record<string, any>) {
     const body = payload || {
+      id: this.generateLegacyPatientId(),
       first_name: 'E2E',
       last_name: `Patient ${Date.now()}`,
     };
