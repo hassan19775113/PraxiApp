@@ -121,8 +121,11 @@ main().catch((err) => {
         `- ${getRepoActionsSettingsUrl(OWNER, REPO)} → Workflow permissions`,
         "- Select 'Read and write permissions'",
         "- Check 'Allow GitHub Actions to create and approve pull requests'",
+        '',
+        'Continuing without creating/updating a PR.',
       ].join('\n'),
     );
+    process.exit(0);
   }
   console.error(err);
   process.exit(1);

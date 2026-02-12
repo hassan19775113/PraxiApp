@@ -1,6 +1,7 @@
 import { test, expect, Page } from '@playwright/test';
 
 import { ApiClient } from '../../api-client';
+import { adminLoginIfNeeded } from '../helpers/admin-login';
 import { NavPage } from '../pages/nav-page';
 import { PatientsPage } from '../pages/patients-page';
 
@@ -13,26 +14,6 @@ type Patient = {
 };
 
 const ADMIN_BASE_PATH = '/praxi_backend/Dashboardadministration';
-
-function adminCredsOrNull(): { username: string; password: string } | null {
-  const username = process.env.DJANGO_ADMIN_USER || process.env.E2E_USER;
-  const password = process.env.DJANGO_ADMIN_PASSWORD || process.env.E2E_PASSWORD;
-  if (!username || !password) return null;
-  return { username, password };
-}
-
-async function adminLoginIfNeeded(page: Page) {
-  // Works for both /admin/ and /praxi_backend/Dashboardadministration/
-  if (!(await page.locator('#id_username').count())) return;
-  const creds = adminCredsOrNull();
-  test.skip(!creds, 'Missing DJANGO_ADMIN_USER/DJANGO_ADMIN_PASSWORD (or E2E_USER/E2E_PASSWORD) for admin UI actions');
-  await page.locator('#id_username').fill(creds!.username);
-  await page.locator('#id_password').fill(creds!.password);
-  await Promise.all([
-    page.waitForLoadState('domcontentloaded'),
-    page.locator('input[type="submit"], button[type="submit"]').first().click(),
-  ]);
-}
 
 async function createPatientFlexible(api: ApiClient, payload: Record<string, any>): Promise<Patient> {
   const res = await api.post('/api/patients/', payload);
@@ -85,7 +66,7 @@ async function deletePatient(api: ApiClient, id: number): Promise<'api' | 'not-s
 async function deletePatientViaAdmin(page: Page, patientId: number) {
   await page.goto(`${ADMIN_BASE_PATH}/patients/patient/${patientId}/delete/`);
   await page.waitForLoadState('domcontentloaded');
-  await adminLoginIfNeeded(page);
+  await adminLoginIfNeeded(page, process.env.E2E_USER, process.env.E2E_PASSWORD);
 
   // Django admin delete confirm page
   const confirm = page.locator('input[type="submit"], button[type="submit"]').filter({ hasText: /delete|löschen/i });

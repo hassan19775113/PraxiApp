@@ -2,6 +2,8 @@ import { request, chromium, type FullConfig } from '@playwright/test';
 import fs from 'fs';
 import path from 'path';
 
+import { adminLoginIfNeeded } from '../helpers/admin-login';
+
 const STORAGE_PATH = path.resolve(process.cwd(), 'tests', 'fixtures', 'storageState.json');
 
 async function globalSetup(config: FullConfig) {
@@ -39,12 +41,7 @@ async function globalSetup(config: FullConfig) {
 
   // Establish Django admin/session auth for server-rendered dashboard routes.
   await page.goto(`/admin/login/?next=${encodeURIComponent('/praxi_backend/dashboard/')}`, { waitUntil: 'domcontentloaded' });
-  await page.locator('#id_username, input[name="username"]').fill(username);
-  await page.locator('#id_password, input[name="password"]').fill(password);
-  await Promise.all([
-    page.waitForNavigation({ waitUntil: 'domcontentloaded' }).catch(() => null),
-    page.locator('input[type="submit"], button[type="submit"]').first().click(),
-  ]);
+  await adminLoginIfNeeded(page, username, password);
 
   if (page.url().includes('/admin/login')) {
     throw new Error('Admin login failed during Playwright globalSetup');

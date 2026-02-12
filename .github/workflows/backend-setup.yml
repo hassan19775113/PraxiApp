@@ -227,6 +227,17 @@ jobs:
           }
           echo "E2E user created" | tee -a django/logs/system/ci.log
 
+      - name: Seed database
+        shell: bash
+        run: |
+          set -eo pipefail
+          echo "Seeding database (core/users/patients/appointments)" | tee -a django/logs/system/ci.log
+          python django/manage.py seed >> django/logs/system/ci.log 2>&1 || {
+            echo "Database seeding failed" | tee -a django/logs/system/ci.log
+            exit 1
+          }
+          echo "Database seeding complete" | tee -a django/logs/system/ci.log
+
       # Clean stale PID before starting server
       - name: Clean up stale PID
         shell: bash
