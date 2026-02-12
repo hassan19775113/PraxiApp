@@ -19,6 +19,11 @@ export const test = base.extend<{ testData: TestData }>({
 
     const data: TestData = {};
 
+    const pickId = (obj: any): number | string | undefined => {
+      if (!obj) return undefined;
+      return obj.id ?? obj.pk ?? obj.user_id ?? obj.user?.id;
+    };
+
     try {
       // Ensure we have a doctor
       // NOTE: /api/appointments/doctors/ is list-only (GET). Creating doctors is not exposed via API.
@@ -29,10 +34,14 @@ export const test = base.extend<{ testData: TestData }>({
       }
       const doctors = await doctorsRes.json();
       const firstDoctor = Array.isArray(doctors) ? doctors[0] : doctors.results?.[0];
-      if (!firstDoctor?.id) {
-        throw new Error('No doctors available (expected seeded doctor users)');
+      const doctorId = pickId(firstDoctor);
+      if (!doctorId) {
+        const summary = Array.isArray(doctors)
+          ? `array(len=${doctors.length})`
+          : `object(keys=${Object.keys(doctors || {}).join(',')})`;
+        throw new Error(`No doctors available (expected seeded doctor users). doctors payload: ${summary}`);
       }
-      data.doctorId = firstDoctor.id;
+      data.doctorId = doctorId;
 
       // Ensure we have a patient
       const patientRes = await api.createPatient();
@@ -55,8 +64,10 @@ export const test = base.extend<{ testData: TestData }>({
       }
 
       // Create appointment
-      const start = new Date();
-      const end = new Date(start.getTime() + 30 * 60 * 1000);
+      // Use a stable slot (10:00-10:30 UTC today) so the calendar UI reliably shows it.
+      const now = new Date();
+      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 10, 0, 0));
+      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 10, 30, 0));
       const apptPayload = {
         patient_id: data.patientId,
         doctor: data.doctorId,

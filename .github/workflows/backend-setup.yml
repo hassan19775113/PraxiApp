@@ -238,6 +238,29 @@ jobs:
           }
           echo "Database seeding complete" | tee -a django/logs/system/ci.log
 
+      - name: Ensure doctor exists
+        shell: bash
+        run: |
+          set -eo pipefail
+          echo "Ensuring at least one doctor user exists" | tee -a django/logs/system/ci.log
+          python django/manage.py shell -c "
+          from django.contrib.auth import get_user_model;
+          from praxi_backend.core.models import Role;
+
+          User = get_user_model();
+          doctor_role, _ = Role.objects.get_or_create(name='doctor', defaults={'label': 'Arzt'});
+
+          qs = User.objects.filter(is_active=True, role=doctor_role);
+          if qs.exists():
+              print(f'✅ Doctors present: {qs.count()}');
+          else:
+              u = User.objects.create_user('e2e_doctor', 'e2e_doctor@seed.local', 'test1234', first_name='E2E', last_name='Doctor');
+              u.role = doctor_role;
+              u.is_staff = True;
+              u.save();
+              print('✅ Created fallback doctor: e2e_doctor');
+          " >> django/logs/system/ci.log 2>&1
+
       # Clean stale PID before starting server
       - name: Clean up stale PID
         shell: bash

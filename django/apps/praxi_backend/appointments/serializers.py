@@ -40,6 +40,17 @@ BREAK_COLOR = "#FFD700"
 
 
 class AppointmentTypeSerializer(serializers.ModelSerializer):
+    def validate_duration_minutes(self, value):
+        if value is None:
+            return value
+        try:
+            ivalue = int(value)
+        except (TypeError, ValueError):
+            raise serializers.ValidationError("duration_minutes muss eine Zahl sein.")
+        if ivalue <= 0:
+            raise serializers.ValidationError("duration_minutes muss > 0 sein.")
+        return ivalue
+
     class Meta:
         model = AppointmentType
         fields = [

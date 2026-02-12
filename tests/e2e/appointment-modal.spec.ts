@@ -1,11 +1,14 @@
-import { test } from '../fixtures/testdata.setup';
+import { test, expect } from '../fixtures/testdata.setup';
 import { CalendarPage } from '../pages/calendar-page';
 import { AppointmentModalPage } from '../pages/appointment-modal-page';
 
 // Appointment editing: open first appointment, change time, save, and verify updated time text.
-test('edit existing appointment time', async ({ page, baseURL }) => {
+test('edit existing appointment time', async ({ page, baseURL, testData }) => {
   const calendar = new CalendarPage(page);
   const modal = new AppointmentModalPage(page);
+
+  // Force testdata fixture execution to ensure an appointment exists.
+  expect(testData.appointmentId).toBeTruthy();
 
   await calendar.goto(baseURL!);
   // Ensure at least one appointment exists before trying to edit
