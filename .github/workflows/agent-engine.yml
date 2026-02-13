@@ -710,3 +710,100 @@ jobs:
             exit 1
           fi
           echo "${url}/admin/login/?next=/praxi_backend/Dashboardadministration/"
+
+  send-ci-logs:
+    name: Send CI logs to Developer-Agent
+    needs:
+      - auth-validator
+      - seed-orchestrator
+      - page-smoke
+      - e2e-tests
+      - startup-fix-agent
+      - flaky-classifier
+      - selector-auditor
+      - self-heal-supervisor
+      - fix-agent-supervisor
+      - ci-dashboard-agent
+      - publish-dashboard
+      - post-dashboard-comment
+      - public-dashboard-access
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Decide whether to send logs
+        id: gate
+        run: |
+          echo "should_send=${{ needs.e2e-tests.result == 'failure' || needs.self-heal-supervisor.result != 'skipped' || (github.event_name == 'workflow_dispatch' && needs.fix-agent-supervisor.result != 'skipped') }}" >> "$GITHUB_OUTPUT"
+
+      - name: Download Playwright logs artifact
+        if: ${{ steps.gate.outputs.should_send == 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: test-results
+
+      - name: Download backend logs artifact
+        if: ${{ steps.gate.outputs.should_send == 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-logs-e2e-tests
+          path: backend-logs-e2e-tests
+
+      - name: Build payload.json
+        if: ${{ steps.gate.outputs.should_send == 'true' }}
+        shell: bash
+        env:
+          RUN_ID: ${{ github.run_id }}
+          JOB_NAME: e2e-tests
+          TIMESTAMP: ${{ github.event.head_commit.timestamp }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          def read_text(path: str) -> str:
+              p = Path(path)
+              if not p.exists():
+                  return ""
+              try:
+                  return p.read_text(encoding="utf-8", errors="replace")
+              except Exception:
+                  return ""
+
+          payload = {
+              "run_id": int(os.environ.get("RUN_ID", "0") or 0),
+              "job_name": os.environ.get("JOB_NAME", "e2e-tests"),
+              "timestamp": os.environ.get("TIMESTAMP", "") or "",
+              "playwright_log": read_text("test-results/logs/playwright.log"),
+              "backend_log": read_text("backend-logs-e2e-tests/django/logs/system/ci.log"),
+              "branch": os.environ.get("BRANCH", ""),
+              "commit": os.environ.get("COMMIT", ""),
+              "status": "failed",
+          }
+
+          with open("payload.json", "w", encoding="utf-8") as f:
+              json.dump(payload, f, ensure_ascii=False)
+          PY
+
+      - name: POST logs to cloud agent
+        if: ${{ steps.gate.outputs.should_send == 'true' }}
+        shell: bash
+        env:
+          AGENT_TOKEN: ${{ secrets.AGENT_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${AGENT_TOKEN:-}" ]; then
+            echo "AGENT_TOKEN is not available; skipping log upload."
+            exit 0
+          fi
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${AGENT_TOKEN}" \
+            -d @payload.json \
+            https://<YOUR-CLOUD-AGENT>/api/ci/logs
