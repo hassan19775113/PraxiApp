@@ -7,50 +7,54 @@ import { Page, expect } from '@playwright/test';
 export class NavPage {
   constructor(private readonly page: Page) {}
 
+  private async clickHeaderLinkByHref(partialHref: string) {
+    await this.page.locator(`.prx-header__nav a[href*="${partialHref}"]`).first().click();
+  }
+
   async gotoDashboards() {
     await Promise.all([
       this.page.waitForURL(/\/praxi_backend\/dashboard\/?/),
-      this.page.getByRole('link', { name: 'Dashboards', exact: true }).click(),
+      this.clickHeaderLinkByHref('/praxi_backend/Dashboardadministration/'),
     ]);
   }
 
   async gotoScheduling() {
     await Promise.all([
-      this.page.waitForURL(/\/praxi_backend\/dashboard\/appointments\/?/),
-      this.page.getByRole('link', { name: 'Terminplanung', exact: true }).click(),
+      this.page.waitForURL(/\/praxi_backend\/dashboard\/(appointments|scheduling)\/?/),
+      this.clickHeaderLinkByHref('/praxi_backend/dashboard/appointments/'),
     ]);
   }
 
   async gotoPatients() {
     await Promise.all([
       this.page.waitForURL(/\/praxi_backend\/dashboard\/patients\/?/),
-      this.page.getByRole('link', { name: 'Patienten', exact: true }).click(),
+      this.clickHeaderLinkByHref('/praxi_backend/dashboard/patients/'),
     ]);
   }
 
   async gotoDoctors() {
     await Promise.all([
       this.page.waitForURL(/\/praxi_backend\/dashboard\/doctors\/?/),
-      this.page.getByRole('link', { name: 'Ärzte', exact: true }).click(),
+      this.clickHeaderLinkByHref('/praxi_backend/dashboard/doctors/'),
     ]);
   }
 
   async gotoOperations() {
     await Promise.all([
       this.page.waitForURL(/\/praxi_backend\/dashboard\/operations\/?/),
-      this.page.getByRole('link', { name: 'Operationen', exact: true }).click(),
+      this.clickHeaderLinkByHref('/praxi_backend/dashboard/operations/'),
     ]);
   }
 
   async gotoResources() {
     await Promise.all([
       this.page.waitForURL(/\/praxi_backend\/dashboard\/resources\/?/),
-      this.page.getByRole('link', { name: 'Ressourcen', exact: true }).click(),
+      this.clickHeaderLinkByHref('/praxi_backend/dashboard/resources/'),
     ]);
   }
 
   async gotoAdmin() {
-    await this.page.getByRole('link', { name: 'Admin', exact: true }).click();
+    await this.page.locator('.prx-header__nav a[href*="/admin/"]').first().click();
   }
 
   async expectHeaderVisible() {

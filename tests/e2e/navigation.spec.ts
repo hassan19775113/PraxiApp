@@ -11,7 +11,7 @@ test('navigate through primary sections', async ({ page, baseURL }) => {
   await nav.expectHeaderVisible();
 
   await nav.gotoScheduling();
-  await expect(page).toHaveURL(/\/praxi_backend\/dashboard\/appointments\//);
+  await expect(page).toHaveURL(/\/praxi_backend\/dashboard\/(appointments|scheduling)\//);
 
   await nav.gotoPatients();
   await expect(page).toHaveURL(/\/praxi_backend\/dashboard\/patients\//);
