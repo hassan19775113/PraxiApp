@@ -538,15 +538,7 @@ jobs:
             echo "exit_code=$?"
             echo ""
             echo "tcp_connect (127.0.0.1:${POSTGRES_PORT}):"
-            python -c "import os, socket
-host='127.0.0.1'
-port=int(os.environ.get('POSTGRES_PORT','5432'))
-try:
-  socket.create_connection((host, port), timeout=5).close()
-  print('tcp_ok')
-except Exception as e:
-  print('tcp_fail', repr(e))
-"
+            python -c "import os,socket; host='127.0.0.1'; port=int(os.environ.get('POSTGRES_PORT','5432')); sock=socket.socket(); sock.settimeout(5); code=sock.connect_ex((host,port)); print('tcp_ok' if code==0 else f'tcp_fail code={code}'); sock.close()"
             echo ""
             echo "postgres_container_logs (tail 200):"
             if [ -n "${POSTGRES_CONTAINER_ID:-}" ]; then
