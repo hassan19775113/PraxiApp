@@ -4,10 +4,10 @@
 echo "Building Django application for Vercel..."
 
 # Install Python dependencies
-pip install -r backend/requirements.txt
+pip install -r requirements.txt
 
-# Change to backend directory
-cd backend
+# Change to Django project directory
+cd django
 
 # Collect static files
 python manage.py collectstatic --noinput --settings=praxi_backend.settings.prod
