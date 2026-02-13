@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: agent-engine-${{ github.run_id }}
@@ -823,7 +824,46 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Check artifact availability
+        id: artifacts
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          run_id = os.environ["GITHUB_RUN_ID"]
+          token = os.environ.get("GITHUB_TOKEN", "")
+
+          url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/artifacts?per_page=100"
+          req = urllib.request.Request(url)
+          req.add_header("Accept", "application/vnd.github+json")
+          if token:
+            req.add_header("Authorization", f"Bearer {token}")
+
+          with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8", errors="replace"))
+
+          names = {a.get("name", "") for a in data.get("artifacts", [])}
+          has_test_results = "test-results" in names
+          has_backend_logs = "backend-logs-e2e-tests" in names
+
+          out_path = os.environ.get("GITHUB_OUTPUT")
+          if out_path:
+            with open(out_path, "a", encoding="utf-8") as f:
+              f.write(f"has_test_results={'true' if has_test_results else 'false'}\n")
+              f.write(f"has_backend_logs={'true' if has_backend_logs else 'false'}\n")
+          PY
+
       - name: Download Playwright logs artifact
+        if: ${{ steps.artifacts.outputs.has_test_results == 'true' }}
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
@@ -831,6 +871,7 @@ jobs:
           path: test-results
 
       - name: Download backend logs artifact
+        if: ${{ steps.artifacts.outputs.has_backend_logs == 'true' }}
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:

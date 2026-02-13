@@ -403,6 +403,59 @@ jobs:
               done
               if [ "$found_any" != "true" ]; then
                 echo "No JSON outputs found in $OUT_DIR" | tee -a django/logs/system/ci.log
+              else
+                # Emit a concise annotation so the root cause is visible in the Actions "Annotations" UI.
+                # This helps debugging when job logs are not accessible.
+                first_json=$(ls -1 "$OUT_DIR"/*.json 2>/dev/null | head -1 || true)
+                if [ -n "${first_json:-}" ]; then
+                  summary=$(node - <<'NODE'
+                  const fs = require('fs');
+                  const p = process.env.FIRST_JSON;
+
+                  function safeStr(v, max = 180) {
+                    const s = String(v ?? '').replace(/\s+/g, ' ').trim();
+                    return s.length > max ? s.slice(0, max - 1) + '…' : s;
+                  }
+
+                  try {
+                    const txt = fs.readFileSync(p, 'utf8');
+                    const j = JSON.parse(txt);
+                    const status = j?.status ?? 'unknown';
+                    const reason = j?.reason ?? j?.message ?? '';
+
+                    if (Array.isArray(j?.results)) {
+                      const bad = j.results.find((r) => r && r.status && r.status !== 'ok');
+                      if (bad) {
+                        const bits = [
+                          `status=${status}`,
+                          bad.key ? `key=${bad.key}` : null,
+                          bad.status ? `pageStatus=${bad.status}` : null,
+                          bad.reason ? `reason=${safeStr(bad.reason)}` : null,
+                          typeof bad.httpStatus === 'number' ? `http=${bad.httpStatus}` : null,
+                          bad.finalUrl ? `url=${safeStr(bad.finalUrl)}` : null,
+                          bad.anchor ? `anchor=${bad.anchor}` : null,
+                          bad.path ? `path=${bad.path}` : null,
+                        ].filter(Boolean);
+                        process.stdout.write(bits.join(' | '));
+                        process.exit(0);
+                      }
+                    }
+
+                    const msg = [
+                      `status=${status}`,
+                      reason ? `reason=${safeStr(reason)}` : null,
+                    ].filter(Boolean).join(' | ');
+                    process.stdout.write(msg || `status=${status}`);
+                  } catch (e) {
+                    process.stdout.write('unable-to-parse-agent-json');
+                  }
+                  NODE
+                  FIRST_JSON="$first_json")
+
+                  if [ -n "${summary:-}" ]; then
+                    echo "::error title=Agent output summary::${summary}"
+                  fi
+                fi
               fi
             else
               echo "Agent output directory missing: $OUT_DIR" | tee -a django/logs/system/ci.log
