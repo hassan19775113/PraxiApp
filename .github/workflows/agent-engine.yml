@@ -616,8 +616,6 @@ jobs:
       - e2e-tests
       - fix-agent-prep
     if: ${{ always() && needs.e2e-tests.result == 'failure' && needs.fix-agent-prep.result != 'skipped' }}
-    # NOTE: best-effort: patch generation must not flip the overall CI signal.
-    continue-on-error: true
     uses: ./.github/workflows/backend-setup.yml
     with:
       # Integration point: scoped, guarded code changes only; emit patch + metadata artifacts (no PR creation).
