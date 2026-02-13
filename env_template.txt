@@ -53,3 +53,8 @@ CELERY_ENABLED=False
 # Logging
 DJANGO_LOG_DIR=/tmp
 LOG_LEVEL=INFO
+
+# Developer-Agent / Log Processor
+# Used by POST /process-logs (Developer-Agent) and by the Cloud-Agent forwarder.
+DEVELOPER_AGENT_TOKEN=
+DEVELOPER_AGENT_URL=
