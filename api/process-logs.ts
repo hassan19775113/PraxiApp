@@ -514,14 +514,20 @@ export default async function handler(req: JsonRequest, res: JsonResponse) {
 
   const runId = normalizeRunId(payload.run_id);
 
-  const primaryLogsRoot = path.join(process.cwd(), 'logs');
-  const fallbackLogsRoot = path.join('/tmp', 'logs');
-  let logsRoot = primaryLogsRoot;
-  try {
-    await ensureDir(logsRoot);
-  } catch {
-    logsRoot = fallbackLogsRoot;
-    await ensureDir(logsRoot);
+  const preferredLogsRoots = ['/logs', path.join(process.cwd(), 'logs'), path.join('/tmp', 'logs')];
+  let logsRoot: string | null = null;
+  for (const candidate of preferredLogsRoots) {
+    try {
+      await ensureDir(candidate);
+      logsRoot = candidate;
+      break;
+    } catch {
+      // try next
+    }
+  }
+
+  if (!logsRoot) {
+    return sendJson(res, 500, { error: 'internal_error' });
   }
 
   const runDir = path.join(logsRoot, runId);
