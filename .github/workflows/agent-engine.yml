@@ -791,7 +791,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          CLOUD_AGENT_URL="https://<YOUR-VERCEL-URL>/api/ci/logs"
+          CLOUD_AGENT_URL="https://praxi-app.vercel.app/api/ci/logs"
 
           if [ -z "${AGENT_TOKEN:-}" ]; then
             echo "AGENT_TOKEN is not available; skipping log upload."
