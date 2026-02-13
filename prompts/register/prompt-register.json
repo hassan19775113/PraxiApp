@@ -1,0 +1,81 @@
+{
+  "prompts": [
+    {
+      "id": "001",
+      "version": "1.0.0",
+      "title": "Stabilization Backlog Generator",
+      "category": "core",
+      "path": "prompts/core/001-stabilization-backlog.md"
+    },
+    {
+      "id": "002",
+      "version": "1.0.0",
+      "title": "Stabilization Issues Import Orchestrator",
+      "category": "workflows",
+      "path": "prompts/workflows/002-stabilization-issues-import.md"
+    },
+    {
+      "id": "003",
+      "version": "1.0.0",
+      "title": "Developer-Agent Log Processor + Cloud-Agent Forwarder",
+      "category": "developer-agent",
+      "path": "prompts/developer-agent/003-developer-agent-and-cloud-agent.md"
+    },
+    {
+      "id": "004",
+      "version": "1.0.0",
+      "title": "Agent Secrets and Environment Wiring",
+      "category": "access",
+      "path": "prompts/access/004-secrets-and-env-wiring.md"
+    },
+    {
+      "id": "005",
+      "version": "1.0.0",
+      "title": "CI Dashboard and Reporting",
+      "category": "workflows",
+      "path": "prompts/workflows/005-ci-dashboard-and-reporting.md"
+    },
+    {
+      "id": "006",
+      "version": "1.0.0",
+      "title": "GitHub Actions Workflow Hardening",
+      "category": "workflows",
+      "path": "prompts/workflows/006-workflow-hardening.md"
+    },
+    {
+      "id": "007",
+      "version": "1.0.0",
+      "title": "Self-Heal Pipeline (Safe, Non-Code)",
+      "category": "self-heal",
+      "path": "prompts/self-heal/007-self-heal-pipeline.md"
+    },
+    {
+      "id": "008",
+      "version": "1.0.0",
+      "title": "Fix-Agent Pipeline (Patch Artifacts, Guarded)",
+      "category": "fix-agent",
+      "path": "prompts/fix-agent/008-fix-agent-pipeline.md"
+    },
+    {
+      "id": "009",
+      "version": "1.0.0",
+      "title": "Agent-Driven Architecture Doc",
+      "category": "architecture",
+      "path": "prompts/architecture/009-architecture-agents.md"
+    },
+    {
+      "id": "010",
+      "version": "1.0.0",
+      "title": "GitHub Actions Run Troubleshooting",
+      "category": "integration",
+      "path": "prompts/integration/010-actions-run-troubleshooting.md"
+    },
+    {
+      "id": "011",
+      "version": "1.0.0",
+      "title": "Full Agent System Integration + Dry-Run Validation",
+      "category": "integration",
+      "path": "prompts/integration/011-system-integration-and-dry-run.md"
+    }
+  ]
+}
