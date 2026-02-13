@@ -48,7 +48,7 @@ def main():
 
     # Root-Verzeichnis finden
     root_dir = Path(__file__).parent
-    backend_dir = root_dir / "backend"
+    django_dir = root_dir / "django"
 
     all_checks_passed = True
 
@@ -68,7 +68,7 @@ def main():
 
     # 2. WSGI-Datei prüfen
     print(f"\n{BLUE}2. WSGI-Konfiguration:{RESET}")
-    wsgi_file = backend_dir / "praxi_backend" / "wsgi.py"
+    wsgi_file = django_dir / "praxi_backend" / "wsgi.py"
     if check_file_exists(wsgi_file, "WSGI-Datei"):
         if not check_file_content(wsgi_file, "app = application", "Vercel Handler (app = application)"):
             all_checks_passed = False
@@ -90,12 +90,14 @@ def main():
 
     # 4. Settings prüfen
     print(f"\n{BLUE}4. Django Settings:{RESET}")
-    prod_settings = backend_dir / "praxi_backend" / "settings" / "prod.py"
+    prod_settings = django_dir / "praxi_backend" / "settings" / "prod.py"
     if check_file_exists(prod_settings, "Production Settings"):
         settings_checks = [
             ("SECURE_SSL_REDIRECT", "SSL Redirect aktiviert"),
             ("SECURE_PROXY_SSL_HEADER", "Proxy SSL Header konfiguriert"),
             ("STATICFILES_STORAGE", "Static Files Storage konfiguriert"),
+            ("DJANGO_SECRET_KEY must be set in production", "Secret Key Pflichtprüfung aktiv"),
+            ("DATABASE_URL", "DATABASE_URL in Production konfiguriert"),
         ]
         for check_text, desc in settings_checks:
             check_file_content(prod_settings, check_text, desc)
@@ -107,7 +109,7 @@ def main():
         vercel_checks = [
             ("@vercel/python", "Python Runtime konfiguriert"),
             ("python3.12", "Python Version 3.12"),
-            ("praxi_backend.wsgi", "WSGI-Pfad konfiguriert"),
+            ("django/praxi_backend/wsgi.py", "WSGI-Pfad konfiguriert"),
             ("praxi_backend.settings.prod", "Production Settings"),
         ]
         for check_text, desc in vercel_checks:

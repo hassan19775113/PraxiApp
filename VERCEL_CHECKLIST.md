@@ -11,8 +11,8 @@
 
 ### 2. Code vorbereiten
 - [ ] Alle Änderungen committet und gepusht
-- [ ] `backend/praxi_backend/wsgi.py` enthält `app = application` für Vercel
-- [ ] Production Settings in `backend/praxi_backend/settings/prod.py` konfiguriert
+- [ ] `django/praxi_backend/wsgi.py` enthält `app = application` für Vercel
+- [ ] Production Settings in `django/praxi_backend/settings/prod.py` konfiguriert
 
 ### 3. Datenbank einrichten
 - [ ] PostgreSQL-Datenbank erstellt (Vercel Postgres oder extern)
@@ -70,6 +70,11 @@ export DATABASE_URL="postgresql://..."
 export DJANGO_SETTINGS_MODULE=praxi_backend.settings.prod
 python manage.py migrate
 python manage.py createsuperuser
+
+# im aktuellen Repo stattdessen:
+cd django
+python manage.py migrate --settings=praxi_backend.settings.prod
+python manage.py createsuperuser --settings=praxi_backend.settings.prod
 ```
 
 **Option B - Via Vercel CLI:**

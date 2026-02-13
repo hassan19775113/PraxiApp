@@ -68,7 +68,7 @@ python -c "from django.core.management.utils import get_random_secret_key; print
    - Framework Preset: `Other`
    - Root Directory: `./` (Repository-Wurzel)
    - Build Command: `bash build_files.sh`
-   - Output Directory: `backend/staticfiles`
+   - Output Directory: `django/staticfiles`
 5. **Fügen Sie Umgebungsvariablen hinzu** (siehe oben)
 6. **Klicken Sie auf "Deploy"**
 
@@ -79,7 +79,7 @@ python -c "from django.core.management.utils import get_random_secret_key; print
 npm install -g vercel
 
 # In Ihr Projekt-Verzeichnis wechseln
-cd /path/to/backend-1
+cd /path/to/PraxiApp
 
 # Login bei Vercel
 vercel login
@@ -102,7 +102,7 @@ Nach dem ersten Deployment müssen Sie die Datenbank-Migrationen ausführen:
 ```bash
 # .env-Datei mit Production-Variablen erstellen
 # Führen Sie Migrationen aus
-cd backend
+cd django
 python manage.py migrate --settings=praxi_backend.settings.prod
 python manage.py createsuperuser --settings=praxi_backend.settings.prod
 ```
@@ -112,7 +112,7 @@ python manage.py createsuperuser --settings=praxi_backend.settings.prod
 Erstellen Sie eine temporäre API-Route für Migrationen (nur für Setup verwenden, dann entfernen!):
 
 ```python
-# backend/praxi_backend/views.py
+# django/praxi_backend/views.py
 from django.http import JsonResponse
 from django.core.management import call_command
 
