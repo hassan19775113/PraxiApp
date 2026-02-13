@@ -22,7 +22,7 @@ export class PatientsPage {
     this.statusFilter = page.locator('#statusFilter');
     this.riskFilter = page.locator('#riskFilter');
     this.noteTextarea = page.locator('form textarea[name="content"]');
-    this.noteSubmitButton = page.locator('form button[type="submit"]');
+    this.noteSubmitButton = page.getByRole('button', { name: /notiz speichern/i });
     this.notesTimeline = page.locator('.timeline-item');
   }
 

@@ -3,6 +3,7 @@ import { ApiClient } from '../../api-client';
 import { CalendarPage } from '../pages/calendar-page';
 import { AppointmentModalPage } from '../pages/appointment-modal-page';
 import { waitForOptionValue, waitForOptionValueMissing } from '../utils/select-utils';
+import { toModalDateTimeInputsInBrowser } from '../utils/modal-datetime';
 
 type AvailabilityDoctor = { id: number; name?: string };
 
@@ -13,19 +14,6 @@ type AppointmentDetail = {
   start_time: string;
   end_time: string;
 };
-
-function pad2(n: number) {
-  return String(n).padStart(2, '0');
-}
-
-function toModalDateTimeInputs(isoStart: string, isoEnd: string) {
-  const start = new Date(isoStart);
-  const end = new Date(isoEnd);
-  const dateStr = `${start.getFullYear()}-${pad2(start.getMonth() + 1)}-${pad2(start.getDate())}`;
-  const startStr = `${pad2(start.getHours())}:${pad2(start.getMinutes())}`;
-  const endStr = `${pad2(end.getHours())}:${pad2(end.getMinutes())}`;
-  return { dateStr, startStr, endStr };
-}
 
 async function createPatientId(api: ApiClient, suffix: string): Promise<number> {
   const res = await api.createPatient({
@@ -63,7 +51,11 @@ test('UI: booked patient is filtered out for an overlapping slot', async ({ page
     const freePatientId = await createPatientId(api, 'FREE');
 
     const baseline = await getAppointmentOrThrow(api, testData.appointmentId!);
-    const { dateStr, startStr, endStr } = toModalDateTimeInputs(baseline.start_time, baseline.end_time);
+    const { dateStr, startStr, endStr } = await toModalDateTimeInputsInBrowser(
+      page,
+      baseline.start_time,
+      baseline.end_time
+    );
 
     const calendar = new CalendarPage(page);
     const modal = new AppointmentModalPage(page);
@@ -72,7 +64,7 @@ test('UI: booked patient is filtered out for an overlapping slot', async ({ page
     await calendar.openNewAppointment();
     await modal.expectOpen();
 
-    const bookedPatientId = String(testData.patientId);
+    const bookedPatientId = String(baseline.patient_id);
     const freePatientIdStr = String(freePatientId);
 
     // Ensure dropdowns are populated (unfiltered).
@@ -80,7 +72,13 @@ test('UI: booked patient is filtered out for an overlapping slot', async ({ page
     await waitForOptionValue(modal.patientSelect, freePatientIdStr);
 
     // Trigger availability filtering.
-    await modal.updateTimesAndWaitForAvailability(dateStr, startStr, endStr);
+    const availabilityResponse = await modal.updateTimesAndWaitForAvailability(dateStr, startStr, endStr);
+    if (!availabilityResponse.ok()) {
+      const body = await availabilityResponse.text();
+      throw new Error(
+        `UI availability check failed: ${availabilityResponse.status()} ${availabilityResponse.statusText()} - ${body}`
+      );
+    }
 
     // Patient with an existing appointment in this window must be absent.
     await waitForOptionValueMissing(modal.patientSelect, bookedPatientId);

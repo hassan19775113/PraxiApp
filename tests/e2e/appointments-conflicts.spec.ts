@@ -3,6 +3,7 @@ import { ApiClient } from '../../api-client';
 import { CalendarPage } from '../pages/calendar-page';
 import { AppointmentModalPage } from '../pages/appointment-modal-page';
 import { waitForOptionValue, waitForOptionValueMissing } from '../utils/select-utils';
+import { toModalDateTimeInputsInBrowser } from '../utils/modal-datetime';
 
 type AvailabilityDoctor = { id: number; name?: string };
 
@@ -13,25 +14,6 @@ type AppointmentDetail = {
   start_time: string;
   end_time: string;
 };
-
-function pad2(n: number) {
-  return String(n).padStart(2, '0');
-}
-
-/**
- * Convert an appointment ISO datetime into the calendar modal's expected local inputs.
- * The modal builds a *local* Date from YYYY-MM-DD + HH:MM and then calls toISOString() for /api/availability/.
- */
-function toModalDateTimeInputs(isoStart: string, isoEnd: string) {
-  const start = new Date(isoStart);
-  const end = new Date(isoEnd);
-
-  const dateStr = `${start.getFullYear()}-${pad2(start.getMonth() + 1)}-${pad2(start.getDate())}`;
-  const startStr = `${pad2(start.getHours())}:${pad2(start.getMinutes())}`;
-  const endStr = `${pad2(end.getHours())}:${pad2(end.getMinutes())}`;
-
-  return { dateStr, startStr, endStr };
-}
 
 async function createPatientId(api: ApiClient, suffix: string): Promise<number> {
   const res = await api.createPatient({
@@ -81,7 +63,8 @@ test('UI: calendar modal filters out booked doctor + patient for overlapping tim
     const freePatientId = await createPatientId(api, 'FREE');
 
     const baseline = await getAppointmentOrThrow(api, testData.appointmentId!);
-    const { dateStr, startStr, endStr } = toModalDateTimeInputs(
+    const { dateStr, startStr, endStr } = await toModalDateTimeInputsInBrowser(
+      page,
       baseline.start_time,
       baseline.end_time
     );
@@ -93,8 +76,8 @@ test('UI: calendar modal filters out booked doctor + patient for overlapping tim
     await calendar.openNewAppointment();
     await modal.expectOpen();
 
-    const bookedDoctorId = String(testData.doctorId);
-    const bookedPatientId = String(testData.patientId);
+    const bookedDoctorId = String(baseline.doctor);
+    const bookedPatientId = String(baseline.patient_id);
     const freePatientIdStr = String(freePatientId);
 
     // Wait until dropdown data is loaded (unfiltered state).
@@ -105,7 +88,17 @@ test('UI: calendar modal filters out booked doctor + patient for overlapping tim
 
     // Trigger availability filtering for the exact booked time range.
     // The modal will call /api/availability/ and replace doctor/patient dropdown contents.
-    await modal.updateTimesAndWaitForAvailability(dateStr, startStr, endStr);
+    const availabilityResponse = await modal.updateTimesAndWaitForAvailability(
+      dateStr,
+      startStr,
+      endStr
+    );
+    if (!availabilityResponse.ok()) {
+      const body = await availabilityResponse.text();
+      throw new Error(
+        `UI availability check failed: ${availabilityResponse.status()} ${availabilityResponse.statusText()} - ${body}`
+      );
+    }
 
     // Assert the booked doctor is filtered out.
     await waitForOptionValueMissing(modal.doctorSelect, bookedDoctorId);
@@ -144,7 +137,9 @@ test('API: rejects overlapping appointment for the same doctor', async ({ testDa
 
     const body = await res.json();
     // From appointments.validators.raise_doctor_unavailable()
-    expect(body?.detail).toBe('Doctor unavailable.');
+    const detail = body?.detail;
+    const detailText = Array.isArray(detail) ? String(detail[0] ?? '') : String(detail ?? '');
+    expect(detailText).toBe('Doctor unavailable.');
     expect(Array.isArray(body?.alternatives)).toBeTruthy();
   } finally {
     await api.dispose();

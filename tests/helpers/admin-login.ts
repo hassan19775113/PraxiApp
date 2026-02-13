@@ -11,7 +11,9 @@ export async function adminLoginIfNeeded(page: Page, username?: string, password
   const hasUsername = (await page.locator('#id_username').count()) > 0;
   if (!hasUsername) return;
 
-  const hasPassword = (await page.locator('#id_password').count()) > 0;
+  // Django admin user add/change forms can include a *div* with id="id_password".
+  // Only treat as login when the password field is actually an input.
+  const hasPassword = (await page.locator('input#id_password').count()) > 0;
   if (!hasPassword) return;
 
   if (!username || !password) {
@@ -21,7 +23,7 @@ export async function adminLoginIfNeeded(page: Page, username?: string, password
   }
 
   const userInput = page.locator('#id_username');
-  const passInput = page.locator('#id_password');
+  const passInput = page.locator('input#id_password');
 
   await expect(userInput).toBeVisible();
   await expect(passInput).toBeVisible();

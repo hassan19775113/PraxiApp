@@ -23,6 +23,15 @@ export class AppointmentModal {
         
         this.init();
     }
+
+    getAuthHeaders() {
+        try {
+            const token = localStorage.getItem('access_token');
+            return token ? { 'Authorization': `Bearer ${token}` } : {};
+        } catch (e) {
+            return {};
+        }
+    }
     
     init() {
         this.createModal();
@@ -494,6 +503,7 @@ export class AppointmentModal {
             const response = await fetch('/api/appointment-types/?active=true', {
                 headers: {
                     'Accept': 'application/json',
+                    ...this.getAuthHeaders(),
                 },
                 credentials: 'same-origin'
             });
@@ -543,6 +553,7 @@ export class AppointmentModal {
             const response = await fetch('/api/appointments/doctors/', {
                 headers: {
                     'Accept': 'application/json',
+                    ...this.getAuthHeaders(),
                 },
                 credentials: 'same-origin'
             });
@@ -585,6 +596,7 @@ export class AppointmentModal {
             const response = await fetch('/api/patients/search/', {
                 headers: {
                     'Accept': 'application/json',
+                    ...this.getAuthHeaders(),
                 },
                 credentials: 'same-origin'
             });
@@ -627,6 +639,7 @@ export class AppointmentModal {
             const response = await fetch('/api/resources/?type=room&active=true', {
                 headers: {
                     'Accept': 'application/json',
+                    ...this.getAuthHeaders(),
                 },
                 credentials: 'same-origin'
             });
@@ -764,6 +777,7 @@ export class AppointmentModal {
             const response = await fetch(url, {
                 headers: {
                     'Accept': 'application/json',
+                    ...this.getAuthHeaders(),
                 },
                 credentials: 'same-origin'
             });

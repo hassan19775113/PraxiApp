@@ -3,6 +3,7 @@ import { ApiClient } from '../../api-client';
 import { CalendarPage } from '../pages/calendar-page';
 import { AppointmentModalPage } from '../pages/appointment-modal-page';
 import { waitForOptionValue, waitForOptionValueMissing } from '../utils/select-utils';
+import { toModalDateTimeInputsInBrowser } from '../utils/modal-datetime';
 
 type AvailabilityDoctor = { id: number; name?: string };
 
@@ -22,29 +23,10 @@ type AppointmentDetail = {
 
 type Resource = { id: number; name: string; type: string; active?: boolean };
 
-function pad2(n: number) {
-  return String(n).padStart(2, '0');
-}
-
 function addMinutes(iso: string, minutes: number) {
   const d = new Date(iso);
   d.setMinutes(d.getMinutes() + minutes);
   return d.toISOString();
-}
-
-/**
- * Convert an appointment ISO datetime into the calendar modal's expected local inputs.
- * The modal builds a *local* Date from YYYY-MM-DD + HH:MM and then calls toISOString() for /api/availability/.
- */
-function toModalDateTimeInputs(isoStart: string, isoEnd: string) {
-  const start = new Date(isoStart);
-  const end = new Date(isoEnd);
-
-  const dateStr = `${start.getFullYear()}-${pad2(start.getMonth() + 1)}-${pad2(start.getDate())}`;
-  const startStr = `${pad2(start.getHours())}:${pad2(start.getMinutes())}`;
-  const endStr = `${pad2(end.getHours())}:${pad2(end.getMinutes())}`;
-
-  return { dateStr, startStr, endStr };
 }
 
 async function createPatientId(api: ApiClient, suffix: string): Promise<number> {
@@ -146,7 +128,11 @@ test.describe('Scheduling conflicts (mega suite)', () => {
       const freePatientId = await createPatientId(api, 'FREE');
 
       const baseline = await getAppointmentOrThrow(api, testData.appointmentId!);
-      const { dateStr, startStr, endStr } = toModalDateTimeInputs(baseline.start_time, baseline.end_time);
+      const { dateStr, startStr, endStr } = await toModalDateTimeInputsInBrowser(
+        page,
+        baseline.start_time,
+        baseline.end_time
+      );
 
       const calendar = new CalendarPage(page);
       const modal = new AppointmentModalPage(page);
@@ -156,8 +142,8 @@ test.describe('Scheduling conflicts (mega suite)', () => {
       await modal.expectOpen();
       await modal.waitForDropdownsLoaded();
 
-      const bookedDoctorId = String(testData.doctorId);
-      const bookedPatientId = String(testData.patientId);
+      const bookedDoctorId = String(baseline.doctor);
+      const bookedPatientId = String(baseline.patient_id);
       const freePatientIdStr = String(freePatientId);
 
       // Wait until dropdown data is loaded (unfiltered state).
@@ -166,7 +152,17 @@ test.describe('Scheduling conflicts (mega suite)', () => {
       await waitForOptionValue(modal.patientSelect, freePatientIdStr);
 
       // Trigger availability filtering for the exact booked time range.
-      await modal.updateTimesAndWaitForAvailability(dateStr, startStr, endStr);
+      const availabilityResponse = await modal.updateTimesAndWaitForAvailability(
+        dateStr,
+        startStr,
+        endStr
+      );
+      if (!availabilityResponse.ok()) {
+        const body = await availabilityResponse.text();
+        throw new Error(
+          `UI availability check failed: ${availabilityResponse.status()} ${availabilityResponse.statusText()} - ${body}`
+        );
+      }
 
       // Assert: the booked doctor is filtered out.
       await waitForOptionValueMissing(modal.doctorSelect, bookedDoctorId);
@@ -205,7 +201,9 @@ test.describe('Scheduling conflicts (mega suite)', () => {
 
       const body = await res.json();
       // From appointments.validators.raise_doctor_unavailable()
-      expect(body?.detail).toBe('Doctor unavailable.');
+      const detail = body?.detail;
+      const detailText = Array.isArray(detail) ? String(detail[0] ?? '') : String(detail ?? '');
+      expect(detailText).toBe('Doctor unavailable.');
       expect(Array.isArray(body?.alternatives)).toBeTruthy();
     } finally {
       await api.dispose();
@@ -225,7 +223,11 @@ test.describe('Scheduling conflicts (mega suite)', () => {
       const freePatientId = await createPatientId(api, 'FREE');
 
       const baseline = await getAppointmentOrThrow(api, testData.appointmentId!);
-      const { dateStr, startStr, endStr } = toModalDateTimeInputs(baseline.start_time, baseline.end_time);
+      const { dateStr, startStr, endStr } = await toModalDateTimeInputsInBrowser(
+        page,
+        baseline.start_time,
+        baseline.end_time
+      );
 
       const calendar = new CalendarPage(page);
       const modal = new AppointmentModalPage(page);
@@ -235,14 +237,24 @@ test.describe('Scheduling conflicts (mega suite)', () => {
       await modal.expectOpen();
       await modal.waitForDropdownsLoaded();
 
-      const bookedPatientId = String(testData.patientId);
+      const bookedPatientId = String(baseline.patient_id);
       const freePatientIdStr = String(freePatientId);
 
       // Ensure patients are present before filtering.
       await waitForOptionValue(modal.patientSelect, bookedPatientId);
       await waitForOptionValue(modal.patientSelect, freePatientIdStr);
 
-      await modal.updateTimesAndWaitForAvailability(dateStr, startStr, endStr);
+      const availabilityResponse = await modal.updateTimesAndWaitForAvailability(
+        dateStr,
+        startStr,
+        endStr
+      );
+      if (!availabilityResponse.ok()) {
+        const body = await availabilityResponse.text();
+        throw new Error(
+          `UI availability check failed: ${availabilityResponse.status()} ${availabilityResponse.statusText()} - ${body}`
+        );
+      }
 
       // Assert: booked patient is filtered out, but free patient remains selectable.
       await waitForOptionValueMissing(modal.patientSelect, bookedPatientId);

@@ -37,6 +37,15 @@ export class ModernCalendar {
         
         this.init();
     }
+
+    getAuthHeaders() {
+        try {
+            const token = localStorage.getItem('access_token');
+            return token ? { 'Authorization': `Bearer ${token}` } : {};
+        } catch (e) {
+            return {};
+        }
+    }
     
     init() {
         this.modal = new AppointmentModal(
@@ -597,6 +606,7 @@ export class ModernCalendar {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
                     'X-CSRFToken': csrfToken,
+                    ...this.getAuthHeaders(),
                 },
                 credentials: 'same-origin',
                 body: JSON.stringify(payload),
@@ -677,6 +687,7 @@ export class ModernCalendar {
                 headers: {
                     'Accept': 'application/json',
                     'X-CSRFToken': csrfToken,
+                    ...this.getAuthHeaders(),
                 },
                 credentials: 'same-origin',
             });
@@ -766,6 +777,7 @@ export class ModernCalendar {
             const response = await fetch(url, {
                 headers: {
                     'Accept': 'application/json',
+                    ...this.getAuthHeaders(),
                 },
                 credentials: 'same-origin'
             });

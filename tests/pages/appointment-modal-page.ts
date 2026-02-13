@@ -109,14 +109,72 @@ export class AppointmentModalPage {
   }
 
   async updateTimesAndWaitForAvailability(date: string, start: string, end: string) {
-    await waitForResponseAfter(
+    // The modal triggers an availability check shortly after opening (setTimeout 500ms).
+    // If we try to trigger another check during that in-flight request, the modal will
+    // ignore it (isCheckingAvailability guard). Wait until it's idle first.
+    await this.page.waitForFunction(
+      () => {
+        const modal = (window as any).modernCalendar?.modal;
+        return !modal || !modal.isCheckingAvailability;
+      },
+      { timeout: 10_000 }
+    );
+
+    // The modal listens to *change* events (not input) on date/time fields.
+    // Also, the modal triggers an availability check 500ms after opening with
+    // default times; we must ensure we wait for the request caused by *our* inputs.
+    const expected = await this.page.evaluate(
+      ({ date, start, end }) => {
+        const buildLocalDateTime = (dateStr: string, timeStr: string) => {
+          const [year, month, day] = dateStr.split('-').map(Number);
+          const [hour, minute] = timeStr.split(':').map(Number);
+          return new Date(year, month - 1, day, hour, minute, 0, 0);
+        };
+
+        const startISO = buildLocalDateTime(date, start).toISOString();
+        const endISO = buildLocalDateTime(date, end).toISOString();
+        return {
+          startISO,
+          endISO,
+          startParam: encodeURIComponent(startISO),
+          endParam: encodeURIComponent(endISO),
+        };
+      },
+      { date, start, end }
+    );
+
+    const { response } = await waitForResponseAfter(
       this.page,
       async () => {
-        await this.updateTimes(date, start, end);
+        // Set values and trigger a real in-page `change` event.
+        // This avoids relying on Playwright's input event semantics for date/time inputs.
+        await this.page.evaluate(
+          ({ date, start, end }) => {
+            const dateField = document.getElementById('modalDate');
+            const startTimeField = document.getElementById('modalStartTime');
+            const endTimeField = document.getElementById('modalEndTime');
+            if (!dateField || !startTimeField || !endTimeField) return;
+            (dateField as HTMLInputElement).value = date;
+            (startTimeField as HTMLInputElement).value = start;
+            (endTimeField as HTMLInputElement).value = end;
+            endTimeField.dispatchEvent(new Event('change', { bubbles: true }));
+          },
+          { date, start, end }
+        );
       },
-      (r) => r.url().includes('/api/availability/?') && r.request().method() === 'GET',
+      (r) => {
+        if (r.request().method() !== 'GET') return false;
+        const url = r.url();
+        return (
+          url.includes('/api/availability/?') &&
+          url.includes(`start=${expected.startParam}`) &&
+          url.includes(`end=${expected.endParam}`)
+        );
+      },
       10_000
     );
+
+    return response;
   }
 
   async save() {
@@ -124,7 +182,7 @@ export class AppointmentModalPage {
   }
 
   async saveAndWaitForAppointmentsMutation(timeout = 10_000) {
-    await waitForResponseAfter(
+    const { response } = await waitForResponseAfter(
       this.page,
       async () => {
         await this.saveButton.click();
@@ -136,6 +194,8 @@ export class AppointmentModalPage {
       },
       timeout
     );
+
+    return response;
   }
 
   async delete() {

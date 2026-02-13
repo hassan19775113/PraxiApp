@@ -45,7 +45,7 @@ async function createDoctorViaAdmin(page: Page, opts: { username: string; email:
 
   await Promise.all([
     page.waitForLoadState('domcontentloaded'),
-    page.getByRole('button', { name: /save/i }).click(),
+    page.locator('input[name="_save"]').click(),
   ]);
 
   // URL after save is typically .../core/user/<id>/change/
@@ -86,7 +86,7 @@ test.describe('Doctors CRUD (Admin UI)', () => {
 
     const suffix = `${Date.now()}`;
     const username = `e2e_doctor_${suffix}`;
-    const password = `Pw!${suffix}`;
+    const password = `P@ssw0rd!${Math.random().toString(36).slice(2, 10)}A1`;
     const email = `e2e.doctor.${suffix}@example.com`;
     const firstName = 'E2E';
     const lastName = `Doctor ${suffix}`;
@@ -106,7 +106,7 @@ test.describe('Doctors CRUD (Admin UI)', () => {
     await page.locator('#id_last_name').fill(`${lastName} Updated`);
     await Promise.all([
       page.waitForLoadState('domcontentloaded'),
-      page.getByRole('button', { name: /save/i }).click(),
+      page.locator('input[name="_save"]').click(),
     ]);
     await expect(page.locator('.messagelist')).toContainText(/changed successfully|success/i);
 
@@ -124,6 +124,9 @@ test.describe('Doctors CRUD (Admin UI)', () => {
 
     try {
       await page.goto(`${baseURL}/praxi_backend/dashboard/`);
+      await page.waitForLoadState('domcontentloaded');
+      // If we got redirected to the admin login page (session expired / missing cookie), recover.
+      await adminLoginIfNeeded(page, process.env.E2E_USER, process.env.E2E_PASSWORD);
       const nav = new NavPage(page);
       await nav.expectHeaderVisible();
       await nav.gotoAdmin();
@@ -132,7 +135,7 @@ test.describe('Doctors CRUD (Admin UI)', () => {
 
       const suffix = `${Date.now()}`;
       const username = `e2e_doctor_dep_${suffix}`;
-      const password = `Pw!${suffix}`;
+      const password = `P@ssw0rd!${Math.random().toString(36).slice(2, 10)}A1`;
       const email = `e2e.doctor.dep.${suffix}@example.com`;
       userId = await createDoctorViaAdmin(page, {
         username,
@@ -219,8 +222,8 @@ test.describe('Doctors CRUD (Admin UI)', () => {
     // Submit with missing fields
     await Promise.all([
       page.waitForLoadState('domcontentloaded'),
-      page.getByRole('button', { name: /save/i }).click(),
+      page.locator('input[name="_save"]').click(),
     ]);
-    await expect(page.locator('.errorlist')).toBeVisible();
+    await expect(page.locator('.errorlist').first()).toBeVisible();
   });
 });

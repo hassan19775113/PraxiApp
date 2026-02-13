@@ -1,5 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const artifactsOff = process.env.PW_ARTIFACTS === '0';
+
 export default defineConfig({
   // Alle Tests liegen jetzt unter tests/
   testDir: './tests',
@@ -13,9 +15,9 @@ export default defineConfig({
     baseURL: process.env.BASE_URL || 'http://localhost:8000',
     headless: true,
 
-    trace: 'retain-on-failure',
-    video: 'retain-on-failure',
-    screenshot: 'only-on-failure',
+    trace: artifactsOff ? 'off' : 'retain-on-failure',
+    video: artifactsOff ? 'off' : 'retain-on-failure',
+    screenshot: artifactsOff ? 'off' : 'only-on-failure',
 
     // Resolve via repo root relative path for CI stability
     storageState: 'tests/fixtures/storageState.json',

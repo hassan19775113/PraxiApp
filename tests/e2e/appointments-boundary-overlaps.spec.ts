@@ -116,7 +116,9 @@ test('API: boundary overlap rule (end == start) is allowed; partial overlap is r
     expect(partialRes.status()).toBe(400);
 
     const body = await partialRes.json();
-    expect(body?.detail).toBe('Doctor unavailable.');
+    const detail = body?.detail;
+    const detailText = Array.isArray(detail) ? String(detail[0] ?? '') : String(detail ?? '');
+    expect(detailText).toBe('Doctor unavailable.');
   } finally {
     for (const id of createdIds) {
       await api.deleteAppointment(id);

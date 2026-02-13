@@ -72,8 +72,8 @@ test('UI: booked doctor is filtered out for an overlapping slot', async ({ page,
     await calendar.openNewAppointment();
     await modal.expectOpen();
 
-    const bookedDoctorId = String(testData.doctorId);
-    const bookedPatientId = String(testData.patientId);
+    const bookedDoctorId = String(baseline.doctor);
+    const bookedPatientId = String(baseline.patient_id);
 
     // Ensure the dropdowns are populated (unfiltered state).
     await waitForOptionValue(modal.doctorSelect, bookedDoctorId);
@@ -81,7 +81,13 @@ test('UI: booked doctor is filtered out for an overlapping slot', async ({ page,
     await waitForOptionValue(modal.patientSelect, String(freePatientId));
 
     // Trigger availability filtering for the time window that is already booked.
-      await modal.updateTimesAndWaitForAvailability(dateStr, startStr, endStr);
+    const availabilityResponse = await modal.updateTimesAndWaitForAvailability(dateStr, startStr, endStr);
+    if (!availabilityResponse.ok()) {
+      const body = await availabilityResponse.text();
+      throw new Error(
+        `UI availability check failed: ${availabilityResponse.status()} ${availabilityResponse.statusText()} - ${body}`
+      );
+    }
 
     // The doctor with an existing appointment must be absent from the available list.
     await waitForOptionValueMissing(modal.doctorSelect, bookedDoctorId);
@@ -117,7 +123,9 @@ test('API: rejects overlapping appointment for the same doctor', async ({ testDa
 
     // From appointments.validators.raise_doctor_unavailable()
     const body = await res.json();
-    expect(body?.detail).toBe('Doctor unavailable.');
+    const detail = body?.detail;
+    const detailText = Array.isArray(detail) ? String(detail[0] ?? '') : String(detail ?? '');
+    expect(detailText).toBe('Doctor unavailable.');
     expect(Array.isArray(body?.alternatives)).toBeTruthy();
   } finally {
     await api.dispose();

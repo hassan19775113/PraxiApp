@@ -3,6 +3,7 @@ from praxi_backend.patients.models import Patient
 from praxi_backend.patients.permissions import PatientPermission
 from praxi_backend.patients.serializers import PatientReadSerializer, PatientWriteSerializer
 from praxi_backend.patients.services import search_patients
+from rest_framework import status
 from rest_framework import generics
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -40,9 +41,21 @@ class PatientListCreateView(generics.ListCreateAPIView):
             return PatientWriteSerializer
         return PatientReadSerializer
 
-    def perform_create(self, serializer):
-        obj = serializer.save()
-        log_patient_action(self.request.user, "patient_created", patient_id=obj.id)
+    def create(self, request, *args, **kwargs):
+        """Create a patient and return the read representation.
+
+        The write serializer accepts the legacy PK `id` as write_only, but clients
+        (including E2E tests) need the created patient's id. Therefore we return
+        `PatientReadSerializer` in the response.
+        """
+        write_serializer = self.get_serializer(data=request.data)
+        write_serializer.is_valid(raise_exception=True)
+        obj = write_serializer.save()
+        log_patient_action(request.user, "patient_created", patient_id=obj.id)
+
+        read_data = PatientReadSerializer(obj).data
+        headers = self.get_success_headers(read_data)
+        return Response(read_data, status=status.HTTP_201_CREATED, headers=headers)
 
 
 class PatientRetrieveUpdateView(generics.RetrieveUpdateAPIView):

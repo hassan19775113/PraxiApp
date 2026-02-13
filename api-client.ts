@@ -14,11 +14,13 @@ export class ApiClient {
   private ctx: APIRequestContext | null = null;
 
   private generateLegacyPatientId(): number {
-    // Patient.id is a legacy integer PK (required). Use epoch seconds + small random
-    // to stay under 32-bit int range and avoid collisions in parallel tests.
-    const epochSeconds = Math.floor(Date.now() / 1000);
-    const jitter = Math.floor(Math.random() * 1000);
-    return epochSeconds + jitter;
+    // Patient.id is a legacy integer PK (required).
+    // Use epoch milliseconds modulo a safe 32-bit-ish range to minimize collisions
+    // while staying under the signed 32-bit int max.
+    const epochMs = Date.now();
+    const base = epochMs % 2_000_000_000;
+    const jitter = Math.floor(Math.random() * 10_000);
+    return base + jitter;
   }
 
   private getAccessTokenFromStorageState(): string {
@@ -79,6 +81,29 @@ export class ApiClient {
     return this.get('/api/appointment-types/');
   }
 
+  async getMe() {
+    return this.get('/api/auth/me/');
+  }
+
+  async suggestAppointment(params: {
+    doctor_id: number | string;
+    type_id?: number | string;
+    duration_minutes?: number;
+    start_date?: string;
+    limit?: number;
+    resource_ids?: Array<number | string>;
+  }) {
+    const query: Record<string, string> = {
+      doctor_id: String(params.doctor_id),
+    };
+    if (params.type_id !== undefined) query.type_id = String(params.type_id);
+    if (params.duration_minutes !== undefined) query.duration_minutes = String(params.duration_minutes);
+    if (params.start_date !== undefined) query.start_date = String(params.start_date);
+    if (params.limit !== undefined) query.limit = String(params.limit);
+    if (params.resource_ids && params.resource_ids.length) query.resource_ids = params.resource_ids.map(String).join(',');
+    return this.get('/api/appointments/suggest/', query);
+  }
+
   async listAppointments(params?: Record<string, string>) {
     return this.get('/api/appointments/', params);
   }
@@ -113,10 +138,13 @@ export class ApiClient {
   }
 
   async createPatient(payload?: Record<string, any>) {
-    const body = payload || {
-      id: this.generateLegacyPatientId(),
+    const base = payload || {
       first_name: 'E2E',
       last_name: `Patient ${Date.now()}`,
+    };
+    const body = {
+      id: base?.id ?? this.generateLegacyPatientId(),
+      ...base,
     };
     // Endpoint derived from index links (/api/patients)
     return this.post('/api/patients/', body);

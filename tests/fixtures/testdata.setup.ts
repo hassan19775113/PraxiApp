@@ -10,6 +10,13 @@ type TestData = {
   patientId?: number | string;
   appointmentId?: number | string;
   appointmentTypeId?: number | string;
+  appointmentStartTime?: string;
+  appointmentEndTime?: string;
+};
+
+type MePayload = {
+  id: number | string;
+  role?: { name?: string } | null;
 };
 
 export const test = base.extend<{ testData: TestData }>({
@@ -21,35 +28,49 @@ export const test = base.extend<{ testData: TestData }>({
 
     const pickId = (obj: any): number | string | undefined => {
       if (!obj) return undefined;
-      return obj.id ?? obj.pk ?? obj.user_id ?? obj.user?.id;
+      return obj.id ?? obj.pk ?? obj.patient_id ?? obj.user_id ?? obj.user?.id;
     };
 
     try {
+      // Determine current user role (doctors are only allowed to create for themselves)
+      const meRes = await api.getMe();
+      const me: MePayload | null = meRes.ok() ? await meRes.json() : null;
+      const myRoleName = me?.role?.name;
+
       // Ensure we have a doctor
       // NOTE: /api/appointments/doctors/ is list-only (GET). Creating doctors is not exposed via API.
       // For E2E we rely on seeded doctor users and pick the first one.
-      const doctorsRes = await api.listDoctors();
-      if (!doctorsRes.ok()) {
-        throw new Error(`listDoctors failed: ${doctorsRes.status()}`);
+      if (myRoleName === 'doctor' && me?.id) {
+        data.doctorId = me.id;
+      } else {
+        const doctorsRes = await api.listDoctors();
+        if (!doctorsRes.ok()) {
+          const body = await doctorsRes.text();
+          throw new Error(`listDoctors failed: ${doctorsRes.status()} - ${body}`);
+        }
+        const doctors = await doctorsRes.json();
+        const firstDoctor = Array.isArray(doctors) ? doctors[0] : doctors.results?.[0];
+        const doctorId = pickId(firstDoctor);
+        if (!doctorId) {
+          const summary = Array.isArray(doctors)
+            ? `array(len=${doctors.length})`
+            : `object(keys=${Object.keys(doctors || {}).join(',')})`;
+          throw new Error(`No doctors available (expected seeded doctor users). doctors payload: ${summary}`);
+        }
+        data.doctorId = doctorId;
       }
-      const doctors = await doctorsRes.json();
-      const firstDoctor = Array.isArray(doctors) ? doctors[0] : doctors.results?.[0];
-      const doctorId = pickId(firstDoctor);
-      if (!doctorId) {
-        const summary = Array.isArray(doctors)
-          ? `array(len=${doctors.length})`
-          : `object(keys=${Object.keys(doctors || {}).join(',')})`;
-        throw new Error(`No doctors available (expected seeded doctor users). doctors payload: ${summary}`);
-      }
-      data.doctorId = doctorId;
 
       // Ensure we have a patient
       const patientRes = await api.createPatient();
       if (patientRes.ok()) {
         const patient = await patientRes.json();
-        data.patientId = patient.id || patient.pk;
+        data.patientId = pickId(patient);
+        if (!data.patientId) {
+          throw new Error(`createPatient returned no id (keys: ${Object.keys(patient || {}).join(',')})`);
+        }
       } else {
-        throw new Error(`createPatient failed: ${patientRes.status()}`);
+        const body = await patientRes.text();
+        throw new Error(`createPatient failed: ${patientRes.status()} - ${body}`);
       }
 
       // Get an appointment type to use
@@ -60,28 +81,90 @@ export const test = base.extend<{ testData: TestData }>({
         if (!firstType) throw new Error('No appointment types available');
         data.appointmentTypeId = firstType.id;
       } else {
-        throw new Error(`getAppointmentTypes failed: ${typeRes.status()}`);
+        const body = await typeRes.text();
+        throw new Error(`getAppointmentTypes failed: ${typeRes.status()} - ${body}`);
       }
 
       // Create appointment
-      // Use a stable slot (10:00-10:30 UTC today) so the calendar UI reliably shows it.
-      const now = new Date();
-      const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 10, 0, 0));
-      const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 10, 30, 0));
-      const apptPayload = {
-        patient_id: data.patientId,
-        doctor: data.doctorId,
-        type: data.appointmentTypeId,
-        start_time: start.toISOString(),
-        end_time: end.toISOString(),
-        notes: 'E2E seed appointment',
-      };
-      const apptRes = await api.createAppointment(apptPayload);
-      if (apptRes.ok()) {
-        const appt = await apptRes.json();
-        data.appointmentId = appt.id || appt.pk;
-      } else {
-        throw new Error(`createAppointment failed: ${apptRes.status()}`);
+      // Ask backend for an available slot to avoid flakiness from working hours / breaks.
+      const isDoctorUser = myRoleName === 'doctor';
+      // Spread parallel test workers across different days to reduce collisions.
+      const startDateSeed = new Date(Date.now() + Math.floor(Math.random() * 7) * 24 * 60 * 60 * 1000);
+      let cursorDate = startDateSeed;
+
+      let created = false;
+      let lastError: string | null = null;
+
+      for (let attempt = 0; attempt < 5 && !created; attempt++) {
+        const start_date = cursorDate.toISOString().slice(0, 10);
+
+        const suggestRes = await api.suggestAppointment({
+          doctor_id: data.doctorId!,
+          type_id: data.appointmentTypeId,
+          start_date,
+          limit: 5,
+        });
+        if (!suggestRes.ok()) {
+          const body = await suggestRes.text();
+          throw new Error(`suggestAppointment failed: ${suggestRes.status()} - ${body}`);
+        }
+
+        const suggest = await suggestRes.json();
+        const primary = Array.isArray(suggest?.primary_suggestions) ? suggest.primary_suggestions : [];
+        const fallbackItems = Array.isArray(suggest?.fallback_suggestions) ? suggest.fallback_suggestions : [];
+
+        const candidates: Array<{ slot: any; doctorId?: number | string }> = [];
+        for (const s of primary) candidates.push({ slot: s });
+
+        if (!isDoctorUser) {
+          for (const fb of fallbackItems) {
+            const fbDoctorId = pickId(fb?.doctor);
+            const suggestions = Array.isArray(fb?.suggestions) ? fb.suggestions : [];
+            for (const s of suggestions) candidates.push({ slot: s, doctorId: fbDoctorId });
+          }
+        }
+
+        for (const c of candidates) {
+          const slot = c.slot;
+          if (!slot?.start_time || !slot?.end_time) continue;
+
+          // For admin/assistant flows, allow taking the suggested fallback doctor.
+          if (!isDoctorUser && c.doctorId) data.doctorId = c.doctorId;
+
+          const apptPayload = {
+            patient_id: data.patientId,
+            doctor: data.doctorId,
+            type: data.appointmentTypeId,
+            start_time: String(slot.start_time),
+            end_time: String(slot.end_time),
+            notes: 'E2E seed appointment',
+          };
+
+          const apptRes = await api.createAppointment(apptPayload);
+          if (apptRes.ok()) {
+            const appt = await apptRes.json();
+            data.appointmentId = appt.id || appt.pk;
+            data.appointmentStartTime = appt.start_time;
+            data.appointmentEndTime = appt.end_time;
+            created = true;
+            break;
+          }
+
+          const body = await apptRes.text();
+          lastError = `createAppointment failed: ${apptRes.status()} - ${body}`;
+
+          // Doctor unavailable can happen due to parallel workers choosing the same slot.
+          // Try another suggested slot/day.
+          if (apptRes.status() !== 400 || !body.includes('Doctor unavailable')) {
+            throw new Error(lastError);
+          }
+        }
+
+        cursorDate = new Date(cursorDate.getTime() + 24 * 60 * 60 * 1000);
+      }
+
+      if (!created) {
+        throw new Error(lastError || 'Failed to create seed appointment after retries');
       }
 
       await use(data);
