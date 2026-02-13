@@ -950,7 +950,7 @@ jobs:
       - ci-dashboard-agent
       - publish-dashboard
       - send-ci-logs
-    if: ${{ always() && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+    if: ${{ false }}
     env:
       POSTGRES_USER: praxi
       POSTGRES_PASSWORD: praxi
