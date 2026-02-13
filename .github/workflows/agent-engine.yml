@@ -1,12 +1,23 @@
 name: Agent Engine
 
+# Make the run title human-readable in the Actions UI (avoid showing workflow file path strings).
+run-name: >-
+  Agent Engine • ${{ github.event_name }} • ${{ github.ref_name }} • run ${{ github.run_id }}
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
   workflow_dispatch:
+    inputs:
+      enable_public_tunnel:
+        description: 'If true, start a public cloudflared tunnel on full success (manual runs only)'
+        type: boolean
+        required: false
+        default: false
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: agent-engine-${{ github.run_id }}
@@ -14,39 +25,37 @@ concurrency:
 
 jobs:
   auth-validator:
+    name: Auth Validator
     uses: ./.github/workflows/backend-setup.yml
     with:
-      agent_command: node scripts/agents/auth-validator.js > agent-outputs/auth-validator.json
+      generate_storage_state: false
+      agent_command: bash -c "set -eo pipefail; mkdir -p agent-outputs; node scripts/agents/auth-validator.js | tee agent-outputs/auth-validator.json >/dev/null"
       upload_artifact_name: auth-validator-output
       upload_artifact_path: agent-outputs/auth-validator.json
-      upload_storage_state: true
-      storage_state_artifact_name: storage-state
-      storage_state_path: tests/fixtures/storageState.json
       logs_artifact_name: backend-logs-auth-validator
 
   seed-orchestrator:
+    name: Seed Orchestrator
     needs: auth-validator
     uses: ./.github/workflows/backend-setup.yml
     with:
       agent_command: bash -c "export SEED_COMMAND=\"python django/manage.py seed\" && node scripts/agents/seed-orchestrator.js" > agent-outputs/seed-orchestrator.json
       upload_artifact_name: seed-orchestrator-output
       upload_artifact_path: agent-outputs/seed-orchestrator.json
-      download_storage_state: true
-      storage_state_artifact_name: storage-state
       logs_artifact_name: backend-logs-seed-orchestrator
 
   page-smoke:
+    name: Page Smoke
     needs: seed-orchestrator
     uses: ./.github/workflows/backend-setup.yml
     with:
       agent_command: node scripts/agents/page-smoke.cjs > agent-outputs/page-smoke.json
       upload_artifact_name: page-smoke-output
       upload_artifact_path: agent-outputs/page-smoke.json
-      download_storage_state: true
-      storage_state_artifact_name: storage-state
       logs_artifact_name: backend-logs-page-smoke
 
   e2e-tests:
+    name: E2E Tests
     needs: page-smoke
     uses: ./.github/workflows/backend-setup.yml
     with:
@@ -58,32 +67,18 @@ jobs:
         logs/playwright.log
         playwright-report/
         test-results/
-      download_storage_state: true
-      storage_state_artifact_name: storage-state
       logs_artifact_name: backend-logs-e2e-tests
 
   startup-fix-agent:
-    name: Startup Fix Agent (on E2E failure)
+    name: Startup Fix Agent (prepare self-heal context)
     needs: e2e-tests
     if: ${{ always() && github.event_name == 'workflow_dispatch' && needs.e2e-tests.result == 'failure' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    permissions:
-      contents: write
-    env:
-      AI_FIX_BRANCH: ai-fix
-      MAX_ITER: '1'
+    # NOTE: this job must not edit code; it only prepares structured context.
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Checkout tooling (workflow ref)
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.sha }}
-          path: tooling
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -103,84 +98,53 @@ jobs:
           name: backend-logs-e2e-tests
           path: artifacts/backend-logs
 
-      - name: Prepare ai-fix branch
+      - name: Prepare self-heal context
+        # Integration point: collect logs and fetch Developer-Agent classification + self-heal plan.
+        shell: bash
+        env:
+          AGENT_TOKEN: ${{ secrets.AGENT_TOKEN }}
+          CLOUD_AGENT_URL: https://praxi-app.vercel.app/api/ci/logs
+          E2E_STATUS: ${{ needs.e2e-tests.result }}
+        run: |
+          set -euo pipefail
+          mkdir -p self-heal
+          node tools/self-heal/prepare-context.mjs --out-dir self-heal
+
+      - name: Ensure context exists
+        if: ${{ always() }}
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git fetch origin "${AI_FIX_BRANCH}" --quiet || true
-          if git show-ref --verify --quiet "refs/remotes/origin/${AI_FIX_BRANCH}"; then
-            git checkout -B "${AI_FIX_BRANCH}" "origin/${AI_FIX_BRANCH}"
-          else
-            git checkout -B "${AI_FIX_BRANCH}" "origin/main"
+          mkdir -p self-heal
+          if [ ! -f self-heal/context.json ]; then
+            echo '{"version":1,"error":"context_missing"}' > self-heal/context.json
           fi
 
-      - name: Run startup-fix agent
-        shell: bash
-        run: |
-          set -euo pipefail
-          LOG_FILE="artifacts/e2e/logs/playwright.log"
-          if [ ! -f "$LOG_FILE" ]; then
-            echo "No playwright log found at $LOG_FILE" >&2
-            exit 1
-          fi
-          mkdir -p agent-outputs
-          node tooling/tools/ai-startup-fix-agent/startup-fix.js --log "$LOG_FILE" --out agent-outputs/startup-fix.json --verbose
-
-      - name: Enforce safe path policy
-        shell: bash
-        run: |
-          set -euo pipefail
-          changed=$(git diff --name-only)
-          if [ -z "$changed" ]; then
-            echo "No changes produced by startup-fix; skipping commit/push."
-            exit 0
-          fi
-          echo "$changed" | while IFS= read -r f; do
-            case "$f" in
-              tests/*|playwright.config.ts|.github/workflows/agent-engine.yml|.github/workflows/backend-setup.yml)
-                ;;
-              *)
-                echo "Disallowed change detected: $f" >&2
-                exit 2
-                ;;
-            esac
-          done
-
-      - name: Commit and push ai-fix
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet; then
-            echo "No changes to commit."
-            exit 0
-          fi
-          strategy=$(node -e "const fs=require('fs'); const p='agent-outputs/startup-fix.json'; const j=JSON.parse(fs.readFileSync(p,'utf8')); console.log(j.strategy || 'UNKNOWN');")
-          git add -A
-          git commit -m "[AI] startup-fix: ${strategy}"
-          git push origin "${AI_FIX_BRANCH}"
+      - name: Upload self-heal context
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: self-heal-context
+          path: self-heal/context.json
 
   flaky-classifier:
+    name: Flaky Classifier
     needs: e2e-tests
     uses: ./.github/workflows/backend-setup.yml
     with:
       agent_command: node scripts/agents/flaky-classifier.cjs > agent-outputs/flaky-classifier.json
       upload_artifact_name: flaky-classifier-output
       upload_artifact_path: agent-outputs/flaky-classifier.json
-      download_storage_state: true
-      storage_state_artifact_name: storage-state
       logs_artifact_name: backend-logs-flaky-classifier
 
   selector-auditor:
+    name: Selector Auditor
     needs: e2e-tests
     uses: ./.github/workflows/backend-setup.yml
     with:
       agent_command: node scripts/agents/selector-auditor.cjs > agent-outputs/selector-auditor.json
       upload_artifact_name: selector-auditor-output
       upload_artifact_path: agent-outputs/selector-auditor.json
-      download_storage_state: true
-      storage_state_artifact_name: storage-state
       logs_artifact_name: backend-logs-selector-auditor
 
   fix-agent-supervisor:
@@ -191,6 +155,14 @@ jobs:
       - e2e-tests
       - flaky-classifier
       - selector-auditor
+      - self-heal-supervisor
+    if: >-
+      ${{
+        always() && (
+          github.event_name == 'pull_request'
+          || (github.event_name == 'workflow_dispatch' && needs.self-heal-supervisor.outputs.created_pr_number != '')
+        )
+      }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -200,26 +172,36 @@ jobs:
         with:
           node-version: '20.11.1'
       - name: Download agent outputs
+        # Best-effort: avoid noise failures when upstream artifacts are missing.
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: auth-validator-output
           path: agent-outputs
       - name: Download seed outputs
+        # Best-effort: avoid noise failures when upstream artifacts are missing.
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: seed-orchestrator-output
           path: agent-outputs
       - name: Download smoke outputs
+        # Best-effort: avoid noise failures when upstream artifacts are missing.
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: page-smoke-output
           path: agent-outputs
       - name: Download flaky outputs
+        if: ${{ needs.flaky-classifier.result == 'success' }}
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: flaky-classifier-output
           path: agent-outputs
       - name: Download selector outputs
+        if: ${{ needs.selector-auditor.result == 'success' }}
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: selector-auditor-output
@@ -245,8 +227,15 @@ jobs:
       - flaky-classifier
       - selector-auditor
       - fix-agent-supervisor
+      - self-heal-supervisor
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      SELF_HEAL_STATUS: ${{ needs.self-heal-supervisor.result == 'success' && needs.self-heal-supervisor.outputs.self_heal_status || '' }}
+      SELF_HEAL_CREATED_PR_NUMBER: ${{ needs.self-heal-supervisor.result == 'success' && needs.self-heal-supervisor.outputs.created_pr_number || '' }}
+      SELF_HEAL_ERROR_CLASSIFICATION: ${{ needs.self-heal-supervisor.result == 'success' && needs.self-heal-supervisor.outputs.error_classification || '' }}
+      SELF_HEAL_FIX_SUMMARY: ${{ needs.self-heal-supervisor.result == 'success' && needs.self-heal-supervisor.outputs.fix_summary || '' }}
     steps:
       - uses: actions/checkout@v4
       - name: Setup Node
@@ -254,31 +243,43 @@ jobs:
         with:
           node-version: '20.11.1'
       - name: Download agent outputs
+        # Best-effort: avoid noise failures when upstream artifacts are missing.
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: auth-validator-output
           path: agent-outputs
       - name: Download seed outputs
+        # Best-effort: avoid noise failures when upstream artifacts are missing.
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: seed-orchestrator-output
           path: agent-outputs
       - name: Download smoke outputs
+        # Best-effort: avoid noise failures when upstream artifacts are missing.
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: page-smoke-output
           path: agent-outputs
       - name: Download flaky outputs
+        if: ${{ needs.flaky-classifier.result == 'success' }}
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: flaky-classifier-output
           path: agent-outputs
       - name: Download selector outputs
+        if: ${{ needs.selector-auditor.result == 'success' }}
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: selector-auditor-output
           path: agent-outputs
       - name: Download supervisor outputs
+        if: ${{ needs.fix-agent-supervisor.result == 'success' }}
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: fix-agent-supervisor-output
@@ -299,7 +300,10 @@ jobs:
           path: agent-outputs/ci-dashboard-agent.json
 
   publish-dashboard:
-    needs: ci-dashboard-agent
+    needs:
+      - ci-dashboard-agent
+      - self-heal-supervisor
+    if: ${{ always() }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -309,13 +313,32 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
+    env:
+      SELF_HEAL_STATUS: ${{ needs.self-heal-supervisor.result == 'success' && needs.self-heal-supervisor.outputs.self_heal_status || '' }}
+      SELF_HEAL_CREATED_PR_NUMBER: ${{ needs.self-heal-supervisor.result == 'success' && needs.self-heal-supervisor.outputs.created_pr_number || '' }}
+      SELF_HEAL_ERROR_CLASSIFICATION: ${{ needs.self-heal-supervisor.result == 'success' && needs.self-heal-supervisor.outputs.error_classification || '' }}
+      SELF_HEAL_FIX_SUMMARY: ${{ needs.self-heal-supervisor.result == 'success' && needs.self-heal-supervisor.outputs.fix_summary || '' }}
     steps:
       - uses: actions/checkout@v4
       - name: Download dashboard artifact
+        # Best-effort: if dashboard wasn't produced, skip publishing without failing the workflow.
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: dashboard
           path: public
+
+      - name: Check dashboard presence
+        id: has_dashboard
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f public/dashboard.html ]; then
+            echo "has_dashboard=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_dashboard=false" >> "$GITHUB_OUTPUT"
+            echo "No dashboard artifact found; skipping Pages publish."
+          fi
       - name: Check whether GitHub Pages is enabled
         id: pages
         uses: actions/github-script@v7
@@ -335,19 +358,23 @@ jobs:
               throw e;
             }
       - name: Configure GitHub Pages
-        if: steps.pages.outputs.enabled == 'true'
+        if: steps.pages.outputs.enabled == 'true' && steps.has_dashboard.outputs.has_dashboard == 'true'
         uses: actions/configure-pages@v5
       - name: Upload to GitHub Pages artifact
-        if: steps.pages.outputs.enabled == 'true'
+        if: steps.pages.outputs.enabled == 'true' && steps.has_dashboard.outputs.has_dashboard == 'true'
         uses: actions/upload-pages-artifact@v3
         with:
           path: public
       - name: Deploy to GitHub Pages
-        if: steps.pages.outputs.enabled == 'true'
+        if: steps.pages.outputs.enabled == 'true' && steps.has_dashboard.outputs.has_dashboard == 'true'
         id: deployment
         uses: actions/deploy-pages@v4
+      - name: Skip Pages deploy (no dashboard)
+        if: steps.has_dashboard.outputs.has_dashboard != 'true'
+        run: |
+          echo "No dashboard to publish."
       - name: Skip Pages deploy (not enabled)
-        if: steps.pages.outputs.enabled != 'true'
+        if: steps.pages.outputs.enabled != 'true' && steps.has_dashboard.outputs.has_dashboard == 'true'
         run: |
           echo "GitHub Pages is not enabled for this repository."
           echo "Enable it at: https://github.com/${{ github.repository }}/settings/pages"
@@ -355,17 +382,28 @@ jobs:
   post-dashboard-comment:
     runs-on: ubuntu-latest
     needs: publish-dashboard
-    if: github.event_name == 'pull_request'
+    if: ${{ github.event_name == 'pull_request' && always() }}
     timeout-minutes: 30
     permissions:
       pull-requests: write
     steps:
       - uses: actions/checkout@v4
       - name: Download supervisor decision
+        # Best-effort: avoid noise failures when supervisor output artifact is missing.
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: fix-agent-supervisor-output
           path: agent-outputs
+
+      - name: Ensure supervisor decision exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p agent-outputs
+          if [ ! -f agent-outputs/supervisor-decision.json ]; then
+            echo '{"decision":"n/a","dashboardUrl":"","reason":"missing supervisor decision artifact"}' > agent-outputs/supervisor-decision.json
+          fi
       - name: Read supervisor decision
         run: cat agent-outputs/supervisor-decision.json
       - name: Post PR comment
@@ -383,32 +421,25 @@ jobs:
             });
 
   self-heal-supervisor:
-    name: Self-heal Supervisor (PR manager)
+    name: Self-heal Supervisor (coordinate self-heal)
     needs: startup-fix-agent
     if: ${{ github.event_name == 'workflow_dispatch' && always() && needs.startup-fix-agent.result != 'skipped' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      self_heal_status: ${{ steps.self_heal_status.outputs.self_heal_status }}
+      should_self_heal: ${{ steps.decide.outputs.should_self_heal }}
+      # Compatibility: downstream jobs expect this output to exist.
+      created_pr_number: ${{ steps.compat.outputs.created_pr_number }}
+      error_classification: ${{ steps.decide.outputs.error_classification }}
+      fix_summary: ${{ steps.decide.outputs.fix_summary }}
     permissions:
-      contents: write
-      pull-requests: write
+      contents: read
     env:
       GITHUB_TOKEN: ${{ github.token }}
-      GH_OWNER: ${{ github.repository_owner }}
-      GH_REPO: ${{ github.event.repository.name }}
-      GH_BRANCH_FIX: ai-fix
-      GH_BRANCH_MAIN: main
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ env.GH_BRANCH_FIX }}
 
-      - name: Checkout tooling (workflow ref)
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          ref: ${{ github.sha }}
-          path: tooling
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
@@ -416,5 +447,485 @@ jobs:
           cache: 'npm'
       - name: Install Node dependencies
         run: npm ci
-      - name: Ensure PR exists/updated
-        run: node --loader ts-node/esm tooling/tools/auto-self-heal.ts
+
+      - name: Download self-heal context
+        # Integration point: consume prepared context from startup-fix-agent.
+        uses: actions/download-artifact@v4
+        with:
+          name: self-heal-context
+          path: .
+
+      - name: Decide self-heal actions
+        # Integration point: enforce guardrails (eligible error types only, rerun-only policy).
+        id: decide
+        shell: bash
+        run: |
+          set -euo pipefail
+          node tools/self-heal/decide.mjs --context self-heal/context.json --out self-heal/decision.json
+          should=$(node -e "const j=require('./self-heal/decision.json'); process.stdout.write(String(!!j.allowed));")
+          classification=$(node -e "const j=require('./self-heal/decision.json'); process.stdout.write(String(j.error_type||''));")
+          summary=$(node -e "const j=require('./self-heal/decision.json'); process.stdout.write(String(j.reason||''));")
+          echo "should_self_heal=${should}" >> "$GITHUB_OUTPUT"
+          echo "error_classification=${classification}" >> "$GITHUB_OUTPUT"
+          echo "fix_summary<<EOF" >> "$GITHUB_OUTPUT"
+          echo "${summary}" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Upload self-heal decision
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: self-heal-decision
+          path: self-heal/decision.json
+
+      - name: Upload self-heal bundle
+        # Integration point: bundle context+decision for the self-heal runner.
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: self-heal-bundle
+          path: |
+            self-heal/context.json
+            self-heal/decision.json
+
+      - name: Compatibility outputs
+        id: compat
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "created_pr_number=" >> "$GITHUB_OUTPUT"
+
+      - name: Set self-heal status output
+        id: self_heal_status
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.decide.outputs.should_self_heal }}" = "true" ]; then
+            status="planned"
+          else
+            status="skipped"
+          fi
+          echo "self_heal_status=$status" >> "$GITHUB_OUTPUT"
+
+  self-heal-runner:
+    name: Self-heal Runner (safe rerun)
+    needs:
+      - auth-validator
+      - self-heal-supervisor
+    if: ${{ github.event_name == 'workflow_dispatch' && always() && needs.self-heal-supervisor.outputs.should_self_heal == 'true' }}
+    uses: ./.github/workflows/backend-setup.yml
+    with:
+      # Integration point: run safe self-heal actions (no code edits) and upload a report artifact.
+      agent_command: |
+        mkdir -p self-heal
+        node tools/self-heal/execute.mjs --context self-heal/context.json --decision self-heal/decision.json
+      download_extra_artifact_name: self-heal-bundle
+      download_extra_artifact_path: .
+      upload_artifact_name: self-heal-report
+      upload_artifact_path: |
+        self-heal/report-${{ github.run_id }}.json
+        self-heal/playwright-rerun.log
+        self-heal/reseed.log
+        self-heal/auth-validator.log
+        self-heal/decision.json
+        self-heal/context.json
+      logs_artifact_name: backend-logs-self-heal
+
+  fix-agent-prep:
+    name: Fix-Agent Prep (build patch input)
+    needs:
+      - e2e-tests
+      - self-heal-runner
+    if: ${{ always() && needs.e2e-tests.result == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # NOTE: best-effort: failures here must not flip the overall CI signal.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.11.1'
+          cache: 'npm'
+      - name: Install Node dependencies
+        run: npm ci
+
+      - name: Download E2E artifacts
+        # Best-effort: avoid noise failures when upstream artifacts are missing.
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: artifacts/e2e
+      - name: Download backend logs
+        # Best-effort: avoid noise failures when upstream artifacts are missing.
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-logs-e2e-tests
+          path: artifacts/backend-logs
+
+      - name: Prepare Fix-Agent input
+        # Integration point: fetch Developer-Agent fix instructions (via Cloud-Agent) and persist a stable input.json.
+        shell: bash
+        env:
+          AGENT_TOKEN: ${{ secrets.AGENT_TOKEN }}
+          CLOUD_AGENT_URL: https://praxi-app.vercel.app/api/ci/logs
+          E2E_STATUS: ${{ needs.e2e-tests.result }}
+        run: |
+          set -euo pipefail
+          mkdir -p fix-agent
+          node tools/fix-agent/prepare-input.mjs --out-dir fix-agent --out fix-agent/input.json
+
+      - name: Ensure Fix-Agent input exists
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p fix-agent
+          if [ ! -f fix-agent/input.json ]; then
+            echo '{"version":1,"error":"input_missing"}' > fix-agent/input.json
+          fi
+
+      - name: Upload Fix-Agent input
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: fix-agent-input
+          path: fix-agent/input.json
+
+  fix-agent-runner:
+    name: Fix-Agent Runner (prepare patch)
+    needs:
+      - auth-validator
+      - e2e-tests
+      - fix-agent-prep
+    if: ${{ always() && needs.e2e-tests.result == 'failure' && needs.fix-agent-prep.result != 'skipped' }}
+    uses: ./.github/workflows/backend-setup.yml
+    with:
+      # Integration point: scoped, guarded code changes only; emit patch + metadata artifacts (no PR creation).
+      best_effort: true
+      agent_command: |
+        mkdir -p fix-agent
+        node tools/fix-agent/apply-and-validate.mjs --input fix-agent/input.json --out-dir fix-agent
+      download_extra_artifact_name: fix-agent-input
+      download_extra_artifact_path: .
+      upload_artifact_name: fix-agent-output
+      upload_artifact_path: |
+        fix-agent/patch-${{ github.run_id }}.diff
+        fix-agent/metadata-${{ github.run_id }}.json
+      logs_artifact_name: backend-logs-fix-agent
+
+  public-dashboard-access:
+    name: Public Dashboard Access (cloudflared)
+    needs:
+      # Tight success semantics: only depend on the critical chain + dashboard publish.
+      - auth-validator
+      - seed-orchestrator
+      - page-smoke
+      - e2e-tests
+      - ci-dashboard-agent
+      - publish-dashboard
+    # Safety: only allow the public tunnel on explicit manual intent.
+    if: ${{ success() && github.event_name == 'workflow_dispatch' && inputs.enable_public_tunnel }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      POSTGRES_DB: praxiapp_system
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST: 127.0.0.1
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+        ports:
+          - 5432
+        options: >-
+          --health-cmd="pg_isready -h 127.0.0.1 -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Configure Postgres env
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "POSTGRES_PORT=${{ job.services.postgres.ports[5432] }}" >> "$GITHUB_ENV"
+          echo "DATABASE_URL=postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${{ job.services.postgres.ports[5432] }}/${POSTGRES_DB}" >> "$GITHUB_ENV"
+
+      - name: Wait for Postgres
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Waiting for Postgres to accept connections..."
+          ready=false
+          for i in {1..90}; do
+            if pg_isready -h "${POSTGRES_HOST}" -p "${POSTGRES_PORT}" -U "${POSTGRES_USER}" >/dev/null 2>&1; then
+              ready=true
+              echo "Postgres is ready after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != "true" ]; then
+            echo "Postgres not ready after 90 seconds" >&2
+            exit 1
+          fi
+
+      - name: Apply migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          python django/manage.py migrate
+
+      - name: Seed the database
+        shell: bash
+        run: |
+          set -euo pipefail
+          python django/manage.py seed
+
+      - name: Ensure doctor exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          python django/manage.py shell -c "
+          from django.contrib.auth import get_user_model;
+          from praxi_backend.core.models import Role;
+
+          User = get_user_model();
+          doctor_role, _ = Role.objects.get_or_create(name='doctor', defaults={'label': 'Arzt'});
+
+          qs = User.objects.filter(is_active=True, role=doctor_role);
+          if qs.exists():
+              print(f'✅ Doctors present: {qs.count()}');
+          else:
+              u = User.objects.create_user('e2e_doctor', 'e2e_doctor@seed.local', 'test1234', first_name='E2E', last_name='Doctor');
+              u.role = doctor_role;
+              u.is_staff = True;
+              u.save();
+              print('✅ Created fallback doctor user');
+          "
+
+      - name: Start Django server
+        shell: bash
+        run: |
+          set -euo pipefail
+          nohup python django/manage.py runserver 0.0.0.0:8000 > django-server.log 2>&1 &
+
+      - name: Wait for Django port
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Waiting for Django (port 8000)..."
+          ready=false
+          for i in {1..60}; do
+            if curl -fsS http://127.0.0.1:8000/api/health/ >/dev/null 2>&1; then
+              ready=true
+              echo "Django is reachable after ${i}s"
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != "true" ]; then
+            echo "Django did not become reachable within 60 seconds" >&2
+            exit 1
+          fi
+
+      - name: Install cloudflared
+        # Security: pin and verify cloudflared instead of downloading an unpinned "latest" binary.
+        shell: bash
+        run: |
+          set -euo pipefail
+          CLOUDFLARED_VERSION="2026.2.0"
+          CLOUDFLARED_SHA256="176746db3be7dc7bd48f3dd287c8930a4645ebb6e6700f883fddda5a4c307c16"
+          curl -L -o cloudflared "https://github.com/cloudflare/cloudflared/releases/download/${CLOUDFLARED_VERSION}/cloudflared-linux-amd64"
+          echo "${CLOUDFLARED_SHA256}  cloudflared" | sha256sum -c -
+          chmod +x cloudflared
+
+      - name: Start public tunnel
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./cloudflared tunnel --url http://localhost:8000 --no-autoupdate > tunnel.log 2>&1 &
+
+      - name: Extract and print public URL
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Waiting for trycloudflare URL..."
+          url=""
+          for i in {1..60}; do
+            url=$(grep -oE 'https://[-a-z0-9]+\.trycloudflare\.com' tunnel.log | head -n 1 || true)
+            if [ -n "$url" ]; then
+              break
+            fi
+            sleep 1
+          done
+          if [ -z "$url" ]; then
+            echo "No trycloudflare URL found in tunnel.log" >&2
+            exit 1
+          fi
+          echo "${url}/admin/login/?next=/praxi_backend/Dashboardadministration/"
+
+  send-ci-logs:
+    name: Send CI logs to Developer-Agent
+    needs:
+      - auth-validator
+      - seed-orchestrator
+      - page-smoke
+      - e2e-tests
+      - startup-fix-agent
+      - flaky-classifier
+      - selector-auditor
+      - self-heal-supervisor
+      - fix-agent-supervisor
+      - ci-dashboard-agent
+      - publish-dashboard
+      - post-dashboard-comment
+      - public-dashboard-access
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check artifact availability
+        id: artifacts
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          repo = os.environ["GITHUB_REPOSITORY"]
+          run_id = os.environ["GITHUB_RUN_ID"]
+          token = os.environ.get("GITHUB_TOKEN", "")
+
+          url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/artifacts?per_page=100"
+          req = urllib.request.Request(url)
+          req.add_header("Accept", "application/vnd.github+json")
+          if token:
+            req.add_header("Authorization", f"Bearer {token}")
+
+          with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8", errors="replace"))
+
+          names = {a.get("name", "") for a in data.get("artifacts", [])}
+          has_test_results = "test-results" in names
+          has_backend_logs = "backend-logs-e2e-tests" in names
+
+          out_path = os.environ.get("GITHUB_OUTPUT")
+          if out_path:
+            with open(out_path, "a", encoding="utf-8") as f:
+              f.write(f"has_test_results={'true' if has_test_results else 'false'}\n")
+              f.write(f"has_backend_logs={'true' if has_backend_logs else 'false'}\n")
+          PY
+
+      - name: Download Playwright logs artifact
+        if: ${{ steps.artifacts.outputs.has_test_results == 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: test-results
+          path: test-results
+
+      - name: Download backend logs artifact
+        if: ${{ steps.artifacts.outputs.has_backend_logs == 'true' }}
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: backend-logs-e2e-tests
+          path: backend-logs-e2e-tests
+
+      - name: Build payload.json
+        shell: bash
+        env:
+          RUN_ID: ${{ github.run_id }}
+          JOB_NAME: e2e-tests
+          TIMESTAMP: ${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at || '' }}
+          BRANCH: ${{ github.ref_name }}
+          COMMIT: ${{ github.sha }}
+          STATUS: ${{ needs.e2e-tests.result }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          def read_text(path: str) -> str:
+              p = Path(path)
+              if not p.exists():
+                  return ""
+              try:
+                  return p.read_text(encoding="utf-8", errors="replace")
+              except Exception:
+                  return ""
+
+          payload = {
+              "run_id": int(os.environ.get("RUN_ID", "0") or 0),
+              "job_name": os.environ.get("JOB_NAME", "e2e-tests"),
+              "timestamp": os.environ.get("TIMESTAMP", "") or "",
+              "playwright_log": read_text("test-results/logs/playwright.log"),
+              "backend_log": read_text("backend-logs-e2e-tests/django/logs/system/ci.log"),
+              "branch": os.environ.get("BRANCH", ""),
+              "commit": os.environ.get("COMMIT", ""),
+              "status": os.environ.get("STATUS", ""),
+          }
+
+          with open("payload.json", "w", encoding="utf-8") as f:
+              json.dump(payload, f, ensure_ascii=False)
+          PY
+
+      - name: POST logs to cloud agent
+        shell: bash
+        env:
+          AGENT_TOKEN: ${{ secrets.AGENT_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          CLOUD_AGENT_URL="https://praxi-app.vercel.app/api/ci/logs"
+
+          if [ -z "${AGENT_TOKEN:-}" ]; then
+            echo "AGENT_TOKEN is not available; skipping log upload."
+            exit 0
+          fi
+
+          if echo "$CLOUD_AGENT_URL" | grep -q "<YOUR-VERCEL-URL>"; then
+            echo "CLOUD_AGENT_URL is still the default placeholder; skipping log upload."
+            exit 0
+          fi
+
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${AGENT_TOKEN}" \
+            -d @payload.json \
+            "$CLOUD_AGENT_URL" || {
+              code=$?
+              echo "Log upload failed (curl exit code: ${code}); continuing without failing the workflow."
+              exit 0
+            }
