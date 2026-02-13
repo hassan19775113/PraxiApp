@@ -2,6 +2,20 @@
   "version": 2,
   "builds": [
     {
+      "src": "api/ci/logs.ts",
+      "use": "@vercel/node",
+      "config": {
+        "runtime": "nodejs20.x"
+      }
+    },
+    {
+      "src": "api/process-logs.ts",
+      "use": "@vercel/node",
+      "config": {
+        "runtime": "nodejs20.x"
+      }
+    },
+    {
       "src": "backend/praxi_backend/wsgi.py",
       "use": "@vercel/python",
       "config": {
@@ -11,6 +25,14 @@
     }
   ],
   "routes": [
+    {
+      "src": "/api/ci/logs",
+      "dest": "api/ci/logs.ts"
+    },
+    {
+      "src": "/process-logs",
+      "dest": "api/process-logs.ts"
+    },
     {
       "src": "/static/(.*)",
       "dest": "/backend/static/$1"

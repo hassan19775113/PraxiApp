@@ -731,13 +731,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Decide whether to send logs
-        id: gate
-        run: |
-          echo "should_send=${{ needs.e2e-tests.result == 'failure' || needs.self-heal-supervisor.result != 'skipped' || (github.event_name == 'workflow_dispatch' && needs.fix-agent-supervisor.result != 'skipped') }}" >> "$GITHUB_OUTPUT"
-
       - name: Download Playwright logs artifact
-        if: ${{ steps.gate.outputs.should_send == 'true' }}
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
@@ -745,7 +739,6 @@ jobs:
           path: test-results
 
       - name: Download backend logs artifact
-        if: ${{ steps.gate.outputs.should_send == 'true' }}
         continue-on-error: true
         uses: actions/download-artifact@v4
         with:
@@ -753,14 +746,14 @@ jobs:
           path: backend-logs-e2e-tests
 
       - name: Build payload.json
-        if: ${{ steps.gate.outputs.should_send == 'true' }}
         shell: bash
         env:
           RUN_ID: ${{ github.run_id }}
           JOB_NAME: e2e-tests
-          TIMESTAMP: ${{ github.event.head_commit.timestamp }}
+          TIMESTAMP: ${{ github.event.head_commit.timestamp || github.event.pull_request.updated_at || '' }}
           BRANCH: ${{ github.ref_name }}
           COMMIT: ${{ github.sha }}
+          STATUS: ${{ needs.e2e-tests.result }}
         run: |
           python - <<'PY'
           import json
@@ -784,7 +777,7 @@ jobs:
               "backend_log": read_text("backend-logs-e2e-tests/django/logs/system/ci.log"),
               "branch": os.environ.get("BRANCH", ""),
               "commit": os.environ.get("COMMIT", ""),
-              "status": "failed",
+              "status": os.environ.get("STATUS", ""),
           }
 
           with open("payload.json", "w", encoding="utf-8") as f:
@@ -792,18 +785,13 @@ jobs:
           PY
 
       - name: POST logs to cloud agent
-        if: ${{ steps.gate.outputs.should_send == 'true' }}
         shell: bash
         env:
           AGENT_TOKEN: ${{ secrets.AGENT_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${AGENT_TOKEN:-}" ]; then
-            echo "AGENT_TOKEN is not available; skipping log upload."
-            exit 0
-          fi
           curl -X POST \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${AGENT_TOKEN}" \
             -d @payload.json \
-            https://<YOUR-CLOUD-AGENT>/api/ci/logs
+            https://<YOUR-VERCEL-URL>/api/ci/logs

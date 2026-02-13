@@ -1,5 +1,74 @@
 # PraxiApp Backend (Django / DRF)
 
+## Cloud-Agent-Server (Vercel) – CI Log Receiver
+
+This repo includes a small Vercel-deployable API endpoint that receives CI logs from GitHub Actions and forwards them to your Developer-Agent.
+
+- Endpoint: `POST /api/ci/logs`
+- Runtime: Vercel **Node.js** (not Edge)
+- Implementation: [api/ci/logs.ts](api/ci/logs.ts)
+
+### Deploy to Vercel
+
+1) Create a new Vercel project pointing at this repository.
+2) Configure environment variables in the Vercel dashboard (Project → Settings → Environment Variables).
+3) Deploy.
+
+### Required environment variables
+
+- `AGENT_TOKEN`
+  - Incoming authentication for GitHub Actions.
+  - Requests must include: `Authorization: Bearer <TOKEN>`.
+
+- `DEVELOPER_AGENT_URL`
+  - Base URL of your Developer-Agent.
+  - The server forwards to `${DEVELOPER_AGENT_URL}/process-logs` (or uses it directly if you set the full `/process-logs` URL).
+
+- `DEVELOPER_AGENT_TOKEN`
+  - Secret used to authenticate to the Developer-Agent.
+  - Forwarded as: `Authorization: Bearer <DEVELOPER_AGENT_TOKEN>`.
+
+### Request payload
+
+The endpoint expects JSON with these fields:
+
+- `playwright_log` (string)
+- `backend_log` (string)
+- `run_id` (string or number)
+- `job_name` (string)
+- `timestamp` (string)
+- `branch` (string)
+- `commit` (string)
+- `status` (string)
+
+### Responses
+
+- `200 { "status": "received" }` on success
+- `401` when the bearer token is missing/invalid
+- `400` when the payload is invalid (includes error details)
+- `502` when forwarding fails (includes upstream status/body when available)
+
+## Developer-Agent – Log Processor
+
+- Endpoint: `POST /process-logs`
+- Implementation: [api/process-logs.ts](api/process-logs.ts)
+
+### Authentication
+
+Requests must include:
+
+`Authorization: Bearer <DEVELOPER_AGENT_TOKEN>`
+
+### Behavior
+
+- Validates the incoming JSON payload (same fields as `/api/ci/logs` forwards)
+- Saves logs to:
+  - `logs/<run_id>/playwright.log`
+  - `logs/<run_id>/backend.log`
+- Writes analysis + trigger metadata:
+  - `logs/<run_id>/analysis.json`
+  - `logs/<run_id>/triggers.json` (only when `status == "failed"`)
+
 PraxiApp ist ein Backend für Praxis-Workflows (Termine, OP-Planung, Ressourcen, Patientenfluss) mit einem klaren Fokus auf **RBAC**, **Audit Logging** und einer **Single-Datenbank-Architektur** (eine Django-managed PostgreSQL DB unter Alias `default`).
 
 Dieses Repository enthält:
