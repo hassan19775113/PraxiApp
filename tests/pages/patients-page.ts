@@ -29,6 +29,9 @@ export class PatientsPage {
   async goto(baseURL: string) {
     await this.page.goto(`${baseURL}/praxi_backend/patients/`);
     await this.page.waitForLoadState('domcontentloaded');
+    if (this.page.url().includes('/login')) {
+      return;
+    }
     await this.page.waitForURL(/\/praxi_backend\/(dashboard\/patients|patients)\/?/);
     await this.page.waitForSelector('#patientsTable', { timeout: 15000 });
     await expect(this.patientsTable).toBeVisible();

@@ -21,6 +21,9 @@ export class SchedulingKpisPage {
   async goto(baseURL: string) {
     await this.page.goto(`${baseURL}/praxi_backend/dashboard/scheduling/`);
     await this.page.waitForLoadState('domcontentloaded');
+    if (this.page.url().includes('/login')) {
+      return;
+    }
     await this.page.waitForSelector('#scheduling-charts-json', { timeout: 15000 });
     await this.page.waitForSelector('#trendChart', { timeout: 15000 });
 

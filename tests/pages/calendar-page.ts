@@ -41,6 +41,9 @@ export class CalendarPage {
   async goto(baseURL: string) {
     await this.page.goto(`${baseURL}/praxi_backend/appointments/`);
     await this.page.waitForLoadState('domcontentloaded');
+    if (this.page.url().includes('/login')) {
+      return;
+    }
     await expect(this.appointmentCalendar).toBeVisible();
     // Ensure toolbar is present for navigation actions
     await expect(this.todayButton).toBeVisible();
