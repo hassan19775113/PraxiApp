@@ -24,6 +24,12 @@ export class SchedulingKpisPage {
   }
 
   async expectChartsVisible() {
+    await this.trendChart.waitFor({ state: 'visible', timeout: 15000 });
+    await this.leadTimeChart.waitFor({ state: 'visible', timeout: 15000 });
+    await this.weekdayChart.waitFor({ state: 'visible', timeout: 15000 });
+    await this.hourlyChart.waitFor({ state: 'visible', timeout: 15000 });
+    await this.funnelContainer.waitFor({ state: 'visible', timeout: 15000 });
+
     await expect(this.trendChart).toBeVisible();
     await expect(this.leadTimeChart).toBeVisible();
     await expect(this.weekdayChart).toBeVisible();
