@@ -619,6 +619,7 @@ jobs:
     uses: ./.github/workflows/backend-setup.yml
     with:
       # Integration point: scoped, guarded code changes only; emit patch + metadata artifacts (no PR creation).
+      best_effort: true
       agent_command: |
         mkdir -p fix-agent
         node tools/fix-agent/apply-and-validate.mjs --input fix-agent/input.json --out-dir fix-agent

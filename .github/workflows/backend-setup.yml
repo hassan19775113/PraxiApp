@@ -6,6 +6,13 @@ on:
       agent_command:
         required: true
         type: string
+
+      # When true, this workflow must be best-effort: do not fail the caller.
+      # Used for non-critical agent jobs (e.g., Fix-Agent patch generation).
+      best_effort:
+        required: false
+        type: boolean
+        default: false
       upload_artifact_name:
         required: false
         type: string
@@ -153,6 +160,7 @@ jobs:
 
       # Install all runtime deps (Python + Node + browsers)
       - name: Install base dependencies
+        continue-on-error: ${{ inputs.best_effort }}
         shell: bash
         run: |
           set -eo pipefail
@@ -181,6 +189,7 @@ jobs:
 
       # Django DB prep
       - name: Wait for PostgreSQL (max 90s)
+        continue-on-error: ${{ inputs.best_effort }}
         shell: bash
         run: |
           set -eo pipefail
@@ -201,6 +210,7 @@ jobs:
           fi
 
       - name: Apply migrations
+        continue-on-error: ${{ inputs.best_effort }}
         shell: bash
         run: |
           set -eo pipefail
@@ -212,6 +222,7 @@ jobs:
           echo "Migrations complete" | tee -a django/logs/system/ci.log
 
       - name: Create E2E user
+        continue-on-error: ${{ inputs.best_effort }}
         shell: bash
         run: |
           set -eo pipefail
@@ -244,6 +255,7 @@ jobs:
           echo "E2E user created" | tee -a django/logs/system/ci.log
 
       - name: Seed database
+        continue-on-error: ${{ inputs.best_effort }}
         shell: bash
         run: |
           set -eo pipefail
@@ -255,6 +267,7 @@ jobs:
           echo "Database seeding complete" | tee -a django/logs/system/ci.log
 
       - name: Ensure doctor exists
+        continue-on-error: ${{ inputs.best_effort }}
         shell: bash
         run: |
           set -eo pipefail
@@ -287,6 +300,7 @@ jobs:
 
       # Start Django in background with logging
       - name: Start Django
+        continue-on-error: ${{ inputs.best_effort }}
         shell: bash
         run: |
           set -eo pipefail
@@ -313,6 +327,7 @@ jobs:
 
       # Wait for HTTP readiness; dump server.log on failure
       - name: Unified health checks (DB, Django, HTTP)
+        continue-on-error: ${{ inputs.best_effort }}
         shell: bash
         run: |
           ready=false
@@ -352,6 +367,7 @@ jobs:
       # Run the agent command with safe output dir
       - name: Run agent command
         # Strategy A: auth-validator runs once in Agent Engine; backend-setup only runs the provided agent_command.
+        continue-on-error: ${{ inputs.best_effort }}
         shell: bash
         env:
           AGENT_OUTPUT_DIR: ${{ env.AGENT_OUTPUT_DIR }}
