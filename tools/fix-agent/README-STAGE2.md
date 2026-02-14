@@ -27,7 +27,9 @@ The risk assessment algorithm evaluates patches based on multiple factors:
   - Empty: +0
   - Small (≤2 files, ≤50 lines): +1
   - Medium (≤4 files, ≤150 lines): +2
-  - Large (>4 files or >150 lines): +5
+  - Large (>150 lines or >4 files): +5
+  
+  Note: Patches are rejected if they exceed hard limits (4 files or 180 lines), but risk scoring uses 150 lines as the threshold for "medium" vs "large" classification.
   
 - **Validation**:
   - Passed: -2 (reduces risk)

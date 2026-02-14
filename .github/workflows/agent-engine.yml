@@ -810,28 +810,41 @@ jobs:
 
       - name: Create Pull Request
         if: ${{ steps.metadata.outputs.skip != 'true' && env.branch_name != '' }}
-        uses: peter-evans/create-pull-request@v5
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ env.branch_name }}
-          base: ${{ github.ref_name }}
-          title: "fix: automated CI stabilization for run ${{ github.run_id }}"
-          body: |
-            Automated Fix-Agent patch for run_id=${{ github.run_id }}.
-            
-            **Stage 2 - Conditional Autonomy**
-            
-            - Risk Level: `${{ steps.metadata.outputs.risk_level }}`
-            - Auto-merge Eligible: `${{ steps.metadata.outputs.auto_merge_eligible }}`
-            - Guardrails: scoped changes only; capped file/line changes
-            - Validation: minimal subset when possible
-            
-            This PR was automatically created by the Fix-Agent based on CI failure analysis.
-            Please review carefully before merging.
-          labels: |
-            automated-fix
-            ${{ steps.metadata.outputs.risk_level }}-risk
-          draft: false
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ env.branch_name }}
+          BASE_BRANCH: ${{ github.ref_name }}
+          RISK_LEVEL: ${{ steps.metadata.outputs.risk_level }}
+          AUTO_MERGE: ${{ steps.metadata.outputs.auto_merge_eligible }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          
+          # Create PR body
+          PR_BODY=$(cat <<EOF
+          Automated Fix-Agent patch for run_id=${RUN_ID}.
+          
+          **Stage 2 - Conditional Autonomy**
+          
+          - Risk Level: \`${RISK_LEVEL}\`
+          - Auto-merge Eligible: \`${AUTO_MERGE}\`
+          - Guardrails: scoped changes only; capped file/line changes
+          - Validation: minimal subset when possible
+          
+          This PR was automatically created by the Fix-Agent based on CI failure analysis.
+          Please review carefully before merging.
+          EOF
+          )
+          
+          # Create PR using GitHub CLI
+          gh pr create \
+            --base "${BASE_BRANCH}" \
+            --head "${BRANCH_NAME}" \
+            --title "fix: automated CI stabilization for run ${RUN_ID}" \
+            --body "${PR_BODY}" \
+            --label "automated-fix" \
+            --label "${RISK_LEVEL}-risk" || echo "PR may already exist"
 
   public-dashboard-access:
     name: Public Dashboard Access (cloudflared)
