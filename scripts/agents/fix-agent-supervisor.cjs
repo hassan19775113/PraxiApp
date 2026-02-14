@@ -52,8 +52,12 @@ function decide() {
   const flaky = readJson(FILES.flaky);
   const selector = readJson(FILES.selector);
 
+  function isOk(status) {
+    return status === 'ok' || status === 'success';
+  }
+
   // 1) Hard blockers: auth/seed/smoke
-  if (!auth || auth.status !== 'ok' || !seed || seed.status !== 'ok' || !smoke || smoke.status !== 'ok') {
+  if (!auth || !isOk(auth.status) || !seed || !isOk(seed.status) || !smoke || !isOk(smoke.status)) {
     return {
       decision: 'abort',
       reason: 'Prerequisites failed',

@@ -62,7 +62,14 @@ function readJson(file) {
 
 function statusColor(status) {
   if (!status) return 'gray';
-  if (status === 'ok' || status === 'refactored' || status === 'generated' || status === 'dashboard-generated') return 'green';
+  if (
+    status === 'ok' ||
+    status === 'success' ||
+    status === 'refactored' ||
+    status === 'generated' ||
+    status === 'dashboard-generated'
+  )
+    return 'green';
   if (status === 'noop' || status === 'skipped') return 'yellow';
   return 'red';
 }
