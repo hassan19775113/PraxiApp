@@ -125,14 +125,8 @@ export class AppointmentModalPage {
     // default times; we must ensure we wait for the request caused by *our* inputs.
     const expected = await this.page.evaluate(
       ({ date, start, end }) => {
-        const buildLocalDateTime = (dateStr: string, timeStr: string) => {
-          const [year, month, day] = dateStr.split('-').map(Number);
-          const [hour, minute] = timeStr.split(':').map(Number);
-          return new Date(year, month - 1, day, hour, minute, 0, 0);
-        };
-
-        const startISO = buildLocalDateTime(date, start).toISOString();
-        const endISO = buildLocalDateTime(date, end).toISOString();
+        const startISO = `${date}T${start}:00`;
+        const endISO = `${date}T${end}:00`;
         return {
           startISO,
           endISO,

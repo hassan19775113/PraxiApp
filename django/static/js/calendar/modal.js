@@ -758,9 +758,10 @@ export class AppointmentModal {
             return;
         }
         
-        // API erwartet ISO-Strings (UTC)
-        const startISOString = startDate.toISOString();
-        const endISOString = endDate.toISOString();
+        // API erwartet ISO-Strings; hier bewusst als lokale Wandzeit ohne UTC-Shift,
+        // damit Working-Hours-Prüfung nicht um die Browser-Zeitzone verschoben wird.
+        const startISOString = `${date}T${startTime}:00`;
+        const endISOString = `${date}T${endTime}:00`;
         
         this.isCheckingAvailability = true;
         
