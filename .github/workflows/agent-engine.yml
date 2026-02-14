@@ -56,9 +56,35 @@ jobs:
       upload_artifact_path: agent-outputs/page-smoke.json
       logs_artifact_name: backend-logs-page-smoke
 
+  env-doctor:
+    name: Env Doctor
+    needs: page-smoke
+    uses: ./.github/workflows/backend-setup.yml
+    with:
+      generate_storage_state: false
+      agent_command: |
+        mkdir -p agent-outputs
+        python django/manage.py env_doctor --json > agent-outputs/env-doctor.json
+      upload_artifact_name: env-doctor-output
+      upload_artifact_path: agent-outputs/env-doctor.json
+      logs_artifact_name: backend-logs-env-doctor
+
+  db-doctor:
+    name: DB Doctor
+    needs: env-doctor
+    uses: ./.github/workflows/backend-setup.yml
+    with:
+      generate_storage_state: false
+      agent_command: |
+        mkdir -p agent-outputs
+        python django/manage.py db_doctor --json > agent-outputs/db-doctor.json
+      upload_artifact_name: db-doctor-output
+      upload_artifact_path: agent-outputs/db-doctor.json
+      logs_artifact_name: backend-logs-db-doctor
+
   e2e-tests:
     name: E2E Tests
-    needs: page-smoke
+    needs: db-doctor
     uses: ./.github/workflows/backend-setup.yml
     with:
       generate_storage_state: true
