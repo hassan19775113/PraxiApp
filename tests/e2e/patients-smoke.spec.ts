@@ -1,5 +1,6 @@
 import { test, expect } from '../fixtures/testdata.setup';
 import { PatientsPage } from '../pages/patients-page';
+import { adminLoginIfNeeded } from '../helpers/admin-login';
 
 test('patients list loads and shows at least one patient', async ({ page, baseURL, testData }) => {
   await expect(testData.patientId, 'testData fixture should create a patient').toBeTruthy();
@@ -8,6 +9,10 @@ test('patients list loads and shows at least one patient', async ({ page, baseUR
 
   await page.goto(`${baseURL}/praxi_backend/patients/`);
   await page.waitForLoadState('domcontentloaded');
+
+  if (page.url().includes('/admin/login')) {
+    await adminLoginIfNeeded(page, process.env.E2E_USER, process.env.E2E_PASSWORD);
+  }
 
   if (page.url().includes('/admin/login')) {
     throw new Error('Patients page redirected to login; authentication/session missing');
