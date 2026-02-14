@@ -838,13 +838,16 @@ jobs:
           )
           
           # Create PR using GitHub CLI
-          gh pr create \
+          if ! gh pr create \
             --base "${BASE_BRANCH}" \
             --head "${BRANCH_NAME}" \
             --title "fix: automated CI stabilization for run ${RUN_ID}" \
             --body "${PR_BODY}" \
             --label "automated-fix" \
-            --label "${RISK_LEVEL}-risk" || echo "PR may already exist"
+            --label "${RISK_LEVEL}-risk"; then
+            echo "⚠️  Failed to create PR (may already exist, permissions issue, or network error)"
+            echo "Branch ${BRANCH_NAME} has been pushed and is available for manual PR creation"
+          fi
 
   public-dashboard-access:
     name: Public Dashboard Access (cloudflared)

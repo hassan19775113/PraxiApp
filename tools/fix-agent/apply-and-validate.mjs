@@ -177,6 +177,12 @@ async function computeDiffStats() {
  * 
  * Risk levels: low, medium, high, critical
  * Auto-merge eligible only for low-risk changes
+ * 
+ * @param {Object} metadata - Patch metadata containing error_type
+ * @param {Array<string>} changedFiles - Array of file paths that were changed
+ * @param {Object} stats - Diff statistics with files_changed, lines_total, etc.
+ * @param {boolean|null} validationOk - Validation result (true=passed, false=failed, null=not attempted)
+ * @returns {Object} Risk assessment with level, score, factors, and auto_merge_eligible
  */
 function computeRiskAssessment(metadata, changedFiles, stats, validationOk) {
   const assessment = {

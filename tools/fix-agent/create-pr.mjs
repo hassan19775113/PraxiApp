@@ -36,12 +36,13 @@ async function fileExists(p) {
 }
 
 function runCmd(cmd, args, opts = {}) {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'pipe'], ...opts });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (d) => (stdout += d.toString('utf8')));
     child.stderr.on('data', (d) => (stderr += d.toString('utf8')));
+    child.on('error', (err) => reject(err));
     child.on('close', (code) => resolve({ code: code ?? 1, stdout, stderr }));
   });
 }
