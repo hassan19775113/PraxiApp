@@ -82,9 +82,39 @@ jobs:
       upload_artifact_path: agent-outputs/db-doctor.json
       logs_artifact_name: backend-logs-db-doctor
 
+  patients-ui-smoke:
+    name: Patients UI Smoke
+    needs: db-doctor
+    uses: ./.github/workflows/backend-setup.yml
+    with:
+      generate_storage_state: false
+      agent_command: |
+        mkdir -p logs
+        npx playwright test tests/e2e/patients-smoke.spec.ts --project=chromium 2>&1 | tee logs/patients-ui-smoke.log
+      upload_artifact_name: patients-ui-smoke-results
+      upload_artifact_path: |
+        logs/patients-ui-smoke.log
+        test-results/
+      logs_artifact_name: backend-logs-patients-ui-smoke
+
+  operations-ui-smoke:
+    name: Operations UI Smoke
+    needs: patients-ui-smoke
+    uses: ./.github/workflows/backend-setup.yml
+    with:
+      generate_storage_state: false
+      agent_command: |
+        mkdir -p logs
+        npx playwright test tests/e2e/operations-smoke.spec.ts --project=chromium 2>&1 | tee logs/operations-ui-smoke.log
+      upload_artifact_name: operations-ui-smoke-results
+      upload_artifact_path: |
+        logs/operations-ui-smoke.log
+        test-results/
+      logs_artifact_name: backend-logs-operations-ui-smoke
+
   availability-ui-smoke:
     name: Availability UI Smoke
-    needs: db-doctor
+    needs: operations-ui-smoke
     uses: ./.github/workflows/backend-setup.yml
     with:
       generate_storage_state: false
