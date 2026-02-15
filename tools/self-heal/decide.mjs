@@ -21,20 +21,43 @@ function toErrorType(classification) {
   return typeof t === 'string' ? t : 'unknown';
 }
 
-function inferTransientLikelihood(errorType) {
+const SELF_HEAL_DENIED = new Set([
+  'frontend-selector',
+  'frontend-availability',
+  'api-404',
+  'backend-migration',
+  'backend-exception',
+  'backend-500',
+  'unknown',
+  'missing_logs',
+]);
+
+function inferTransientLikelihood(errorType, context) {
+  const deterministic = (context?.flaky?.deterministic || []).length;
+  const flaky = (context?.flaky?.flaky || []).length;
+
+  if (deterministic > 0 && flaky === 0) {
+    return 'low';
+  }
+  if (flaky > 0) {
+    return 'high';
+  }
+
   switch (errorType) {
     case 'infra/network':
-    case 'frontend-timing':
-      return 'high';
     case 'auth/session':
       return 'medium';
+    case 'frontend-timing':
+      return 'high';
     default:
       return 'low';
   }
 }
 
-function allowedForSelfHeal(errorType) {
-  // Guardrail: only attempt self-heal for cases that are plausibly transient and safe to rerun.
+function allowedForSelfHeal(errorType, context) {
+  if (SELF_HEAL_DENIED.has(errorType)) return false;
+  const transient = inferTransientLikelihood(errorType, context);
+  if (transient === 'low') return false;
   return errorType === 'infra/network' || errorType === 'frontend-timing' || errorType === 'auth/session';
 }
 
@@ -83,8 +106,8 @@ async function main() {
   const selfHealPlan = context?.analysis?.self_heal_plan ?? null;
   const errorType = toErrorType(classification);
 
-  const allowed = allowedForSelfHeal(errorType);
-  const transient = inferTransientLikelihood(errorType);
+  const allowed = allowedForSelfHeal(errorType, context);
+  const transient = inferTransientLikelihood(errorType, context);
 
   const decision = {
     version: 1,
@@ -108,7 +131,7 @@ async function main() {
     rerun: allowed ? buildRerunPlan(context) : null,
     recommendations_for_fix_agent: allowed
       ? ['If rerun still fails, treat as structural and escalate to Fix-Agent with captured context.']
-      : ['Use Fix-Agent for code changes; self-heal skipped by policy.'],
+      : ['Use Fix-Agent for code changes; self-heal skipped by policy. Error type requires structural fix (selector/API URL).'],
   };
 
   await fs.mkdir(path.dirname(outPath), { recursive: true });

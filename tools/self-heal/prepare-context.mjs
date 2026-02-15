@@ -98,8 +98,17 @@ async function main() {
     process.env.BACKEND_LOG_PATH ||
     path.join('artifacts', 'backend-logs', 'django', 'logs', 'system', 'ci.log');
 
+  const flakyPath = process.env.FLAKY_PATH || path.join('agent-outputs', 'flaky-classifier.json');
+
   const playwrightLog = await readTextIfExists(playwrightLogPath);
   const backendLog = await readTextIfExists(backendLogPath);
+  let flaky = null;
+  try {
+    const raw = await fs.readFile(flakyPath, 'utf8');
+    flaky = raw ? safeJsonParse(raw) : null;
+  } catch {
+    // flaky-classifier output may not exist
+  }
 
   const payload = {
     playwright_log: playwrightLog,
@@ -127,6 +136,7 @@ async function main() {
     branch,
     commit,
     status,
+    flaky,
     logs: {
       playwright_log_path: playwrightLogPath,
       backend_log_path: backendLogPath,

@@ -142,6 +142,22 @@ function addFirstForStrictLocator(source, selector) {
   return { changed, source: out };
 }
 
+function extractWrongApiUrl(playwrightSnippet) {
+  const text = String(playwrightSnippet || '');
+  const re = /\/api\/([a-zA-Z0-9_-]+BROKEN)\/?/;
+  const m = text.match(re);
+  return m ? m[1] : null;
+}
+
+function fixWrongApiUrlInSource(source, wrongSegment, correctSegment) {
+  if (!wrongSegment || !correctSegment) return { changed: false, source };
+  const s = String(source);
+  const wrong = `/${wrongSegment}`;
+  const correct = `/${correctSegment}`;
+  if (!s.includes(wrong)) return { changed: false, source: s };
+  return { changed: true, source: s.replaceAll(wrong, correct) };
+}
+
 async function computeDiffStats() {
   const numstat = await runCmd('git', ['diff', '--numstat']);
   const lines = String(numstat.stdout || '').trim().split(/\n/).filter(Boolean);
@@ -197,9 +213,9 @@ function computeRiskAssessment(metadata, changedFiles, stats, validationOk) {
   if (errorType === 'frontend-selector') {
     assessment.score += 1;
     assessment.factors.push('error_type:frontend-selector(+1)');
-  } else if (errorType === 'frontend-timing') {
+  } else if (errorType === 'frontend-timing' || errorType === 'frontend-availability' || errorType === 'api-404') {
     assessment.score += 2;
-    assessment.factors.push('error_type:frontend-timing(+2)');
+    assessment.factors.push(`error_type:${errorType}(+2)`);
   } else {
     assessment.score += 5;
     assessment.factors.push(`error_type:${errorType}(+5)`);
@@ -426,6 +442,19 @@ async function main() {
       }
     }
 
+    // Fix wrong API URL (e.g. availabilityBROKEN -> availability) for availability/404 issues.
+    if (errorType === 'frontend-availability' || errorType === 'api-404') {
+      const wrongSegment = extractWrongApiUrl(playwrightSnippet);
+      if (wrongSegment) {
+        const correctSegment = wrongSegment.replace(/BROKEN$/i, '');
+        if (correctSegment !== wrongSegment) {
+          const r = fixWrongApiUrlInSource(current, wrongSegment, correctSegment);
+          current = r.source;
+          changed = changed || r.changed;
+        }
+      }
+    }
+
     // Guardrail: do not attempt backend changes without explicit, localized targets.
 
     if (changed && current !== before) {
@@ -465,7 +494,11 @@ async function main() {
   // Minimal validation: attempt subset rerun when we have concrete spec paths.
   // Guardrail: keep it fast and deterministic (single worker, max-failures).
   let validationCmd = null;
-  if (touched.length > 0 && specPaths.length > 0 && (errorType === 'frontend-timing' || errorType === 'frontend-selector')) {
+  if (
+    touched.length > 0 &&
+    specPaths.length > 0 &&
+    (errorType === 'frontend-timing' || errorType === 'frontend-selector' || errorType === 'frontend-availability' || errorType === 'api-404')
+  ) {
     const specs = specPaths.slice(0, 2);
     validationCmd = `npx playwright test ${specs.join(' ')} --max-failures=1 --workers=1`;
     metadata.validation.attempted = true;

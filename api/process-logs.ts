@@ -30,6 +30,8 @@ type Classification = {
   error_type:
     | 'frontend-selector'
     | 'frontend-timing'
+    | 'frontend-availability'
+    | 'api-404'
     | 'backend-500'
     | 'backend-migration'
     | 'auth/session'
@@ -300,8 +302,12 @@ function classifyFailure(playwrightLog: string, backendLog: string): Omit<Classi
   const backend500 = /\b500\b|Internal Server Error|Server Error \(500\)/i;
   const authSession = /\b401\b|\b403\b|CSRF|forbidden|unauthorized|invalid\s+credentials|login\s+failed/i;
   const network = /net::ERR_|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|socket hang up|read ECONNRESET/i;
-  const selector = /strict\s+mode\s+violation|waiting for selector|locator\(|toHaveCount\(|toBeVisible\(/i;
-  const timing = /Test timeout of|Timeout \d+ms exceeded|expect\(.+\)\.to/i;
+  // Tightened: strict mode, waiting for selector with quote, locator resolved to N elements
+  const selector = /strict\s+mode\s+violation|waiting\s+for\s+selector\s+['"`#]|locator\(['"`][^'"`]+['"`]\)\s+resolved\s+to\s+\d+\s+element|Locator\.(?:count|first|nth)|toHaveCount\(|toBeVisible\(/i;
+  // Tightened: explicit timeout signals, avoid generic expect
+  const timing = /Test\s+timeout\s+of\s+\d+\s*ms|Timeout\s+\d+\s*ms\s+exceeded|waitForTimeout|exceeded\s+while\s+waiting/i;
+  const availability = /availability\s+check\s+failed|UI\s+availability\s+check\s+failed|Failed\s+to\s+check\s+availability|availabilityBROKEN|\/api\/availability[^/\s]*\?/i;
+  const api404 = /\b404\b.*\/api\/|Not\s+Found.*\/api\/|Failed\s+to\s+fetch|fetch\s+failed|status[:\s]404/i;
 
   if (backendMigration.test(bl)) {
     signals.push('backend:migration');
@@ -321,6 +327,16 @@ function classifyFailure(playwrightLog: string, backendLog: string): Omit<Classi
   if (authSession.test(pl) || authSession.test(bl)) {
     signals.push('auth:session');
     return { error_type: 'auth/session', confidence: 'medium', signals, summary: 'Auth/session issue detected (401/403/CSRF/login failure).' };
+  }
+
+  if (availability.test(pl) || availability.test(bl)) {
+    signals.push('frontend:availability');
+    return { error_type: 'frontend-availability', confidence: 'medium', signals, summary: 'Availability API or endpoint issue detected.' };
+  }
+
+  if (api404.test(pl) || api404.test(bl)) {
+    signals.push('api:404');
+    return { error_type: 'api-404', confidence: 'medium', signals, summary: 'API 404 or endpoint mismatch detected.' };
   }
 
   if (network.test(pl) || network.test(bl)) {
@@ -379,6 +395,11 @@ function buildSelfHealPlan(classification: Classification): SelfHealPlan {
       base.what_to_inspect.push('net::ERR_* / ECONN* errors and backend health endpoint readiness.');
       base.what_to_change.push('Add retries/backoff for readiness; ensure server binds and health endpoint is reachable.');
       break;
+    case 'frontend-availability':
+    case 'api-404':
+      base.what_to_inspect.push('API URL in test/page object; verify route exists in backend.');
+      base.what_to_change.push('Fix API endpoint URL in test or page object; ensure correct path.');
+      break;
     default:
       base.what_to_inspect.push('First failing Playwright test block and surrounding errors.');
       base.what_to_change.push('Add logging/annotations for first failure; ensure artifacts include both logs.');
@@ -392,7 +413,12 @@ function buildFixAgentInstructions(classification: Classification, playwrightLog
   const suspectedPaths: string[] = [];
   const failing = classification.failing_tests;
 
-  if (classification.error_type === 'frontend-selector' || classification.error_type === 'frontend-timing') {
+  if (
+    classification.error_type === 'frontend-selector' ||
+    classification.error_type === 'frontend-timing' ||
+    classification.error_type === 'frontend-availability' ||
+    classification.error_type === 'api-404'
+  ) {
     suspectedPaths.push('tests/e2e/');
     suspectedPaths.push('tests/pages/');
     suspectedPaths.push('dashboard/');
@@ -442,6 +468,12 @@ function buildFixAgentInstructions(classification: Classification, playwrightLog
       break;
     case 'infra/network':
       direction = 'Harden server startup/readiness and retry transient network failures.';
+      break;
+    case 'frontend-availability':
+      direction = 'Fix availability API URL or mock; ensure tests use correct endpoint (/api/availability/).';
+      break;
+    case 'api-404':
+      direction = 'Fix API endpoint URL in test or page object; verify route exists in backend.';
       break;
     default:
       break;

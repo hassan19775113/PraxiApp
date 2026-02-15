@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 const OUTPUT_DIR = process.env.AGENT_OUTPUT_DIR || 'agent-outputs';
+const SELF_HEAL_CONTEXT_PATH = process.env.SELF_HEAL_CONTEXT_PATH || 'self-heal/context.json';
 
 const FILES = {
   auth: 'auth-validator.json',
@@ -44,6 +45,18 @@ function readJson(name) {
     return { status: 'error', reason: 'parse', message: err.message };
   }
 }
+
+function readClassification() {
+  if (!fs.existsSync(SELF_HEAL_CONTEXT_PATH)) return null;
+  try {
+    const ctx = JSON.parse(fs.readFileSync(SELF_HEAL_CONTEXT_PATH, 'utf8') || '{}');
+    return ctx?.analysis?.classification ?? null;
+  } catch {
+    return null;
+  }
+}
+
+const TEST_CODE_FAULT_TYPES = new Set(['frontend-selector', 'frontend-availability', 'api-404']);
 
 function decide() {
   const auth = readJson(FILES.auth);
@@ -102,11 +115,26 @@ function decide() {
     };
   }
 
-  // 3) Deterministic failures present
+  // 3) Deterministic failures present: route by classification
   if (deterministic > 0) {
+    const classification = readClassification();
+    const errorType = classification?.error_type;
+    if (errorType && TEST_CODE_FAULT_TYPES.has(errorType)) {
+      return {
+        decision: 'run-fix-agent',
+        reason: 'Test-code fault detected (structural fix required)',
+        recommendations: ['Fix-Agent will apply targeted patch for selector/availability/API URL'],
+        classification: { error_type: errorType },
+        auth,
+        seed,
+        smoke,
+        flaky,
+        selector,
+      };
+    }
     return {
       decision: 'run-self-heal',
-      reason: 'Deterministic failures detected',
+      reason: 'Deterministic failures detected (environment/transient)',
       recommendations: ['Trigger Self-Heal Agent with patch generation'],
       auth,
       seed,

@@ -150,7 +150,9 @@ jobs:
 
   startup-fix-agent:
     name: Startup Fix Agent (prepare self-heal context)
-    needs: e2e-tests
+    needs:
+      - e2e-tests
+      - flaky-classifier
     if: ${{ always() && github.event_name == 'workflow_dispatch' && needs.e2e-tests.result == 'failure' }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -176,6 +178,12 @@ jobs:
         with:
           name: backend-logs-e2e-tests
           path: artifacts/backend-logs
+      - name: Download flaky-classifier output
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: flaky-classifier-output
+          path: agent-outputs
 
       - name: Prepare self-heal context
         # Integration point: collect logs and fetch Developer-Agent classification + self-heal plan.
@@ -224,6 +232,7 @@ jobs:
     if: ${{ always() }}
     uses: ./.github/workflows/backend-setup.yml
     with:
+      fault_scenario: ${{ inputs.fault_scenario || '' }}
       generate_storage_state: true
       agent_command: node scripts/agents/selector-auditor.cjs > agent-outputs/selector-auditor.json
       upload_artifact_name: selector-auditor-output
@@ -283,6 +292,12 @@ jobs:
         with:
           name: selector-auditor-output
           path: agent-outputs
+      - name: Download self-heal context (classification)
+        continue-on-error: true
+        uses: actions/download-artifact@v4
+        with:
+          name: self-heal-context
+          path: self-heal
       - name: Run supervisor
         run: |
           mkdir -p agent-outputs
