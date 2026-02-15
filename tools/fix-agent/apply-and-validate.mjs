@@ -91,6 +91,29 @@ function extractStrictModeSelectors(playwrightLogText) {
   return selectors;
 }
 
+function extractNonStrictSelectors(playwrightLogText) {
+  const text = String(playwrightLogText || '');
+  const selectors = [];
+  const seen = new Set();
+  const patterns = [
+    /waiting\s+for\s+selector\s+(['"`])([^'"`]{1,200})\1/gi,
+    /locator\((['"`])([^'"`]{1,200})\1\)/gi,
+    /element\(s\)\s+not\s+found[^'"`#]*(['"`#.][^'"`\s]{1,200})/gi,
+  ];
+
+  for (const re of patterns) {
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      const sel = m[2] || m[1];
+      if (!sel || seen.has(sel)) continue;
+      seen.add(sel);
+      selectors.push(sel);
+      if (selectors.length >= 5) return selectors;
+    }
+  }
+  return selectors;
+}
+
 function hasPlaywrightImportTest(source) {
   const s = String(source);
   return /from\s+['"]@playwright\/test['"]/m.test(s);
@@ -115,6 +138,19 @@ function addFileLevelTimeoutIfMissing(source, timeoutMs) {
 
   lines.splice(insertAt, 0, `test.setTimeout(${timeoutMs});`);
   return { changed: true, source: lines.join('\n') };
+}
+
+function removeExcessiveWaitForTimeout(source, maxAllowedMs = 5000, replacementMs = 500) {
+  const s = String(source);
+  const re = /await\s+page\.waitForTimeout\((\d+)\)\s*;?/g;
+  let changed = false;
+  const out = s.replace(re, (full, msRaw) => {
+    const ms = Number(msRaw);
+    if (!Number.isFinite(ms) || ms <= maxAllowedMs) return full;
+    changed = true;
+    return `await page.waitForTimeout(${replacementMs});`;
+  });
+  return { changed, source: out };
 }
 
 function addFirstForStrictLocator(source, selector) {
@@ -144,18 +180,106 @@ function addFirstForStrictLocator(source, selector) {
 
 function extractWrongApiUrl(playwrightSnippet) {
   const text = String(playwrightSnippet || '');
-  const re = /\/api\/([a-zA-Z0-9_-]+BROKEN)\/?/;
-  const m = text.match(re);
-  return m ? m[1] : null;
+  const re = /\/api\/([a-zA-Z0-9_-]+)\/?/g;
+  const seen = new Set();
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const wrong = m[1];
+    if (!wrong || seen.has(wrong)) continue;
+    seen.add(wrong);
+    const corrected = guessCorrectApiRoute(wrong);
+    if (corrected && corrected !== wrong) return { wrong, corrected };
+  }
+  return null;
+}
+
+function editDistance(a, b) {
+  const aa = String(a || '');
+  const bb = String(b || '');
+  const dp = Array.from({ length: aa.length + 1 }, () => Array(bb.length + 1).fill(0));
+  for (let i = 0; i <= aa.length; i += 1) dp[i][0] = i;
+  for (let j = 0; j <= bb.length; j += 1) dp[0][j] = j;
+  for (let i = 1; i <= aa.length; i += 1) {
+    for (let j = 1; j <= bb.length; j += 1) {
+      const cost = aa[i - 1] === bb[j - 1] ? 0 : 1;
+      dp[i][j] = Math.min(
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
+        dp[i - 1][j - 1] + cost,
+      );
+    }
+  }
+  return dp[aa.length][bb.length];
+}
+
+function guessCorrectApiRoute(route) {
+  const wrong = String(route || '');
+  if (!wrong) return null;
+  if (wrong.endsWith('BROKEN')) return wrong.replace(/BROKEN$/i, '');
+
+  const typoMap = {
+    availabilty: 'availability',
+    availablity: 'availability',
+    availablilty: 'availability',
+    appoitments: 'appointments',
+    appointmets: 'appointments',
+    patiens: 'patients',
+    resouces: 'resources',
+  };
+  if (typoMap[wrong]) return typoMap[wrong];
+
+  const knownRoutes = [
+    'availability',
+    'appointments',
+    'patients',
+    'doctors',
+    'operations',
+    'resources',
+    'auth',
+    'appointment-types',
+  ];
+
+  let best = null;
+  let bestDist = Number.POSITIVE_INFINITY;
+  for (const known of knownRoutes) {
+    const d = editDistance(wrong, known);
+    if (d < bestDist) {
+      bestDist = d;
+      best = known;
+    }
+  }
+  if (best && bestDist <= 2) return best;
+  return null;
 }
 
 function fixWrongApiUrlInSource(source, wrongSegment, correctSegment) {
   if (!wrongSegment || !correctSegment) return { changed: false, source };
   const s = String(source);
-  const wrong = `/${wrongSegment}`;
-  const correct = `/${correctSegment}`;
+  const wrong = `/api/${wrongSegment}`;
+  const correct = `/api/${correctSegment}`;
   if (!s.includes(wrong)) return { changed: false, source: s };
   return { changed: true, source: s.replaceAll(wrong, correct) };
+}
+
+function fixLikelyApiRouteTyposInSource(source) {
+  const s = String(source);
+  const re = /\/api\/([a-zA-Z0-9_-]+)\//g;
+  let changed = false;
+  let out = s;
+  let m;
+  const replacements = [];
+  while ((m = re.exec(s)) !== null) {
+    const wrong = m[1];
+    const corrected = guessCorrectApiRoute(wrong);
+    if (!corrected || corrected === wrong) continue;
+    replacements.push([wrong, corrected]);
+  }
+  for (const [wrong, corrected] of replacements) {
+    const r = fixWrongApiUrlInSource(out, wrong, corrected);
+    out = r.source;
+    changed = changed || r.changed;
+  }
+  return { changed, source: out };
 }
 
 async function computeDiffStats() {
@@ -416,6 +540,25 @@ async function main() {
   // Load a lightweight log snippet to drive safe, string-based transforms.
   const playwrightSnippet = String(fixInstr?.key_log_snippets?.playwright || '');
   const strictSelectors = extractStrictModeSelectors(playwrightSnippet);
+  const nonStrictSelectors = extractNonStrictSelectors(playwrightSnippet);
+
+  // FS-5: unknown/missing_logs -> metadata-only output (manual review), no automated patch.
+  if (errorType === 'unknown' || errorType === 'missing_logs') {
+    metadata.allowed = false;
+    metadata.needs_manual_review = true;
+    metadata.validation.notes = 'Unknown classification or missing logs; generated hints only.';
+    metadata.errors.push('No safe automated transform for unknown/missing_logs.');
+    metadata.hints = {
+      first_failing_test: Array.isArray(fixInstr?.failing_tests) ? fixInstr.failing_tests[0] || null : null,
+      playwright_snippet: playwrightSnippet.slice(0, 600),
+      suggested_paths: candidatePaths,
+    };
+    await writeText(patchPath, '');
+    await writeJson(metadataPath, metadata);
+    console.log(`Wrote ${patchPath}`);
+    console.log(`Wrote ${metadataPath}`);
+    return;
+  }
 
   const touched = [];
   for (const relPath of candidatePaths) {
@@ -430,11 +573,14 @@ async function main() {
       const r = addFileLevelTimeoutIfMissing(current, 60_000);
       current = r.source;
       changed = changed || r.changed;
+      const r2 = removeExcessiveWaitForTimeout(current, 5000, 500);
+      current = r2.source;
+      changed = changed || r2.changed;
     }
 
     // Guardrail: selector auto-fixes limited to strict-mode violations (low risk: choose first match).
     if (errorType === 'frontend-selector') {
-      for (const sel of strictSelectors) {
+      for (const sel of [...strictSelectors, ...nonStrictSelectors]) {
         const r = addFirstForStrictLocator(current, sel);
         current = r.source;
         changed = changed || r.changed;
@@ -444,14 +590,15 @@ async function main() {
 
     // Fix wrong API URL (e.g. availabilityBROKEN -> availability) for availability/404 issues.
     if (errorType === 'frontend-availability' || errorType === 'api-404') {
-      const wrongSegment = extractWrongApiUrl(playwrightSnippet);
-      if (wrongSegment) {
-        const correctSegment = wrongSegment.replace(/BROKEN$/i, '');
-        if (correctSegment !== wrongSegment) {
-          const r = fixWrongApiUrlInSource(current, wrongSegment, correctSegment);
-          current = r.source;
-          changed = changed || r.changed;
-        }
+      const routeGuess = extractWrongApiUrl(playwrightSnippet);
+      if (routeGuess?.wrong && routeGuess?.corrected && routeGuess.corrected !== routeGuess.wrong) {
+        const r = fixWrongApiUrlInSource(current, routeGuess.wrong, routeGuess.corrected);
+        current = r.source;
+        changed = changed || r.changed;
+      } else {
+        const r2 = fixLikelyApiRouteTyposInSource(current);
+        current = r2.source;
+        changed = changed || r2.changed;
       }
     }
 

@@ -302,8 +302,8 @@ function classifyFailure(playwrightLog: string, backendLog: string): Omit<Classi
   const backend500 = /\b500\b|Internal Server Error|Server Error \(500\)/i;
   const authSession = /\b401\b|\b403\b|CSRF|forbidden|unauthorized|invalid\s+credentials|login\s+failed/i;
   const network = /net::ERR_|ECONNREFUSED|ENOTFOUND|EAI_AGAIN|socket hang up|read ECONNRESET/i;
-  // Tightened: strict mode, waiting for selector with quote, locator resolved to N elements
-  const selector = /strict\s+mode\s+violation|waiting\s+for\s+selector\s+['"`#]|locator\(['"`][^'"`]+['"`]\)\s+resolved\s+to\s+\d+\s+element|Locator\.(?:count|first|nth)|toHaveCount\(|toBeVisible\(/i;
+  const selectorStrict = /strict\s+mode\s+violation|locator\(['"`][^'"`]+['"`]\)\s+resolved\s+to\s+\d+\s+element/i;
+  const selectorNonStrict = /waiting\s+for\s+selector\s+['"`#]|element\(s\)\s+not\s+found|locator\(['"`][^'"`]+['"`]\)|toHaveCount\(|toBeVisible\(/i;
   // Tightened: explicit timeout signals, avoid generic expect
   const timing = /Test\s+timeout\s+of\s+\d+\s*ms|Timeout\s+\d+\s*ms\s+exceeded|waitForTimeout|exceeded\s+while\s+waiting/i;
   const availability = /availability\s+check\s+failed|UI\s+availability\s+check\s+failed|Failed\s+to\s+check\s+availability|availabilityBROKEN|\/api\/availability[^/\s]*\?/i;
@@ -331,11 +331,15 @@ function classifyFailure(playwrightLog: string, backendLog: string): Omit<Classi
 
   if (availability.test(pl) || availability.test(bl)) {
     signals.push('frontend:availability');
+    if (/availabilityBROKEN/i.test(pl) || /availabilityBROKEN/i.test(bl)) signals.push('frontend:availability:broken-route');
+    if (!/availabilityBROKEN/i.test(pl) && !/availabilityBROKEN/i.test(bl)) signals.push('frontend:availability:non-broken');
     return { error_type: 'frontend-availability', confidence: 'medium', signals, summary: 'Availability API or endpoint issue detected.' };
   }
 
   if (api404.test(pl) || api404.test(bl)) {
     signals.push('api:404');
+    if (/BROKEN/i.test(pl) || /BROKEN/i.test(bl)) signals.push('api:404:broken-route');
+    if (!/BROKEN/i.test(pl) && !/BROKEN/i.test(bl)) signals.push('api:404:non-broken');
     return { error_type: 'api-404', confidence: 'medium', signals, summary: 'API 404 or endpoint mismatch detected.' };
   }
 
@@ -344,13 +348,17 @@ function classifyFailure(playwrightLog: string, backendLog: string): Omit<Classi
     return { error_type: 'infra/network', confidence: 'medium', signals, summary: 'Network/infra error detected (net::ERR_ / ECONN* / DNS).' };
   }
 
-  if (selector.test(pl)) {
+  if (selectorStrict.test(pl) || selectorNonStrict.test(pl)) {
     signals.push('frontend:selector');
+    if (selectorStrict.test(pl)) signals.push('frontend:selector:strict');
+    if (!selectorStrict.test(pl) && selectorNonStrict.test(pl)) signals.push('frontend:selector:non-strict');
     return { error_type: 'frontend-selector', confidence: 'medium', signals, summary: 'Frontend selector/locator issue detected.' };
   }
 
   if (timing.test(pl)) {
     signals.push('frontend:timing');
+    if (/waitForTimeout\(\d+\)/i.test(pl)) signals.push('frontend:timing:deterministic-hint');
+    if (/Timeout\s+\d+\s*ms\s+exceeded/i.test(pl)) signals.push('frontend:timing:timeout-exceeded');
     return { error_type: 'frontend-timing', confidence: 'medium', signals, summary: 'Frontend timing/timeout issue detected.' };
   }
 
@@ -474,6 +482,10 @@ function buildFixAgentInstructions(classification: Classification, playwrightLog
       break;
     case 'api-404':
       direction = 'Fix API endpoint URL in test or page object; verify route exists in backend.';
+      break;
+    case 'unknown':
+    case 'missing_logs':
+      direction = 'Manual review required: capture first failing test and richer logs before applying any code changes.';
       break;
     default:
       break;

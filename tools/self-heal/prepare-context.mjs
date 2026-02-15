@@ -143,6 +143,8 @@ async function main() {
       playwright_log_bytes: Buffer.from(playwrightLog || '', 'utf8').length,
       backend_log_bytes: Buffer.from(backendLog || '', 'utf8').length,
       extracted_spec_paths: specPaths,
+      has_playwright_log: Boolean((playwrightLog || '').trim()),
+      has_backend_log: Boolean((backendLog || '').trim()),
     },
     developer_agent: {
       source: 'none',

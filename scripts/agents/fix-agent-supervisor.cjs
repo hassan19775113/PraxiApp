@@ -57,6 +57,7 @@ function readClassification() {
 }
 
 const TEST_CODE_FAULT_TYPES = new Set(['frontend-selector', 'frontend-availability', 'api-404']);
+const MANUAL_ONLY_TYPES = new Set(['unknown', 'missing_logs']);
 
 function decide() {
   const auth = readJson(FILES.auth);
@@ -119,6 +120,19 @@ function decide() {
   if (deterministic > 0) {
     const classification = readClassification();
     const errorType = classification?.error_type;
+    if (errorType && MANUAL_ONLY_TYPES.has(errorType)) {
+      return {
+        decision: 'manual-review',
+        reason: 'Classification is unknown or logs are missing; skip autonomous repair',
+        recommendations: ['Collect richer logs and retry classification before applying fixes'],
+        classification: { error_type: errorType },
+        auth,
+        seed,
+        smoke,
+        flaky,
+        selector,
+      };
+    }
     if (errorType && TEST_CODE_FAULT_TYPES.has(errorType)) {
       return {
         decision: 'run-fix-agent',
